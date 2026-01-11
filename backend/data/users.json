@@ -1,0 +1,19 @@
+[
+  {
+    "id": "1767924481194",
+    "email": "user@123",
+    "name": "Test User",
+    "password": "04f8996da763b7a969b1028ee3007569eaf3a635486ddab211d512c85b9df8fb",
+    "role": "user",
+    "createdAt": "2026-01-09T02:08:01.194Z",
+    "phone": ""
+  },
+  {
+    "id": "admin_user_1768150739848",
+    "email": "admin@123",
+    "name": "Super Admin",
+    "password": "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918",
+    "role": "admin",
+    "createdAt": "2026-01-11T16:58:59.848Z"
+  }
+]

@@ -1,0 +1,334 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Plus, Trash2, Calculator } from 'lucide-react';
+
+interface ProductFormProps {
+    initialData?: any;
+    isEdit?: boolean;
+}
+
+export default function ProductForm({ initialData, isEdit = false }: ProductFormProps) {
+    const router = useRouter();
+    const [categories, setCategories] = useState<any[]>([]);
+    const [suppliers, setSuppliers] = useState<any[]>([]);
+
+    const [formData, setFormData] = useState({
+        title: '',
+        originalPrice: '', // MRP
+        discount: '',      // Percentage
+        price: '',         // Selling Price
+        category: '',      // Selected Category Name
+        categoryId: '',    // Selected Category ID
+        description: '',
+        image: '',         // Main Image
+        images: [''],      // Array of images
+        brand: '',
+        countInStock: '',
+        supplier: '',      // Selected Supplier Name
+        supplierId: ''     // Selected Supplier ID
+    });
+
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        fetchData();
+        if (initialData) {
+            setFormData({
+                title: initialData.title || '',
+                originalPrice: initialData.originalPrice || '',
+                discount: initialData.discount || '',
+                price: initialData.price || '',
+                category: initialData.category || '',
+                categoryId: initialData.categoryId || '',
+                description: initialData.description || '',
+                image: initialData.image || '',
+                images: initialData.images && initialData.images.length > 0 ? initialData.images : [initialData.image || ''],
+                brand: initialData.brand || '',
+                countInStock: initialData.countInStock || '',
+                supplier: initialData.supplier || '',
+                supplierId: initialData.supplierId || initialData.sellerId || ''
+            });
+        }
+    }, [initialData]);
+
+    const fetchData = async () => {
+        try {
+            const cRes = await fetch("http://localhost:5001/api/admin/categories");
+            const cData = await cRes.json();
+            setCategories(Array.isArray(cData) ? cData : []);
+
+            try {
+                const sRes = await fetch("http://localhost:5001/api/admin/sellers", { headers: { 'x-user-id': JSON.parse(localStorage.getItem('user') || '{}').id } });
+                const sData = await sRes.json();
+                setSuppliers(Array.isArray(sData) ? sData : []);
+            } catch (err) {
+                console.error("Failed to fetch suppliers", err);
+                setSuppliers([]);
+            }
+        } catch (err) {
+            console.error("Failed to fetch dropdown data", err);
+            setCategories([]);
+        }
+    };
+
+    // Auto-Calculate Price
+    useEffect(() => {
+        const mrp = Number(formData.originalPrice);
+        const disc = Number(formData.discount);
+
+        if (mrp > 0 && disc >= 0) {
+            const sellingPrice = mrp - (mrp * (disc / 100));
+            setFormData(prev => ({ ...prev, price: Math.round(sellingPrice).toString() }));
+        }
+    }, [formData.originalPrice, formData.discount]);
+
+    const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const catId = e.target.value;
+        const cat = categories.find(c => c.id === catId);
+        if (cat) {
+            setFormData(prev => ({ ...prev, category: cat.name, categoryId: cat.id }));
+        }
+    };
+
+    const handleSupplierChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const supId = e.target.value;
+        const sup = suppliers.find(s => s.id === supId);
+        if (sup) {
+            setFormData(prev => ({ ...prev, supplier: sup.name, supplierId: sup.id }));
+        }
+    };
+
+    // Image Handlers
+    const handleImageChange = (index: number, val: string) => {
+        const newImages = [...formData.images];
+        newImages[index] = val;
+        setFormData(prev => ({ ...prev, images: newImages, image: index === 0 ? val : prev.image }));
+    };
+
+    const addImageField = () => {
+        setFormData(prev => ({ ...prev, images: [...prev.images, ''] }));
+    };
+
+    const removeImageField = (index: number) => {
+        const newImages = formData.images.filter((_, i) => i !== index);
+        setFormData(prev => ({ ...prev, images: newImages, image: index === 0 ? (newImages[0] || '') : prev.image }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+
+        const userStr = localStorage.getItem('user');
+        if (!userStr) return;
+        const user = JSON.parse(userStr);
+
+        const url = isEdit
+            ? `http://localhost:5001/api/admin/products/${initialData.id}`
+            : 'http://localhost:5001/api/admin/products';
+
+        const method = isEdit ? 'PUT' : 'POST';
+
+        // Filter empty images
+        const cleanImages = formData.images.filter(img => img.trim() !== '');
+
+        const payload = {
+            ...formData,
+            images: cleanImages,
+            image: cleanImages[0] || formData.image // Ensure main image is set
+        };
+
+        try {
+            const res = await fetch(url, {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-user-id': user.id
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                router.push('/admin/products');
+            } else {
+                const err = await res.json();
+                alert(`Failed to save product: ${err.error}`);
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error saving product');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-gray-100 max-w-4xl mx-auto">
+            <h2 className="text-2xl font-bold mb-6 text-gray-800 border-b pb-4">{isEdit ? 'Edit Product' : 'Add New Product'}</h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Left Column: Basic Info */}
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Product Title</label>
+                        <input
+                            type="text"
+                            required
+                            value={formData.title}
+                            onChange={e => setFormData({ ...formData, title: e.target.value })}
+                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                            placeholder="e.g., iPhone 14 Pro Max"
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">MRP (Original Price)</label>
+                            <input
+                                type="number"
+                                required
+                                value={formData.originalPrice}
+                                onChange={e => setFormData({ ...formData, originalPrice: e.target.value })}
+                                className="w-full px-3 py-2 border rounded bg-white"
+                                placeholder="0.00"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Discount (%)</label>
+                            <input
+                                type="number"
+                                required
+                                value={formData.discount}
+                                onChange={e => setFormData({ ...formData, discount: e.target.value })}
+                                className="w-full px-3 py-2 border rounded bg-white"
+                                placeholder="0"
+                            />
+                        </div>
+
+                        <div className="col-span-2 mt-2 pt-2 border-t border-gray-300 flex justify-between items-center">
+                            <span className="text-sm text-gray-600 font-medium">Selling Price:</span>
+                            <div className="flex items-baseline gap-2">
+                                {formData.originalPrice && <span className="text-sm text-gray-400 line-through">₹{Number(formData.originalPrice).toLocaleString()}</span>}
+                                <span className="text-xl font-bold text-green-600">₹{Number(formData.price).toLocaleString()}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">Category</label>
+                            <select
+                                required
+                                value={formData.categoryId || ''}
+                                onChange={handleCategoryChange}
+                                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                            >
+                                <option value="">Select Category</option>
+                                {categories.map(c => (
+                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">Supplier</label>
+                            <select
+                                required
+                                value={formData.supplierId || ''}
+                                onChange={handleSupplierChange}
+                                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                            >
+                                <option value="">Select Supplier</option>
+                                {suppliers.map(s => (
+                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">Brand</label>
+                            <input
+                                type="text"
+                                value={formData.brand}
+                                onChange={e => setFormData({ ...formData, brand: e.target.value })}
+                                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">Stock Quantity</label>
+                            <input
+                                type="number"
+                                required
+                                value={formData.countInStock}
+                                onChange={e => setFormData({ ...formData, countInStock: e.target.value })}
+                                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Right Column: Images & Description */}
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2 flex justify-between">
+                            <span>Product Images</span>
+                            <button type="button" onClick={addImageField} className="text-xs text-blue-600 flex items-center gap-1 hover:underline">
+                                <Plus size={14} /> Add Another
+                            </button>
+                        </label>
+                        <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
+                            {formData.images.map((img, index) => (
+                                <div key={index} className="flex gap-2 items-start">
+                                    <div className="flex-1">
+                                        <input
+                                            type="text"
+                                            value={img}
+                                            onChange={e => handleImageChange(index, e.target.value)}
+                                            className="w-full px-3 py-2 border rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                            placeholder="Image URL..."
+                                        />
+                                        {img && <img src={img} alt="Preview" className="h-20 mt-1 object-contain rounded border bg-gray-50" />}
+                                    </div>
+                                    {formData.images.length > 1 && (
+                                        <button type="button" onClick={() => removeImageField(index)} className="p-2 text-gray-400 hover:text-red-500">
+                                            <Trash2 size={18} />
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
+                        <textarea
+                            required
+                            value={formData.description}
+                            onChange={e => setFormData({ ...formData, description: e.target.value })}
+                            rows={6}
+                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-6 mt-6 border-t">
+                <button
+                    type="button"
+                    onClick={() => router.back()}
+                    className="px-6 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium"
+                >
+                    Cancel
+                </button>
+                <button
+                    type="submit"
+                    disabled={loading}
+                    className="px-8 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium shadow-md transition-transform active:scale-95"
+                >
+                    {loading ? 'Saving...' : (isEdit ? 'Update Product' : 'Create Product')}
+                </button>
+            </div>
+        </form>
+    );
+}

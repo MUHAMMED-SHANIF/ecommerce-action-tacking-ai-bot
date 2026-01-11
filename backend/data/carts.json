@@ -1,0 +1,72 @@
+[
+  {
+    "userId": "1767924481194",
+    "items": [
+      {
+        "id": "1",
+        "title": "Apple iPhone 14 (Blue, 128 GB)",
+        "category": "Mobiles",
+        "brand": "Apple",
+        "price": 58999,
+        "originalPrice": 69900,
+        "discount": 15,
+        "rating": 4.6,
+        "reviews": 224300,
+        "image": "https://placehold.co/832x832/png?text=iPhone+14",
+        "description": "The iPhone 14 comes with the most impressive dual-camera system on iPhone.",
+        "features": [
+          "128 GB ROM",
+          "15.49 cm (6.1 inch) Super Retina XDR Display",
+          "12MP + 12MP | 12MP Front Camera",
+          "A15 Bionic Chip"
+        ],
+        "qty": 1,
+        "deliveryDate": "Wed Oct 25"
+      },
+      {
+        "id": "e1",
+        "title": "Monitor Samsung 24 inch",
+        "category": "Electronics",
+        "brand": "Samsung",
+        "price": 6599,
+        "originalPrice": 12000,
+        "discount": 45,
+        "rating": 4.5,
+        "reviews": 120,
+        "image": "https://placehold.co/200x200/png?text=Monitor",
+        "description": "Crisp visuals with this 24-inch Samsung monitor.",
+        "features": [
+          "1080p Full HD",
+          "75Hz Refresh Rate",
+          "HDMI & VGA Ports"
+        ],
+        "qty": 2,
+        "deliveryDate": "Wed Oct 25"
+      },
+      {
+        "id": "b3",
+        "title": "Nescafe Classic Coffee",
+        "category": "Food",
+        "brand": "Nescafe",
+        "price": 300,
+        "originalPrice": 500,
+        "discount": 40,
+        "rating": 4.6,
+        "reviews": 950,
+        "image": "https://placehold.co/200x200/png?text=Coffee",
+        "description": "Start your day with the perfect cup of coffee.",
+        "features": [
+          "100% Pure Coffee",
+          "Rich Aroma",
+          "200g Jar"
+        ],
+        "qty": 1,
+        "deliveryDate": "Wed Oct 25"
+      }
+    ]
+  },
+  {
+    "userId": "1768076904524",
+    "items": []
+  }
+]
