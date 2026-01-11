@@ -1,4 +1,28 @@
 {
-  "navbar": [],
-  "sections": []
+  "navbar": [
+    {
+      "id": "1768171424871",
+      "category": "Electronics"
+    },
+    {
+      "id": "1768171445687",
+      "category": "Food"
+    },
+    {
+      "id": "1768171447735",
+      "category": "Mobiles"
+    }
+  ],
+  "sections": [
+    {
+      "id": "1768171461575",
+      "title": "best you",
+      "category": "Electronics"
+    },
+    {
+      "id": "1768171515656",
+      "title": "meee",
+      "category": "Mobiles"
+    }
+  ]
 }
