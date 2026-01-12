@@ -128,8 +128,25 @@ app.get('/api/admin/banners', isAdmin, async (req, res) => {
 
 app.post('/api/admin/banners', isAdmin, async (req, res) => {
     try {
+        const { title, image, link, actionType, targetId, active, duration } = req.body;
+
+        if (!image) {
+            return res.status(400).json({ error: "Image is required" });
+        }
+
         const banners = await readJSON(BANNERS_FILE);
-        const newBanner = { id: Date.now().toString(), ...req.body };
+        const newBanner = {
+            id: Date.now().toString(),
+            title: title || "Untitled",
+            image,
+            link: link || "",
+            actionType: actionType || "none",
+            targetId: targetId || "",
+            active: active !== undefined ? active : true,
+            duration: Number(duration) || 5,
+            createdAt: new Date().toISOString()
+        };
+
         banners.push(newBanner);
         await writeJSON(BANNERS_FILE, banners);
         res.status(201).json(newBanner);

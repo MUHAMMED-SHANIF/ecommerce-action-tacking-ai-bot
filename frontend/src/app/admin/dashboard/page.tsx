@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function AdminDashboard() {
-    const [stats, setStats] = useState({ users: 0, products: 0, orders: 0 });
+    const [stats, setStats] = useState({ users: 0, products: 0, sellers: 0 });
+    const router = useRouter();
 
     useEffect(() => {
         // Fetch stats (Mocking simply by fetching lists size for now, optimization later)
@@ -16,20 +18,20 @@ export default function AdminDashboard() {
 
             try {
                 // Parallel fetch
-                const [usersRes, productsRes] = await Promise.all([
+                const [usersRes, productsRes, sellersRes] = await Promise.all([
                     fetch('http://localhost:5001/api/admin/users', { headers }),
-                    fetch('http://localhost:5001/api/products')
+                    fetch('http://localhost:5001/api/products'),
+                    fetch('http://localhost:5001/api/admin/sellers', { headers })
                 ]);
 
                 const users = await usersRes.json();
                 const products = await productsRes.json();
-                // Orders API for all isn't implemented yet, just user specific. 
-                // We'll skip orders stat or add endpoints later.
+                const sellers = await sellersRes.json();
 
                 setStats({
                     users: Array.isArray(users) ? users.length : 0,
                     products: Array.isArray(products) ? products.length : 0,
-                    orders: 0
+                    sellers: Array.isArray(sellers) ? sellers.length : 0
                 });
             } catch (err) {
                 console.error("Failed to fetch stats", err);
@@ -43,20 +45,29 @@ export default function AdminDashboard() {
             <h2 className="text-3xl font-bold text-gray-800 mb-8">Dashboard Overview</h2>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 className="text-gray-500 text-sm font-medium uppercase">Total Users</h3>
+                <div
+                    onClick={() => router.push('/admin/users')}
+                    className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow hover:border-blue-200 group"
+                >
+                    <h3 className="text-gray-500 text-sm font-medium uppercase group-hover:text-blue-600">Total Users</h3>
                     <p className="text-3xl font-bold text-gray-900 mt-2">{stats.users}</p>
                 </div>
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 className="text-gray-500 text-sm font-medium uppercase">Total Products</h3>
+
+                <div
+                    onClick={() => router.push('/admin/products')}
+                    className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow hover:border-green-200 group"
+                >
+                    <h3 className="text-gray-500 text-sm font-medium uppercase group-hover:text-green-600">Total Products</h3>
                     <p className="text-3xl font-bold text-gray-900 mt-2">{stats.products}</p>
                 </div>
-                {/* 
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 className="text-gray-500 text-sm font-medium uppercase">Total Orders</h3>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.orders}</p>
+
+                <div
+                    onClick={() => router.push('/admin/sellers')}
+                    className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow hover:border-purple-200 group"
+                >
+                    <h3 className="text-gray-500 text-sm font-medium uppercase group-hover:text-purple-600">Total Suppliers</h3>
+                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.sellers}</p>
                 </div>
-                */}
             </div>
 
             <div className="mt-12">

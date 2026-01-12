@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -16,33 +16,44 @@ export default function CategoryBar() {
     const [categories, setCategories] = useState<any[]>(DEFAULT_CATEGORIES);
 
     useEffect(() => {
-        const fetchLayout = async () => {
+        const fetchData = async () => {
             try {
-                const res = await fetch("http://localhost:5001/api/home-layout");
-                const data = await res.json();
+                // Fetch Layout (What to show)
+                const lRes = await fetch("http://localhost:5001/api/home-layout");
+                const lData = await lRes.json();
 
-                if (data.navbar && Array.isArray(data.navbar) && data.navbar.length > 0) {
-                    // Map navbar string items to objects with images
-                    // ideally we should fetch images too, but for now we'll generate placeholder or map if we have details
-                    // The admin config just saves "category name". 
+                // Fetch Full Categories (Details including images)
+                const cRes = await fetch("http://localhost:5001/api/admin/categories");
+                const cData = await cRes.json();
+                const allCats = Array.isArray(cData) ? cData : [];
 
-                    const newCats = data.navbar.map((item: any) => ({
-                        name: item.category,
-                        img: `https://placehold.co/128x128/png?text=${encodeURIComponent(item.category)}`
-                    }));
+                if (lData.navbar && Array.isArray(lData.navbar) && lData.navbar.length > 0) {
+                    const newCats = lData.navbar.map((item: any) => {
+                        // Find matching category details
+                        const details = allCats.find((c: any) => c.name === item.category);
+                        const img = details?.image
+                            ? getImageUrl(details.image)
+                            : `https://placehold.co/128x128/png?text=${encodeURIComponent(item.category.substring(0, 10))}`;
 
-                    // If less than 3, fallback logic as requested? 
-                    // User said: "if there is less that 3 catgery then show what have dont crash the page"
-                    // So we just show what we have.
-
+                        return {
+                            name: item.category,
+                            img: img
+                        };
+                    });
                     setCategories(newCats);
                 }
             } catch (err) {
                 console.error("Failed to load nav layout", err);
             }
         };
-        fetchLayout();
+        fetchData();
     }, []);
+
+    const getImageUrl = (img: string) => {
+        if (!img) return '';
+        if (img.startsWith('http') || img.startsWith('data:')) return img;
+        return `http://localhost:5001${img}`;
+    };
 
     if (categories.length === 0) return null;
 
@@ -51,13 +62,12 @@ export default function CategoryBar() {
             <div className="container mx-auto px-4 max-w-[1248px] overflow-x-auto no-scrollbar">
                 <div className="flex justify-between min-w-[300px] md:min-w-0">
                     {categories.map((cat, idx) => (
-                        <Link href={`/category/${encodeURIComponent(cat.name)}`} key={idx} className="flex flex-col items-center gap-1 group cursor-pointer hover:text-[#22c55e] min-w-[80px]">
-                            <div className="relative w-16 h-16 rounded-full overflow-hidden bg-gray-50">
-                                <Image
+                        <Link href={`/search?category=${encodeURIComponent(cat.name)}`} key={idx} className="flex flex-col items-center gap-1 group cursor-pointer hover:text-[#22c55e] min-w-[80px]">
+                            <div className="relative w-16 h-16 rounded-full overflow-hidden bg-gray-50 border border-gray-100 group-hover:border-[#22c55e] transition-colors">
+                                <img
                                     src={cat.img}
                                     alt={cat.name}
-                                    fill
-                                    className="object-contain hover:scale-105 transition-transform duration-200"
+                                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
                                 />
                             </div>
                             <span className="text-[14px] font-medium text-gray-800 group-hover:text-[#22c55e] text-center w-full truncate px-1">

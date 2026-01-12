@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Edit, Trash2, Plus, Search } from "lucide-react";
 import Link from "next/link";
 
@@ -10,6 +10,8 @@ interface Product {
     id: string;
     title: string;
     price: number;
+    originalPrice?: number;
+    discount?: number;
     category: string;
     countInStock: number;
     image: string;
@@ -21,6 +23,7 @@ interface Product {
 export default function AdminProducts() {
     const { user } = useAuth();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [products, setProducts] = useState<Product[]>([]);
     const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
@@ -32,7 +35,13 @@ export default function AdminProducts() {
             return;
         }
         fetchProducts();
-    }, [user]);
+
+        // Auto-fill search from URL param
+        const supplierParam = searchParams.get('supplier');
+        if (supplierParam) {
+            setSearchTerm(supplierParam);
+        }
+    }, [user, searchParams]);
 
     useEffect(() => {
         const lower = searchTerm.toLowerCase();
@@ -135,7 +144,9 @@ export default function AdminProducts() {
                             <tr className="bg-gray-100 border-b">
                                 <th className="p-4 font-semibold">Image</th>
                                 <th className="p-4 font-semibold">Name</th>
-                                <th className="p-4 font-semibold">Price</th>
+                                <th className="p-4 font-semibold">Rate</th>
+                                <th className="p-4 font-semibold">MRP</th>
+                                <th className="p-4 font-semibold">Offer</th>
                                 <th className="p-4 font-semibold">Category</th>
                                 <th className="p-4 font-semibold">Supplier</th>
                                 <th className="p-4 font-semibold">Stock</th>
@@ -160,6 +171,8 @@ export default function AdminProducts() {
                                     </td>
                                     <td className="p-4 font-medium max-w-[200px] truncate" title={product.title}>{product.title}</td>
                                     <td className="p-4">₹{product.price.toLocaleString()}</td>
+                                    <td className="p-4 text-gray-500">{product.originalPrice ? `₹${Number(product.originalPrice).toLocaleString()}` : '-'}</td>
+                                    <td className="p-4 text-green-600">{product.discount ? `${product.discount}%` : '-'}</td>
                                     <td className="p-4">
                                         <span className="bg-gray-100 px-2 py-1 rounded text-xs">{product.category}</span>
                                     </td>

@@ -131,10 +131,29 @@ function ProductContent() {
                         <Image src="https://static-assets-web.flixcart.com/fk-p-linchpin-web/fk-cp-zion/img/fa_62673a.png" alt="Assured" width={77} height={21} />
                     </div>
 
-                    <div className="flex items-baseline gap-3 mb-2">
-                        <span className="text-[28px] font-semibold text-black">₹{product.price.toLocaleString()}</span>
-                        {product.originalPrice && <span className="text-[16px] text-gray-500 line-through">₹{Number(product.originalPrice).toLocaleString()}</span>}
-                        {product.discount > 0 && <span className="text-[16px] text-[#388e3c] font-medium">{product.discount}% off</span>}
+                    {/* Price Section */}
+                    <div className="mb-4">
+                        <div className="text-green-600 text-sm font-bold mb-1">Special Price</div>
+                        <div className="flex items-baseline gap-3">
+                            <span className="text-[28px] font-semibold text-black">
+                                <span className="text-sm text-gray-500 font-normal mr-1">Rate:</span>
+                                ₹{product.price.toLocaleString()}
+                            </span>
+                            {product.originalPrice && Number(product.originalPrice) > product.price && (
+                                <span className="text-[16px] text-gray-500 line-through">
+                                    <span className="text-sm mr-1">M.R.P.:</span>
+                                    ₹{Number(product.originalPrice).toLocaleString()}
+                                </span>
+                            )}
+                            {(product.discount > 0 || (product.originalPrice && Number(product.originalPrice) > product.price)) && (
+                                <span className="text-[16px] text-[#388e3c] font-medium">
+                                    {product.discount > 0
+                                        ? product.discount
+                                        : Math.round(((Number(product.originalPrice) - product.price) / Number(product.originalPrice)) * 100)
+                                    }% off
+                                </span>
+                            )}
+                        </div>
                     </div>
 
                     {/* Offers - Hide in Preview if desired, or keep as info? Prompt said "dont need add to cart, buy now, wish list options and also dont need to the similiar product". Offers are info, so I'll keep them but hide actions. */}

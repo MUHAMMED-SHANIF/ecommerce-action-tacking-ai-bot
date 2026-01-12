@@ -1,1 +1,34 @@
-[]
+[
+  {
+    "id": "1768175125672",
+    "name": "fastrack",
+    "email": "fastrack@dummy",
+    "phone": "0000011111",
+    "address": "fastrack,mumbai\n676222",
+    "isTrusted": true
+  },
+  {
+    "id": "1768175187096",
+    "name": "asus",
+    "email": "asus@dummy",
+    "phone": "4444455555",
+    "address": "asus bilding.kochi\n654356",
+    "isTrusted": true
+  },
+  {
+    "id": "1768175228367",
+    "name": "samsung",
+    "email": "sam@dummy",
+    "phone": "7894561230",
+    "address": "sam bil, malppuram\n676125",
+    "isTrusted": true
+  },
+  {
+    "id": "1768175276952",
+    "name": "akg watches",
+    "email": "akg@dummy",
+    "phone": "1234569878",
+    "address": "akg bil,kozhikkode\n676122",
+    "isTrusted": false
+  }
+]

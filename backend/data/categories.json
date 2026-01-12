@@ -1,14 +1,17 @@
 [
   {
-    "id": "5a040ffe-0b26-4217-a48c-f8868cb54b71",
-    "name": "Electronics"
+    "id": "1768175011887",
+    "name": "Smart Phone",
+    "image": "/uploads/1768175008710-668413759.png"
   },
   {
-    "id": "ff610a76-d729-42ce-80c7-a941ff6979af",
-    "name": "Food"
+    "id": "1768175034727",
+    "name": "Laptop",
+    "image": "/uploads/1768175032930-183603965.png"
   },
   {
-    "id": "c580751b-b591-4979-a043-e07ee711cb89",
-    "name": "Mobiles"
+    "id": "1768175055087",
+    "name": "watch",
+    "image": "/uploads/1768175053090-231859296.png"
   }
 ]

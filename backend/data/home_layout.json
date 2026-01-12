@@ -2,27 +2,27 @@
   "navbar": [
     {
       "id": "1768171424871",
-      "category": "Electronics"
+      "category": "Smart Phone"
     },
     {
       "id": "1768171445687",
-      "category": "Food"
+      "category": "Laptop"
     },
     {
       "id": "1768171447735",
-      "category": "Mobiles"
+      "category": "watch"
     }
   ],
   "sections": [
     {
       "id": "1768171461575",
-      "title": "best you",
-      "category": "Electronics"
+      "title": "best phone",
+      "category": "Smart Phone"
     },
     {
       "id": "1768171515656",
-      "title": "meee",
-      "category": "Mobiles"
+      "title": "for you",
+      "category": "watch"
     }
   ]
 }

@@ -29,6 +29,7 @@ interface Banner {
   image: string;
   actionType: string;
   targetId: string;
+  duration?: number;
 }
 
 interface BannerConfig {
@@ -73,12 +74,16 @@ export default function Home() {
   // Carousel Logic
   useEffect(() => {
     if (bannerConfig.autoPlay && banners.length > 1) {
-      const interval = setInterval(() => {
+      const currentBanner = banners[currentBannerIndex];
+      const duration = (currentBanner.duration || 5) * 1000; // Convert to ms
+
+      const timer = setTimeout(() => {
         setCurrentBannerIndex((prev) => (prev + 1) % banners.length);
-      }, 5000);
-      return () => clearInterval(interval);
+      }, duration);
+
+      return () => clearTimeout(timer);
     }
-  }, [bannerConfig.autoPlay, banners.length]);
+  }, [bannerConfig.autoPlay, banners.length, currentBannerIndex, banners]);
 
   const handleBannerClick = (b: Banner) => {
     if (b.actionType === 'product' && b.targetId) {

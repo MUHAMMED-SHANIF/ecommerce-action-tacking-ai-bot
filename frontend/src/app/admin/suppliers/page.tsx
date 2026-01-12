@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { Trash2, Edit, Plus, CheckCircle, XCircle, Search } from "lucide-react";
+import { Trash2, Edit, Plus, CheckCircle, XCircle, Search, Eye } from "lucide-react";
 
 interface Supplier {
     id: string;
@@ -12,13 +12,18 @@ interface Supplier {
     phone: string;
     address: string;
     isTrusted: boolean;
-    productCount: number;
+}
+
+interface Product {
+    id: string;
+    supplier?: string;
 }
 
 export default function AdminSuppliers() {
     const { user } = useAuth();
     const router = useRouter();
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+    const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
@@ -39,16 +44,21 @@ export default function AdminSuppliers() {
             router.push("/login");
             return;
         }
-        fetchSuppliers();
+        fetchData();
     }, [user]);
 
-    const fetchSuppliers = async () => {
+    const fetchData = async () => {
         try {
-            const res = await fetch('http://localhost:5001/api/admin/sellers', {
-                headers: { 'x-user-id': user!.id }
-            });
-            const data = await res.json();
-            setSuppliers(Array.isArray(data) ? data : []);
+            const [sRes, pRes] = await Promise.all([
+                fetch('http://localhost:5001/api/admin/sellers', { headers: { 'x-user-id': user!.id } }),
+                fetch('http://localhost:5001/api/products')
+            ]);
+
+            const sData = await sRes.json();
+            const pData = await pRes.json();
+
+            setSuppliers(Array.isArray(sData) ? sData : []);
+            setProducts(Array.isArray(pData) ? pData : []);
             setLoading(false);
         } catch (err) {
             console.error(err);
@@ -58,7 +68,6 @@ export default function AdminSuppliers() {
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log("Saving supplier...", formData); // Debug log
 
         const method = editingSupplier ? 'PUT' : 'POST';
         const url = editingSupplier
@@ -76,18 +85,17 @@ export default function AdminSuppliers() {
             });
 
             if (res.ok) {
-                await fetchSuppliers();
+                await fetchData();
                 setShowModal(false);
                 setEditingSupplier(null);
                 setFormData({ name: "", email: "", phone: "", address: "", isTrusted: false });
             } else {
                 const err = await res.json();
-                console.error("Save failed:", err);
                 alert("Failed to save supplier: " + (err.error || "Unknown error"));
             }
         } catch (err) {
-            console.error("Network error:", err);
-            alert("Network error occurred while saving.");
+            console.error(err);
+            alert("Network error occurred.");
         }
     };
 
@@ -110,7 +118,7 @@ export default function AdminSuppliers() {
                     method: 'DELETE',
                     headers: { 'x-user-id': user!.id }
                 });
-                if (res.ok) fetchSuppliers();
+                if (res.ok) fetchData();
             } catch (err) {
                 console.error(err);
             }
@@ -121,6 +129,10 @@ export default function AdminSuppliers() {
         s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         s.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    const getProductCount = (supplierName: string) => {
+        return products.filter(p => p.supplier === supplierName).length;
+    };
 
     return (
         <div className="p-6">
@@ -182,10 +194,17 @@ export default function AdminSuppliers() {
                                     </td>
                                     <td className="p-4 text-center">
                                         <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">
-                                            {s.productCount}
+                                            {getProductCount(s.name)}
                                         </span>
                                     </td>
                                     <td className="p-4 text-right">
+                                        <button
+                                            onClick={() => router.push(`/admin/products?supplier=${encodeURIComponent(s.name)}`)}
+                                            className="text-gray-600 hover:text-black mr-3"
+                                            title="View Products"
+                                        >
+                                            <Eye size={18} />
+                                        </button>
                                         <button
                                             onClick={() => startEdit(s)}
                                             className="text-blue-600 hover:text-blue-800 mr-3"
