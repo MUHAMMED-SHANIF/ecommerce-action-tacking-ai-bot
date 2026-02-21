@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function AdminDashboard() {
-    const [stats, setStats] = useState({ users: 0, products: 0, sellers: 0 });
+    const [stats, setStats] = useState({ users: 0, products: 0, sellers: 0, requests: 0 });
     const router = useRouter();
 
     useEffect(() => {
@@ -18,20 +18,23 @@ export default function AdminDashboard() {
 
             try {
                 // Parallel fetch
-                const [usersRes, productsRes, sellersRes] = await Promise.all([
+                const [usersRes, productsRes, sellersRes, requestsRes] = await Promise.all([
                     fetch('http://localhost:5001/api/admin/users', { headers }),
                     fetch('http://localhost:5001/api/products'),
-                    fetch('http://localhost:5001/api/admin/sellers', { headers })
+                    fetch('http://localhost:5001/api/admin/sellers', { headers }),
+                    fetch('http://localhost:5001/api/requests', { headers }),
                 ]);
 
                 const users = await usersRes.json();
                 const products = await productsRes.json();
                 const sellers = await sellersRes.json();
+                const requests = await requestsRes.json();
 
                 setStats({
                     users: Array.isArray(users) ? users.length : 0,
                     products: Array.isArray(products) ? products.length : 0,
-                    sellers: Array.isArray(sellers) ? sellers.length : 0
+                    sellers: Array.isArray(sellers) ? sellers.length : 0,
+                    requests: Array.isArray(requests) ? requests.filter((r: any) => r.status === 'pending').length : 0
                 });
             } catch (err) {
                 console.error("Failed to fetch stats", err);
@@ -67,6 +70,14 @@ export default function AdminDashboard() {
                 >
                     <h3 className="text-gray-500 text-sm font-medium uppercase group-hover:text-purple-600">Total Suppliers</h3>
                     <p className="text-3xl font-bold text-gray-900 mt-2">{stats.sellers}</p>
+                </div>
+
+                <div
+                    onClick={() => router.push('/admin/requests')}
+                    className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow hover:border-orange-200 group"
+                >
+                    <h3 className="text-gray-500 text-sm font-medium uppercase group-hover:text-orange-600">Pending Requests</h3>
+                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.requests}</p>
                 </div>
             </div>
 

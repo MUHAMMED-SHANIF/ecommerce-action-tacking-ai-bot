@@ -12,6 +12,7 @@ interface Supplier {
     phone: string;
     address: string;
     isTrusted: boolean;
+    createdAt?: string;
 }
 
 interface Product {
@@ -105,7 +106,7 @@ export default function AdminSuppliers() {
             name: supplier.name,
             email: supplier.email,
             phone: supplier.phone,
-            address: supplier.address,
+            address: supplier.address || "",
             isTrusted: supplier.isTrusted
         });
         setShowModal(true);
@@ -126,12 +127,21 @@ export default function AdminSuppliers() {
     };
 
     const filteredSuppliers = suppliers.filter(s =>
-        s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.email.toLowerCase().includes(searchTerm.toLowerCase())
+        (s.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (s.email || "").toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const getProductCount = (supplierName: string) => {
         return products.filter(p => p.supplier === supplierName).length;
+    };
+
+    const formatDate = (dateString?: string) => {
+        if (!dateString) return "N/A";
+        return new Date(dateString).toLocaleDateString(undefined, {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
     };
 
     return (
@@ -172,6 +182,7 @@ export default function AdminSuppliers() {
                                 <th className="p-4 font-semibold">Name</th>
                                 <th className="p-4 font-semibold">Contact</th>
                                 <th className="p-4 font-semibold">Address</th>
+                                <th className="p-4 font-semibold">Joined</th>
                                 <th className="p-4 font-semibold text-center">Trusted</th>
                                 <th className="p-4 font-semibold text-center">Products</th>
                                 <th className="p-4 font-semibold text-right">Actions</th>
@@ -181,14 +192,17 @@ export default function AdminSuppliers() {
                             {filteredSuppliers.map((s) => (
                                 <tr key={s.id} className="border-b hover:bg-gray-50">
                                     <td className="p-4">
-                                        <div className="font-medium">{s.name}</div>
+                                        <div className="font-medium">{s.name || "Unknown"}</div>
                                         <div className="text-xs text-gray-500">{s.id}</div>
                                     </td>
                                     <td className="p-4 py-2">
-                                        <div className="text-sm">{s.email}</div>
-                                        <div className="text-xs text-gray-500">{s.phone}</div>
+                                        <div className="text-sm">{s.email || "No Email"}</div>
+                                        <div className="text-xs text-gray-500">{s.phone || "No Phone"}</div>
                                     </td>
-                                    <td className="p-4 text-sm max-w-[200px] truncate" title={s.address}>{s.address}</td>
+                                    <td className="p-4 text-sm max-w-[200px] truncate" title={s.address || ""}>{s.address || "N/A"}</td>
+                                    <td className="p-4 text-sm text-gray-600">
+                                        {formatDate(s.createdAt)}
+                                    </td>
                                     <td className="p-4 text-center">
                                         {s.isTrusted ? <CheckCircle className="inline w-5 h-5 text-green-500" /> : <XCircle className="inline w-5 h-5 text-gray-300" />}
                                     </td>
@@ -223,7 +237,7 @@ export default function AdminSuppliers() {
                             ))}
                             {filteredSuppliers.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} className="p-8 text-center text-gray-500">No suppliers found.</td>
+                                    <td colSpan={7} className="p-8 text-center text-gray-500">No suppliers found.</td>
                                 </tr>
                             )}
                         </tbody>

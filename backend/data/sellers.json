@@ -29,6 +29,14 @@
     "email": "akg@dummy",
     "phone": "1234569878",
     "address": "akg bil,kozhikkode\n676122",
-    "isTrusted": false
+    "isTrusted": true
+  },
+  {
+    "id": "1770724210993",
+    "name": "adidas",
+    "email": "adidas@123",
+    "phone": "324324",
+    "address": "4 2sadsfxzffxf, Default City",
+    "isTrusted": true
   }
 ]

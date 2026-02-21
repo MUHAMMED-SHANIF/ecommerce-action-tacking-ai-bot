@@ -1,7 +1,10 @@
 'use client';
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 import { Trash2, Plus, Info, Settings, Upload, Edit } from 'lucide-react';
+import Link from 'next/link';
 
 interface Banner {
     id: string;
@@ -20,21 +23,12 @@ interface BannerSettings {
 
 export default function AdminBanners() {
     const { user } = useAuth();
+    const router = useRouter(); // Use router
     const [banners, setBanners] = useState<Banner[]>([]);
     const [settings, setSettings] = useState<BannerSettings>({ autoPlay: true, showCarousel: true });
 
-    // Form State
-    const [newTitle, setNewTitle] = useState('');
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
-    const [imagePreview, setImagePreview] = useState<string>('');
-    const [uploading, setUploading] = useState(false);
-    const [actionType, setActionType] = useState('none');
-    const [targetId, setTargetId] = useState('');
-    const [duration, setDuration] = useState(5);
-
-    const [editingId, setEditingId] = useState<string | null>(null);
-
-    // Options for Actions
+    // Options for Actions (needed for display names? No, I can fetch or just show ID)
+    // Actually, getTargetName uses products/categories. I should keep fetching them for display purposes.
     const [products, setProducts] = useState<{ id: string, title: string }[]>([]);
     const [categories, setCategories] = useState<{ id: string, name: string }[]>([]);
 
@@ -62,122 +56,8 @@ export default function AdminBanners() {
         setCategories(await cRes.json());
     };
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setSelectedFile(file);
-            setImagePreview(URL.createObjectURL(file));
-        }
-    };
-
-    const handleEdit = (banner: Banner) => {
-        setEditingId(banner.id);
-        setNewTitle(banner.title);
-        setActionType(banner.actionType);
-        setTargetId(banner.targetId);
-        setDuration(banner.duration || 5);
-        setImagePreview(getImageUrl(banner.image));
-        // We don't set selectedFile here, user only sets if they want to change it.
-        // But we need a way to track if we keep old image.
-        // logic below in handleSave will handle "if selectedFile, upload, else use old".
-    };
-
-    const handleCancelEdit = () => {
-        setEditingId(null);
-        setNewTitle('');
-        setSelectedFile(null);
-        setImagePreview('');
-        setActionType('none');
-        setTargetId('');
-        setDuration(5);
-    };
-
-    const handleSave = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!newTitle) {
-            alert("Title is required");
-            return;
-        }
-
-        // For Create: Image is required. For Edit: Optional (keep existing)
-        if (!editingId && !selectedFile) {
-            alert("Image is required for new banner");
-            return;
-        }
-
-        setUploading(true);
-        try {
-            let finalImageUrl = imagePreview; // Default to current preview (which might be old URL)
-
-            // 1. Upload Image (if new file selected)
-            if (selectedFile) {
-                const formData = new FormData();
-                formData.append('image', selectedFile);
-
-                const uploadRes = await fetch('http://localhost:5001/api/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (!uploadRes.ok) throw new Error("Image upload failed");
-                const { imageUrl } = await uploadRes.json();
-                finalImageUrl = imageUrl;
-            } else if (editingId) {
-                // Keep existing image logic is handled by backend usually, OR we send the old string back.
-                // In my server.js PUT logic, it merges fields.
-                // I need to ensure if I don't send image, it keeps old.
-                // But my viewer shows I'm constructing `bannerData` with `image: imageUrl`.
-                // If I am editing and didn't upload new, `imagePreview` holds the old URL.
-                // However, `getImageUrl` returns full localhost path for display but server stores relative.
-                // I need to be careful. The `banner.image` from API is relative.
-                // Let's rely on `banners.find` to get clean relative path if NO new file?
-                // Or easier:
-                if (!selectedFile && editingId) {
-                    const original = banners.find(b => b.id === editingId);
-                    if (original) finalImageUrl = original.image;
-                }
-            }
-
-            // 2. Create/Update Banner
-            const bannerData = {
-                title: newTitle,
-                image: finalImageUrl,
-                actionType,
-                targetId,
-                active: true,
-                duration: Number(duration) || 5
-            };
-
-            const url = editingId
-                ? `http://localhost:5001/api/admin/banners/${editingId}`
-                : 'http://localhost:5001/api/admin/banners';
-
-            const method = editingId ? 'PUT' : 'POST';
-
-            const res = await fetch(url, {
-                method: method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-user-id': user!.id
-                },
-                body: JSON.stringify(bannerData)
-            });
-
-            if (res.ok) {
-                handleCancelEdit();
-                fetchBannersAndSettings();
-            } else {
-                alert(`Failed to ${editingId ? 'update' : 'add'} banner`);
-            }
-        } catch (error) {
-            console.error(error);
-            alert("Error saving banner");
-        } finally {
-            setUploading(false);
-        }
-    };
-
-    const handleDelete = async (id: string) => {
+    const handleDelete = async (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
         if (!confirm('Delete this banner?')) return;
         const res = await fetch(`http://localhost:5001/api/admin/banners/${id}`, {
             method: 'DELETE',
@@ -214,9 +94,16 @@ export default function AdminBanners() {
         <div className="text-black">
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold">Banner Management</h1>
-                <button onClick={() => setShowSettings(!showSettings)} className="flex items-center gap-2 bg-gray-200 px-4 py-2 rounded hover:bg-gray-300 text-black">
-                    <Settings size={18} /> Global Settings
-                </button>
+                <div className="flex gap-3">
+                    <button onClick={() => setShowSettings(!showSettings)} className="flex items-center gap-2 bg-gray-200 px-4 py-2 rounded hover:bg-gray-300 text-black">
+                        <Settings size={18} /> Global Settings
+                    </button>
+                    <Link href="/admin/banners/add">
+                        <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex items-center gap-2">
+                            <Plus size={18} /> Add Banner
+                        </button>
+                    </Link>
+                </div>
             </div>
 
             {/* Settings Panel */}
@@ -248,86 +135,6 @@ export default function AdminBanners() {
                     </div>
                 </div>
             )}
-
-            {/* Add/Edit Form */}
-            <div className="bg-white p-6 rounded shadow mb-8">
-                <h2 className="text-lg font-bold mb-4">{editingId ? 'Edit Banner' : 'Add New Banner'}</h2>
-                <form onSubmit={handleSave} className="flex flex-col gap-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input
-                            type="text"
-                            placeholder="Banner Title (Reference)"
-                            className="border px-3 py-2 rounded"
-                            value={newTitle}
-                            onChange={(e) => setNewTitle(e.target.value)}
-                        />
-                        <div className="border px-3 py-2 rounded flex items-center gap-2 bg-gray-50">
-                            <Upload size={18} />
-                            <input
-                                type="file"
-                                accept="image/*"
-                                onChange={handleFileSelect}
-                                className="bg-transparent w-full"
-                            />
-                        </div>
-                        {imagePreview && (
-                            <div className="col-span-2 md:col-span-2">
-                                <img src={imagePreview} alt="Preview" className="h-32 object-cover rounded border" />
-                            </div>
-                        )}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Display Duration (seconds)</label>
-                            <input
-                                type="number"
-                                min="1"
-                                max="60"
-                                value={duration}
-                                onChange={(e) => setDuration(Number(e.target.value))}
-                                className="border px-3 py-2 rounded w-full"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <select
-                            className="border px-3 py-2 rounded"
-                            value={actionType}
-                            onChange={(e) => setActionType(e.target.value)}
-                        >
-                            <option value="none">No Click Action</option>
-                            <option value="product">Navigate to Product</option>
-                            <option value="category">Navigate to Category</option>
-                        </select>
-
-                        {actionType !== 'none' && (
-                            <select
-                                className="border px-3 py-2 rounded md:col-span-2"
-                                value={targetId}
-                                onChange={(e) => setTargetId(e.target.value)}
-                            >
-                                <option value="">Select Target...</option>
-                                {actionType === 'product' && products.map(p => (
-                                    <option key={p.id} value={p.id}>{p.title}</option>
-                                ))}
-                                {actionType === 'category' && categories.map(c => (
-                                    <option key={c.id} value={c.name}>{c.name}</option>
-                                ))}
-                            </select>
-                        )}
-                    </div>
-
-                    <div className="flex gap-4">
-                        <button disabled={uploading} type="submit" className={`bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 font-medium w-fit ${uploading ? 'opacity-50' : ''}`}>
-                            {uploading ? 'Saving...' : (editingId ? 'Update Banner' : 'Upload & Create Banner')}
-                        </button>
-                        {editingId && (
-                            <button type="button" onClick={handleCancelEdit} className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600 font-medium w-fit">
-                                Cancel
-                            </button>
-                        )}
-                    </div>
-                </form>
-            </div>
 
             {/* List */}
             <div className="bg-white rounded shadow bg-opacity-90">
@@ -362,15 +169,16 @@ export default function AdminBanners() {
                                     )}
                                 </td>
                                 <td className="p-4 text-right">
+                                    <Link href={`/admin/banners/edit/${banner.id}`}>
+                                        <button
+                                            className="text-blue-500 hover:text-blue-700 p-2 hover:bg-blue-50 rounded mr-2"
+                                            title="Edit"
+                                        >
+                                            <Edit size={20} />
+                                        </button>
+                                    </Link>
                                     <button
-                                        onClick={() => handleEdit(banner)}
-                                        className="text-blue-500 hover:text-blue-700 p-2 hover:bg-blue-50 rounded mr-2"
-                                        title="Edit"
-                                    >
-                                        <Edit size={20} />
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(banner.id)}
+                                        onClick={(e) => handleDelete(banner.id, e)}
                                         className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded"
                                         title="Delete"
                                     >
@@ -381,7 +189,7 @@ export default function AdminBanners() {
                         ))}
                         {banners.length === 0 && (
                             <tr>
-                                <td colSpan={4} className="p-8 text-center text-gray-500">
+                                <td colSpan={5} className="p-8 text-center text-gray-500">
                                     No banners created yet.
                                 </td>
                             </tr>

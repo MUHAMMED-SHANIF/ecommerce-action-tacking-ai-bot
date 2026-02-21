@@ -42,30 +42,34 @@ export default function WishlistPage() {
             <h2 className="text-[22px] font-medium mb-6">My Wishlist ({items.length})</h2>
             <div className="bg-white shadow-sm rounded-[2px] overflow-hidden">
                 {items.map((item) => (
-                    <div key={item.id} className="p-6 border-b border-gray-100 flex gap-6 group relative hover:shadow-lg transition-shadow">
-                        <div className="relative w-28 h-28 shrink-0">
-                            <Image src={item.image} alt={item.title} fill className="object-contain" />
-                        </div>
-                        <div className="flex-1">
-                            <h3 className="text-[16px] font-medium text-gray-800 mb-2 truncate max-w-2xl">{item.title}</h3>
-
-                            <div className="flex items-center gap-3 mb-2">
-                                <span className="bg-[#388e3c] text-white text-[12px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
-                                    4.5 <span className="text-[10px]">★</span>
-                                </span>
-                                <span className="text-gray-500 text-xs">(1,234)</span>
+                    <div key={item.id} className="relative group">
+                        <Link href={`/product/${item.id}`} className="block p-6 border-b border-gray-100 flex gap-6 hover:bg-gray-50 transition-colors">
+                            <div className="relative w-28 h-28 shrink-0">
+                                <Image src={item.image} alt={item.title} fill className="object-contain" />
                             </div>
+                            <div className="flex-1">
+                                <h3 className="text-[16px] font-medium text-gray-800 mb-2 truncate max-w-2xl">{item.title}</h3>
 
-                            <div className="flex items-center gap-3">
-                                <span className="text-[18px] font-semibold text-black">₹{item.price.toLocaleString()}</span>
-                                <span className="text-[14px] text-gray-500 line-through">₹{item.originalPrice.toLocaleString()}</span>
-                                <span className="text-[14px] text-[#388e3c] font-bold">{item.discount}% off</span>
+                                <div className="flex items-center gap-3 mb-2">
+                                    <span className="bg-[#388e3c] text-white text-[12px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
+                                        4.5 <span className="text-[10px]">★</span>
+                                    </span>
+                                    <span className="text-gray-500 text-xs">(1,234)</span>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                    <span className="text-[18px] font-semibold text-black">₹{item.price.toLocaleString()}</span>
+                                    <span className="text-[14px] text-gray-500 line-through">₹{item.originalPrice.toLocaleString()}</span>
+                                    <span className="text-[14px] text-[#388e3c] font-bold">{item.discount}% off</span>
+                                </div>
                             </div>
-                        </div>
-
+                        </Link>
                         <button
-                            onClick={() => removeFromWishlist(item.id)}
-                            className="text-gray-400 hover:text-red-500 hover:bg-gray-50 p-2 rounded-full absolute top-4 right-4"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                removeFromWishlist(item.id);
+                            }}
+                            className="text-gray-400 hover:text-red-500 hover:bg-gray-100 p-2 rounded-full absolute top-4 right-4 z-10"
                         >
                             <Trash2 className="w-5 h-5" />
                         </button>

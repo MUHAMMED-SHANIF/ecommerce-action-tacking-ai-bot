@@ -67,3 +67,55 @@ CREATE POLICY "Users can update own profile." ON profiles FOR UPDATE USING ( aut
 
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Products are viewable by everyone." ON products FOR SELECT USING ( true );
+
+-- STABILIZATION: COD & Order Enhancements --
+
+-- 1. Add role to profiles
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS role TEXT CHECK (role IN ('user','admin','staff')) DEFAULT 'user';
+
+-- 2. Create addresses table
+CREATE TABLE IF NOT EXISTS addresses (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES profiles(id),
+  full_name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  address_line1 TEXT NOT NULL,
+  address_line2 TEXT,
+  city TEXT NOT NULL,
+  state TEXT NOT NULL,
+  postal_code TEXT NOT NULL,
+  country TEXT DEFAULT 'India',
+  is_default BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc', now())
+);
+
+-- 3. Link orders to addresses
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS address_id UUID REFERENCES addresses(id);
+
+-- 4. Add COD fields to orders
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method TEXT DEFAULT 'cod';
+
+-- 5. Create order status history
+CREATE TABLE IF NOT EXISTS order_status_history (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  order_id UUID REFERENCES orders(id),
+  status TEXT NOT NULL,
+  changed_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc', now())
+);
+
+-- 6. Create product images table
+CREATE TABLE IF NOT EXISTS product_images (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  product_id UUID REFERENCES products(id),
+  image_url TEXT NOT NULL,
+  is_primary BOOLEAN DEFAULT false
+);
+
+-- 7. Add inventory safety field
+ALTER TABLE products ADD COLUMN IF NOT EXISTS low_stock_threshold INTEGER DEFAULT 5;
+
+-- 8. Tighten RLS policies
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone." ON profiles;
+
+-- 9. Profiles self-access policy
+CREATE POLICY IF NOT EXISTS "Users can read own profile" ON profiles FOR SELECT USING (auth.uid() = id);

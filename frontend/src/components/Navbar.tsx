@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Search, ShoppingCart, ChevronDown, User, Store, LogOut, Heart, MoreVertical, MessageSquare, Settings } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useRouter, usePathname } from "next/navigation";
@@ -13,8 +13,18 @@ export default function Navbar() {
     const router = useRouter();
     const pathname = usePathname();
 
-    // Hide Navbar on Admin pages
-    if (pathname && pathname.startsWith('/admin')) return null;
+    // Use useEffect to handle visibility to avoid hydration mismatch
+    const [isVisible, setIsVisible] = useState(false);
+
+    useEffect(() => {
+        if (pathname && (pathname.startsWith('/admin') || pathname.startsWith('/seller'))) {
+            setIsVisible(false);
+        } else {
+            setIsVisible(true);
+        }
+    }, [pathname]);
+
+    if (!isVisible) return null;
 
     const handleSearch = () => {
         if (searchTerm.trim()) {
@@ -47,6 +57,8 @@ export default function Navbar() {
                         <div className="relative flex items-center w-full bg-white rounded-md overflow-hidden">
                             <input
                                 type="text"
+                                name="search-query"
+                                autoComplete="off"
                                 placeholder="Search for products, brands and more"
                                 className="w-full py-2.5 px-4 text-sm text-slate-700 focus:outline-none placeholder:text-slate-400"
                                 value={searchTerm}
@@ -76,17 +88,26 @@ export default function Navbar() {
                                         <ChevronDown className="w-4 h-4 ml-1 group-hover:rotate-180 transition-transform" />
                                     </div>
 
-                                    {/* Dropdown for Logout */}
                                     <div className="hidden group-hover:block absolute top-[100%] right-0 pt-2 z-50">
                                         <div className="bg-white text-slate-800 shadow-xl rounded-md overflow-hidden min-w-[200px] border border-slate-100 ring-1 ring-black/5">
-                                            <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
-                                                <p className="text-[11px] uppercase tracking-wider text-slate-500 font-bold">Signed in as</p>
-                                                <p className="font-semibold truncate text-emerald-700">{user.email}</p>
-                                            </div>
-
-                                            <Link href="/profile" className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 w-full text-left transition-colors text-slate-600 hover:text-emerald-700">
+                                            <Link href="/profile" className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 w-full text-left transition-colors text-slate-600 hover:text-emerald-700 border-b border-slate-50">
                                                 <User className="w-4 h-4" />
                                                 My Profile
+                                            </Link>
+
+                                            <Link href="/profile?tab=orders" className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 w-full text-left transition-colors text-slate-600 hover:text-emerald-700">
+                                                <Store className="w-4 h-4" />
+                                                Recent Orders
+                                            </Link>
+
+                                            <Link href="/wishlist" className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 w-full text-left transition-colors text-slate-600 hover:text-emerald-700">
+                                                <Heart className="w-4 h-4" />
+                                                Wishlist
+                                            </Link>
+
+                                            <Link href="/profile?tab=password" className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 w-full text-left transition-colors text-slate-600 hover:text-emerald-700 border-b border-slate-50">
+                                                <Settings className="w-4 h-4" />
+                                                Change Password
                                             </Link>
 
                                             <button
@@ -130,6 +151,10 @@ export default function Navbar() {
                             <MoreVertical className="w-5 h-5 hover:text-yellow-200 transition-colors" />
                             <div className="hidden group-hover:block absolute top-[100%] right-0 pt-2 z-50">
                                 <div className="bg-white text-slate-800 shadow-xl rounded-md overflow-hidden min-w-[200px] border border-slate-100 ring-1 ring-black/5">
+                                    <Link href="/seller/register" className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 w-full text-left transition-colors text-slate-600 hover:text-emerald-700 border-b border-slate-50">
+                                        <Store className="w-4 h-4" />
+                                        Become a Seller
+                                    </Link>
                                     <Link href="/settings" className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 w-full text-left transition-colors text-slate-600 hover:text-emerald-700">
                                         <Settings className="w-4 h-4" />
                                         Settings

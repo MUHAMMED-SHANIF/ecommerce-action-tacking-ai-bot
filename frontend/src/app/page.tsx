@@ -177,7 +177,7 @@ export default function Home() {
 
         {/* 3. Custom Dynamic Sections */}
         {homeSections.map((sec) => (
-          <DynamicSection key={sec.id} title={sec.title} category={sec.category} />
+          sec && sec.id ? <DynamicSection key={sec.id} title={sec.title || 'Untitled'} category={sec.category || ''} /> : null
         ))}
 
         {/* Fallback / Default Section if needed ? User said "adjust what type of items need to show... currently we are showing best electronics here we need to show firstly recently visited..."

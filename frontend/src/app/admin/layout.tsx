@@ -4,52 +4,46 @@ import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Menu, X } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const router = useRouter();
-    const [isAuthorized, setIsAuthorized] = useState(false);
+    const { user, logout, isLoading } = useAuth();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-    // Initial Auth Check (Simple)
     useEffect(() => {
-        const userStr = localStorage.getItem('user');
-        if (!userStr) {
+        if (isLoading) return;
+
+        if (!user) {
             router.push('/login');
             return;
         }
 
-        try {
-            const user = JSON.parse(userStr);
-            if (user.role !== 'admin') {
-                router.push('/'); // Redirect non-admins to home
-            } else {
-                setIsAuthorized(true);
-            }
-        } catch {
-            router.push('/login');
+        if (user.role !== 'admin') {
+            router.push('/');
         }
-    }, [pathname, router]);
+    }, [user, isLoading, router]);
 
     // Close sidebar on path change
     useEffect(() => {
         setIsSidebarOpen(false);
     }, [pathname]);
 
-
-
-    if (!isAuthorized) return null;
+    if (isLoading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    if (!user || user.role !== 'admin') return null;
 
     return (
         <div className="flex h-screen bg-gray-100 overflow-hidden">
             {/* Sidebar (Fixed / Off-canvas) */}
             <aside
-                className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-md transform transition-transform duration-200 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-                    }`}
+                className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-md transform transition-transform duration-200 ease-in-out 
+                    ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
+                    md:translate-x-0`}
             >
                 <div className="flex items-center justify-between p-6 border-b">
                     <h1 className="text-2xl font-bold text-blue-600">Admin Panel</h1>
-                    <button onClick={() => setIsSidebarOpen(false)} className="text-gray-500 hover:text-gray-700">
+                    <button onClick={() => setIsSidebarOpen(false)} className="text-gray-500 hover:text-gray-700 md:hidden">
                         <X size={24} />
                     </button>
                 </div>
@@ -63,6 +57,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         <li>
                             <Link href="/admin/adjust-home" className={`block px-4 py-2 rounded-lg ${pathname === '/admin/adjust-home' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'}`}>
                                 Adjust Home
+                            </Link>
+                        </li>
+                        <li>
+                            <Link href="/admin/requests" className={`block px-4 py-2 rounded-lg ${pathname === '/admin/requests' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'}`}>
+                                Requests
                             </Link>
                         </li>
                         <li>
@@ -95,10 +94,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <div className="absolute bottom-0 w-64 p-4 border-t bg-white">
                     <button
                         onClick={() => {
-                            localStorage.removeItem('user');
-                            router.push('/admin');
+                            logout();
                         }}
-                        className="w-full px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg text-left"
+                        className="w-full px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg text-left font-medium"
                     >
                         Sign Out
                     </button>
@@ -114,9 +112,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             )}
 
             {/* Main Content Area */}
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                {/* Top Bar with Burger Button (Visible on ALL screens) */}
-                <header className="bg-white shadow-sm border-b p-4 flex items-center">
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden md:ml-64 transition-all duration-200">
+                {/* Top Bar with Burger Button (Visible on ALL screens? No, hide on desktop now that sidebar is perm) */}
+                <header className="bg-white shadow-sm border-b p-4 flex items-center md:hidden">
                     <button onClick={() => setIsSidebarOpen(true)} className="text-gray-700 p-2 rounded-md hover:bg-gray-100">
                         <Menu size={24} />
                     </button>

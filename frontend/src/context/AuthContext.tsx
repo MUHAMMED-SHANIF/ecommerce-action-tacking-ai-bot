@@ -8,6 +8,7 @@ interface User {
     email: string;
     name?: string;
     role?: string;
+    phone?: string;
 }
 
 interface AuthContextType {
@@ -15,6 +16,7 @@ interface AuthContextType {
     login: (email: string, password: string) => Promise<boolean>;
     register: (email: string, password: string, name?: string) => Promise<boolean>;
     logout: () => void;
+    updateProfile: (name: string, phone: string) => void;
     isLoading: boolean;
 }
 
@@ -41,7 +43,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     });
 
                     if (res.ok) {
-                        setUser(parsedUser);
+                        const data = await res.json();
+                        setUser(data.user);
+                        localStorage.setItem("user", JSON.stringify(data.user));
                     } else {
                         // Backend doesn't know this user (e.g. valid session but DB wiped)
                         console.warn("User not found in backend, logging out.");
@@ -113,11 +117,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const logout = () => {
         setUser(null);
         localStorage.removeItem("user");
-        router.push("/login");
+        router.push("/login"); // or router.push('/') if preferred
+    };
+
+    const updateProfile = (name: string, phone: string) => {
+        if (user) {
+            const updatedUser = { ...user, name, phone };
+            setUser(updatedUser);
+            localStorage.setItem("user", JSON.stringify(updatedUser));
+        }
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, logout, register, isLoading }}>
+        <AuthContext.Provider value={{ user, login, logout, register, updateProfile, isLoading }}>
             {children}
         </AuthContext.Provider>
     );

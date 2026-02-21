@@ -57,7 +57,13 @@ const readJSON = async (file) => {
 };
 
 const writeJSON = async (file, data) => {
-    await fs.writeFile(file, JSON.stringify(data, null, 2));
+    try {
+        await fs.writeFile(file, JSON.stringify(data, null, 2));
+        console.log(`[DEBUG] Successfully wrote to ${path.basename(file)}`);
+    } catch (err) {
+        console.error(`[ERROR] Failed to write to ${path.basename(file)}:`, err);
+        throw err;
+    }
 };
 
 // --- Init Data ---
@@ -192,6 +198,22 @@ app.get('/api/admin/categories', async (req, res) => {
     }
 });
 
+app.put('/api/admin/categories/:id/approve', isAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        let categories = await readJSON(CATEGORIES_FILE);
+        const catIndex = categories.findIndex(c => c.id === id);
+
+        if (catIndex === -1) return res.status(404).json({ error: "Category not found" });
+
+        categories[catIndex].isApproved = true;
+        await writeJSON(CATEGORIES_FILE, categories);
+        res.json({ message: "Category approved", category: categories[catIndex] });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.post('/api/admin/categories', isAdmin, async (req, res) => {
     try {
         const categories = await readJSON(CATEGORIES_FILE);
@@ -243,7 +265,53 @@ app.delete('/api/admin/categories/:id', isAdmin, async (req, res) => {
 // --- ADMIN: SELLERS (Suppliers) ---
 app.get('/api/admin/sellers', isAdmin, async (req, res) => {
     try {
-        const sellers = await readJSON(SELLERS_FILE);
+        let sellers = await readJSON(SELLERS_FILE);
+        const users = await readJSON(USERS_FILE);
+
+        // --- SYNC ON READ: Backfill missing sellers ---
+        const sellerUsers = users.filter(u => u.role === 'seller');
+        let hasChanges = false;
+
+        for (const user of sellerUsers) {
+            const exists = sellers.find(s => s.id === user.id);
+            if (!exists) {
+                // Fetch address if available (optional)
+                let addressStr = "";
+                try {
+                    const allAddresses = await readJSON(ADDRESSES_FILE);
+                    const userAddr = allAddresses.find(a => a.userId === user.id);
+                    if (userAddr && userAddr.addresses) {
+                        addressStr = userAddr.addresses.map(a => {
+                            const parts = [
+                                a.building ? `(${a.building})` : '',
+                                a.street,
+                                a.city,
+                                a.zip ? `-${a.zip}` : '',
+                                a.country
+                            ].filter(Boolean);
+                            return parts.join(" ");
+                        }).join("\n");
+                    }
+                } catch (e) { /* ignore address fetch error */ }
+
+                sellers.push({
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    phone: user.phone || "",
+                    address: addressStr || "", // Ensure string
+                    isTrusted: false,
+                    createdAt: user.createdAt || new Date().toISOString() // inherit or new
+                });
+                hasChanges = true;
+            }
+        }
+
+        if (hasChanges) {
+            await writeJSON(SELLERS_FILE, sellers);
+            console.log("[INFO] Auto-synced missing sellers to sellers.json");
+        }
+
         res.json(sellers);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -308,16 +376,141 @@ app.get('/api/admin/users', isAdmin, async (req, res) => {
 
 app.put('/api/admin/users/:id/role', isAdmin, async (req, res) => {
     try {
-        const { role } = req.body;
+        const { role } = req.body; // 'user' | 'admin' | 'seller'
         let users = await readJSON(USERS_FILE);
         const userIndex = users.findIndex(u => u.id === req.params.id);
 
         if (userIndex === -1) return res.status(404).json({ error: "User not found" });
 
+        const oldRole = users[userIndex].role;
+        const userId = users[userIndex].id;
+
+        // Skip if role hasn't changed
+        if (oldRole === role) {
+            return res.json({ message: "Role unchanged", user: users[userIndex] });
+        }
+
+        // Update Role
         users[userIndex].role = role;
         await writeJSON(USERS_FILE, users);
 
-        res.json({ message: "Role updated", user: { id: users[userIndex].id, role: users[userIndex].role } });
+        // --- DATA CLEANUP ---
+
+        // 1. If changing FROM Seller -> Delete Products & Seller Info
+        if (oldRole === 'seller' && role !== 'seller') {
+            // Delete Products
+            let products = await readJSON(PRODUCTS_FILE);
+            const initialCount = products.length;
+            products = products.filter(p => p.sellerId !== userId && p.supplierId !== userId);
+            if (products.length !== initialCount) {
+                await writeJSON(PRODUCTS_FILE, products);
+            }
+
+            // Delete from Sellers File (if they exist there)
+            let sellers = await readJSON(SELLERS_FILE);
+            const sellerCount = sellers.length;
+            sellers = sellers.filter(s => s.id !== userId);
+            if (sellers.length !== sellerCount) {
+                await writeJSON(SELLERS_FILE, sellers);
+            }
+        }
+
+        // 1.1 If changing TO Seller -> Add to Sellers File
+        if (role === 'seller') {
+            let sellers = await readJSON(SELLERS_FILE);
+            const existingSeller = sellers.find(s => s.id === userId);
+            if (!existingSeller) {
+                const newSellerData = {
+                    id: userId,
+                    name: users[userIndex].name,
+                    email: users[userIndex].email,
+                    phone: users[userIndex].phone || "",
+                    address: "", // Default empty, can be updated later
+                    isTrusted: false,
+                    createdAt: new Date().toISOString()
+                };
+                sellers.push(newSellerData);
+                await writeJSON(SELLERS_FILE, sellers);
+            }
+        }
+
+        // 2. If changing FROM User -> Delete Cart & Wishlist
+        // (Assuming 'user' role implies they might have these. Even sellers might, but requirement is 'previous role')
+        if (oldRole === 'user' && role !== 'user') {
+            // Delete Wishlist
+            let wishlists = await readJSON(WISHLIST_FILE);
+            const wishlistCount = wishlists.length;
+            wishlists = wishlists.filter(w => w.userId !== userId);
+            if (wishlists.length !== wishlistCount) {
+                await writeJSON(WISHLIST_FILE, wishlists);
+            }
+
+            // Delete Cart
+            // Note: CART_FILE needs to be defined at top, but we can resolve it locally if needed or add it globally.
+            // Using local path for safety if global constant isn't added yet.
+            const CART_FILE_PATH = path.join(DATA_DIR, 'cart.json');
+            try {
+                let carts = await readJSON(CART_FILE_PATH);
+                const cartCount = carts.length;
+                carts = carts.filter(c => c.userId !== userId);
+                if (carts.length !== cartCount) {
+                    await writeJSON(CART_FILE_PATH, carts);
+                }
+            } catch (ignored) {
+                // Cart file might not exist yet
+            }
+        }
+
+        res.json({ message: `Role updated to ${role}. Cleanup performed.`, user: { id: users[userIndex].id, role: users[userIndex].role } });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.delete('/api/admin/users/:id', isAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        let users = await readJSON(USERS_FILE);
+        const userIndex = users.findIndex(u => u.id === id);
+
+        if (userIndex === -1) return res.status(404).json({ error: "User not found" });
+
+        // Prevent deleting yourself
+        if (req.headers['x-user-id'] === id) {
+            return res.status(400).json({ error: "Cannot delete yourself" });
+        }
+
+        const userToDelete = users[userIndex];
+
+        // Clean up related data
+        if (userToDelete.role === 'seller') {
+            let products = await readJSON(PRODUCTS_FILE);
+            products = products.filter(p => p.sellerId !== id && p.supplierId !== id);
+            await writeJSON(PRODUCTS_FILE, products);
+
+            let sellers = await readJSON(SELLERS_FILE);
+            sellers = sellers.filter(s => s.id !== id);
+            await writeJSON(SELLERS_FILE, sellers);
+        }
+
+        // Delete Wishlist & Cart
+        let wishlists = await readJSON(WISHLIST_FILE);
+        wishlists = wishlists.filter(w => w.userId !== id);
+        await writeJSON(WISHLIST_FILE, wishlists);
+
+        // Cart
+        const CART_FILE_PATH = path.join(DATA_DIR, 'cart.json');
+        try {
+            let carts = await readJSON(CART_FILE_PATH);
+            carts = carts.filter(c => c.userId !== id);
+            await writeJSON(CART_FILE_PATH, carts);
+        } catch (ignored) { }
+
+        // Delete User
+        users.splice(userIndex, 1);
+        await writeJSON(USERS_FILE, users);
+
+        res.json({ message: "User deleted successfully" });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -333,9 +526,28 @@ app.delete('/api/admin/products/all', isAdmin, async (req, res) => {
     }
 });
 
-app.post('/api/admin/products', isAdmin, async (req, res) => {
+app.get('/api/admin/products/all', isAdmin, async (req, res) => {
+    try {
+        const products = await readJSON(PRODUCTS_FILE);
+        res.json(products);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/admin/products', async (req, res) => {
     try {
         const { title, price, category, description, image, images, brand, rating, countInStock, supplier, sellerId, categoryId, originalPrice, discount } = req.body;
+
+        // Determine if requesting user is admin or seller
+        const userId = req.headers['x-user-id'];
+        const users = await readJSON(USERS_FILE);
+        const user = users.find(u => u.id === userId);
+
+        const isSeller = user && user.role === 'seller';
+        // Auto-approve if admin, pending if seller
+        const isApproved = !isSeller;
+
         let products = await readJSON(PRODUCTS_FILE);
 
         const newProduct = {
@@ -348,14 +560,17 @@ app.post('/api/admin/products', isAdmin, async (req, res) => {
             image, // Main image
             images: images || [image], // Array of images
             brand,
+            tags: req.body.tags || [],
             rating: Number(rating) || 0,
             numReviews: 0,
             countInStock: Number(countInStock) || 0,
             supplier,
-            sellerId: sellerId || req.body.supplierId, // Handle both names
-            supplierId: sellerId || req.body.supplierId,
+            sellerId: sellerId || (isSeller ? userId : undefined),
+            supplierId: sellerId || (isSeller ? userId : undefined), // Keep for legacy compatibility
             originalPrice,
             discount,
+            isApproved,
+            isPaused: false,
             createdAt: new Date().toISOString()
         };
 
@@ -393,6 +608,22 @@ app.delete('/api/admin/products/:id', isAdmin, async (req, res) => {
         products = products.filter(p => p.id !== id);
         await writeJSON(PRODUCTS_FILE, products);
         res.json({ message: "Product deleted" });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.put('/api/admin/products/:id/approve', isAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        let products = await readJSON(PRODUCTS_FILE);
+        const prodIndex = products.findIndex(p => p.id === id);
+
+        if (prodIndex === -1) return res.status(404).json({ error: "Product not found" });
+
+        products[prodIndex].isApproved = true;
+        await writeJSON(PRODUCTS_FILE, products);
+        res.json({ message: "Product approved", product: products[prodIndex] });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -458,13 +689,28 @@ app.get('/api/products', async (req, res) => {
         const products = await readJSON(PRODUCTS_FILE);
         const category = req.query.category;
 
+        // Filter out unapproved products (unless they are missing the field, assume approved for legacy)
+        // Also filter out PAUSED products for public view
+        let visibleProducts = products.filter(p => (p.isApproved !== false) && !p.isPaused);
+
         if (category) {
             const lowerCat = category.toLowerCase();
-            const filtered = products.filter(p => p.category && p.category.toLowerCase() === lowerCat);
+            const filtered = visibleProducts.filter(p => p.category && p.category.toLowerCase() === lowerCat);
             return res.json(filtered);
         }
 
-        res.json(products);
+        const searchTerm = req.query.search;
+        if (searchTerm) {
+            const lowerSearch = searchTerm.toLowerCase();
+            const filtered = visibleProducts.filter(p =>
+                p.title.toLowerCase().includes(lowerSearch) ||
+                (p.category && p.category.toLowerCase().includes(lowerSearch)) ||
+                (p.tags && p.tags.some(tag => tag.toLowerCase().includes(lowerSearch)))
+            );
+            return res.json(filtered);
+        }
+
+        res.json(visibleProducts);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -507,7 +753,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     if (user && user.password === hashedPassword) {
-        res.json({ user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+        res.json({ user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone || "" } });
     } else {
         res.status(401).json({ error: "Invalid credentials" });
     }
@@ -533,24 +779,319 @@ app.post('/api/auth/register', async (req, res) => {
     res.json({ user: { id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role } });
 });
 
+app.post('/api/auth/register-seller', async (req, res) => {
+    const { name, email, password, phone, addresses } = req.body;
+    const users = await readJSON(USERS_FILE);
+
+    if (users.find(u => u.email === email)) {
+        return res.status(400).json({ error: "User already exists" });
+    }
+
+    const newUser = {
+        id: Date.now().toString(),
+        name,
+        email,
+        password: hashPassword(password),
+        phone,
+        role: 'seller'
+    };
+    users.push(newUser);
+    await writeJSON(USERS_FILE, users);
+
+    // Save addresses if provided
+    let addressValue = "";
+    if (addresses && Array.isArray(addresses) && addresses.length > 0) {
+        let allAddresses = await readJSON(ADDRESSES_FILE);
+        allAddresses.push({ userId: newUser.id, addresses });
+        await writeJSON(ADDRESSES_FILE, allAddresses);
+        // addresses is an array of objects { street, city, ... }
+        addressValue = addresses.map(a => {
+            const parts = [
+                a.building ? `(${a.building})` : '',
+                a.street,
+                a.city,
+                a.zip ? `-${a.zip}` : '',
+                a.country
+            ].filter(Boolean);
+            return parts.join(" ");
+        }).join("\n");
+    }
+
+    // --- SYNC WITH SELLERS.JSON ---
+    try {
+        const sellers = await readJSON(SELLERS_FILE);
+        const newSellerEntry = {
+            id: newUser.id,
+            name: newUser.name,
+            email: newUser.email,
+            phone: newUser.phone,
+            address: addressValue || "", // Use the provided address string or formatted
+            isTrusted: false,
+            createdAt: new Date().toISOString()
+        };
+        sellers.push(newSellerEntry);
+        await writeJSON(SELLERS_FILE, sellers);
+    } catch (err) {
+        console.error("Failed to sync new seller to sellers.json", err);
+        // We ensure the user is still created, but log the error.
+    }
+
+    res.json({ user: { id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role, phone: newUser.phone } });
+});
+
 app.post('/api/auth/verify', async (req, res) => {
     const { userId } = req.body;
     const users = await readJSON(USERS_FILE);
     const user = users.find(u => u.id === userId);
 
     if (user) {
-        res.json({ user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+        res.json({ user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone || "" } });
     } else {
         res.status(401).json({ error: "Invalid session" });
     }
 });
 
+app.post('/api/auth/update-profile', async (req, res) => {
+    const { userId, name, phone } = req.body;
+    const users = await readJSON(USERS_FILE);
+    const userIndex = users.findIndex(u => u.id === userId);
+
+    if (userIndex !== -1) {
+        users[userIndex].name = name || users[userIndex].name;
+        users[userIndex].phone = phone || users[userIndex].phone;
+        await writeJSON(USERS_FILE, users);
+        const user = users[userIndex];
+        res.json({ message: "Profile updated", user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone } });
+    } else {
+        res.status(404).json({ error: "User not found" });
+    }
+});
+
+app.post('/api/auth/change-password', async (req, res) => {
+    const { userId, oldPassword, newPassword } = req.body;
+    const users = await readJSON(USERS_FILE);
+    const userIndex = users.findIndex(u => u.id === userId);
+
+    if (userIndex === -1) return res.status(404).json({ error: "User not found" });
+
+    const user = users[userIndex];
+    const hashedOld = hashPassword(oldPassword);
+
+    if (user.password !== hashedOld) {
+        return res.status(400).json({ error: "Incorrect old password" });
+    }
+
+    users[userIndex].password = hashPassword(newPassword);
+    await writeJSON(USERS_FILE, users);
+    res.json({ message: "Password changed successfully" });
+});
+
+// --- ADDRESSES ---
+const ADDRESSES_FILE = path.join(DATA_DIR, 'addresses.json');
+
+// Init Address File
+(async () => {
+    try {
+        await fs.access(ADDRESSES_FILE);
+    } catch {
+        await writeJSON(ADDRESSES_FILE, []);
+    }
+})();
+
+app.get('/api/address/:userId', async (req, res) => {
+    try {
+        const addresses = await readJSON(ADDRESSES_FILE);
+        const userAddressesEntry = addresses.find(Entry => Entry.userId === req.params.userId);
+        res.json(userAddressesEntry ? userAddressesEntry.addresses : []);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- SELLER API ---
+app.get('/api/seller/products', async (req, res) => {
+    try {
+        const userId = req.headers['x-user-id'];
+        if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+        const products = await readJSON(PRODUCTS_FILE);
+        // Filter by sellerId OR supplierId (legacy)
+        const sellerProducts = products.filter(p => p.sellerId === userId || p.supplierId === userId);
+        res.json(sellerProducts);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/seller/orders', async (req, res) => {
+    try {
+        const userId = req.headers['x-user-id'];
+        if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+        // Find orders that contain items from this seller
+        const products = await readJSON(PRODUCTS_FILE);
+        const sellerProductIds = products
+            .filter(p => p.sellerId === userId || p.supplierId === userId)
+            .map(p => p.id);
+
+        const orders = await readJSON(ORDERS_FILE);
+        const sellerOrders = orders.filter(order =>
+            order.orderItems.some(item => sellerProductIds.includes(item.id))
+        );
+
+        res.json(sellerOrders);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/seller/stats', async (req, res) => {
+    try {
+        const userId = req.headers['x-user-id'];
+        if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+        const products = await readJSON(PRODUCTS_FILE);
+        const sellerProducts = products.filter(p => p.sellerId === userId || p.supplierId === userId);
+        const sellerProductIds = sellerProducts.map(p => p.id);
+
+        const orders = await readJSON(ORDERS_FILE);
+        const sellerOrders = orders.filter(order =>
+            order.orderItems.some(item => sellerProductIds.includes(item.id))
+        );
+
+        // Pending Orders (simplify to all for now or filter by status if available)
+        const pendingOrders = sellerOrders.filter(o => o.status !== 'Delivered');
+
+        res.json({
+            totalProducts: sellerProducts.length,
+            totalOrders: sellerOrders.length,
+            pendingOrders: pendingOrders.length
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/seller/category-request', async (req, res) => {
+    try {
+        const { name, image } = req.body;
+        // For now, just add as unapproved category or use existing structure
+        // The user requirement said "admin will conform it then it will be create"
+        // Let's add with isApproved: false
+        const categories = await readJSON(CATEGORIES_FILE);
+
+        const newCat = {
+            id: Date.now().toString(),
+            name,
+            image,
+            isApproved: false
+        };
+        categories.push(newCat);
+        await writeJSON(CATEGORIES_FILE, categories);
+        res.status(201).json(newCat);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/address/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { addresses } = req.body; // Expects array of addresses
+
+        let allAddresses = await readJSON(ADDRESSES_FILE);
+        const index = allAddresses.findIndex(entry => entry.userId === userId);
+
+        if (index !== -1) {
+            allAddresses[index].addresses = addresses;
+        } else {
+            allAddresses.push({ userId, addresses });
+        }
+
+        await writeJSON(ADDRESSES_FILE, allAddresses);
+        res.json({ message: "Addresses saved" });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- WISHLIST ---
+const WISHLIST_FILE = path.join(DATA_DIR, 'wishlists.json');
+
+// Init Wishlist File
+(async () => {
+    try {
+        await fs.access(WISHLIST_FILE);
+    } catch {
+        await writeJSON(WISHLIST_FILE, []);
+    }
+})();
+
+app.get('/api/wishlist/:userId', async (req, res) => {
+    try {
+        const wishlists = await readJSON(WISHLIST_FILE);
+        const userWishlist = wishlists.find(w => w.userId === req.params.userId);
+        res.json(userWishlist ? userWishlist.products : []);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/wishlist/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { productId } = req.body;
+
+        let wishlists = await readJSON(WISHLIST_FILE);
+        const index = wishlists.findIndex(w => w.userId === userId);
+
+        if (index !== -1) {
+            // Add if not exists
+            if (!wishlists[index].products.includes(productId)) {
+                wishlists[index].products.push(productId);
+            }
+        } else {
+            wishlists.push({ userId, products: [productId] });
+        }
+
+        await writeJSON(WISHLIST_FILE, wishlists);
+        res.json({ message: "Added to wishlist" });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.delete('/api/wishlist/:userId/:productId', async (req, res) => {
+    try {
+        const { userId, productId } = req.params;
+        let wishlists = await readJSON(WISHLIST_FILE);
+        const index = wishlists.findIndex(w => w.userId === userId);
+
+        if (index !== -1) {
+            wishlists[index].products = wishlists[index].products.filter(id => id !== productId);
+            await writeJSON(WISHLIST_FILE, wishlists);
+        }
+        res.json({ message: "Removed from wishlist" });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // --- ORDERS ---
+const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
+
+// Init Orders File
+(async () => {
+    try {
+        await fs.access(ORDERS_FILE);
+    } catch {
+        await writeJSON(ORDERS_FILE, []);
+    }
+})();
+
 app.post('/api/orders', async (req, res) => {
     try {
         const { orderItems, shippingAddress, paymentMethod, itemsPrice, taxPrice, shippingPrice, totalPrice, user } = req.body;
-        // In a real app, save to orders.json
-        // For now, just decrement stock
 
         let products = await readJSON(PRODUCTS_FILE);
 
@@ -570,8 +1111,13 @@ app.post('/api/orders', async (req, res) => {
             shippingAddress,
             paymentMethod,
             totalPrice,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            status: "Processing" // Default status
         };
+
+        const orders = await readJSON(ORDERS_FILE);
+        orders.push(order);
+        await writeJSON(ORDERS_FILE, orders);
 
         res.status(201).json(order);
     } catch (error) {
@@ -579,6 +1125,177 @@ app.post('/api/orders', async (req, res) => {
     }
 });
 
+app.get('/api/orders/:userId', async (req, res) => {
+    try {
+        const orders = await readJSON(ORDERS_FILE);
+        const userOrders = orders.filter(o => o.user.id === req.params.userId);
+        res.json(userOrders);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- REQUESTS MANAGEMENT ---
+const REQUESTS_FILE = path.join(DATA_DIR, 'requests.json');
+
+// Init Requests File
+(async () => {
+    try {
+        await fs.access(REQUESTS_FILE);
+    } catch {
+        await writeJSON(REQUESTS_FILE, []);
+    }
+})();
+
+// GET requests (Admin: all, Seller: own)
+app.get('/api/requests', async (req, res) => {
+    try {
+        const userId = req.headers['x-user-id'];
+        if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+        const users = await readJSON(USERS_FILE);
+        const user = users.find(u => u.id === userId);
+        if (!user) return res.status(401).json({ error: "User not found" });
+
+        const requests = await readJSON(REQUESTS_FILE);
+
+        if (user.role === 'admin') {
+            res.json(requests);
+        } else if (user.role === 'seller') {
+            const myRequests = requests.filter(r => r.sellerId === userId);
+            res.json(myRequests);
+        } else {
+            res.status(403).json({ error: "Forbidden" });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// POST request (Seller)
+app.post('/api/requests', async (req, res) => {
+    try {
+        const userId = req.headers['x-user-id'];
+        if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+        const users = await readJSON(USERS_FILE);
+        const user = users.find(u => u.id === userId);
+        if (!user || user.role !== 'seller') return res.status(403).json({ error: "Only sellers can submit requests" });
+
+        const { type, title, description, category } = req.body;
+        // type: 'new_category', 'product_approval', 'other'
+
+        const requests = await readJSON(REQUESTS_FILE);
+
+        const newRequest = {
+            id: Date.now().toString(),
+            sellerId: userId,
+            sellerName: user.name,
+            type: type || 'other',
+            title,
+            description,
+            category, // Optional, for category requests
+            status: 'pending', // pending, approved, rejected
+            createdAt: new Date().toISOString(),
+            updates: [] // For admin remarks history
+        };
+
+        requests.push(newRequest);
+        await writeJSON(REQUESTS_FILE, requests);
+
+        res.status(201).json(newRequest);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// PUT request status (Admin)
+app.put('/api/requests/:requestId', isAdmin, async (req, res) => {
+    try {
+        const { requestId } = req.params;
+        const { status, remark } = req.body; // status: 'approved' | 'rejected'
+
+        const requests = await readJSON(REQUESTS_FILE);
+        const index = requests.findIndex(r => r.id === requestId);
+
+        if (index === -1) return res.status(404).json({ error: "Request not found" });
+
+        requests[index].status = status;
+        if (remark) {
+            requests[index].updates.push({
+                status,
+                remark,
+                date: new Date().toISOString()
+            });
+        }
+
+        // Automate actions based on type? (Currently just tracking)
+        // e.g. if type='new_category' and status='approved', we could auto-add user to trusted? 
+        // For now, it's manual.
+
+        await writeJSON(REQUESTS_FILE, requests);
+        res.json(requests[index]);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- UNIFIED REQUESTS ENDPOINT ---
+app.get('/api/admin/unified-requests', isAdmin, async (req, res) => {
+    try {
+        const sellers = await readJSON(SELLERS_FILE);
+        const products = await readJSON(PRODUCTS_FILE);
+        const categories = await readJSON(CATEGORIES_FILE);
+        const requests = await readJSON(REQUESTS_FILE);
+
+        const pendingSellers = sellers.filter(s => !s.isTrusted).map(s => ({
+            id: s.id,
+            type: 'seller',
+            title: `New Seller: ${s.name}`,
+            subtitle: s.email,
+            date: s.createdAt,
+            data: s
+        }));
+
+        const pendingProducts = products.filter(p => p.isApproved === false).map(p => ({
+            id: p.id,
+            type: 'product',
+            title: `Product Approval: ${p.title}`,
+            subtitle: `Price: ${p.price}`,
+            date: p.createdAt,
+            data: p
+        }));
+
+        const pendingCategories = categories.filter(c => c.isApproved === false).map(c => ({
+            id: c.id,
+            type: 'category',
+            title: `Category Approval: ${c.name}`,
+            subtitle: '',
+            date: c.id, // Categories use timestamp as ID usually
+            data: c
+        }));
+
+        const pendingRequests = requests.filter(r => r.status === 'pending').map(r => ({
+            id: r.id,
+            type: 'general_request',
+            title: `Request: ${r.title} (${r.type})`,
+            subtitle: r.sellerName,
+            date: r.createdAt,
+            data: r
+        }));
+
+        const allRequests = [
+            ...pendingSellers,
+            ...pendingProducts,
+            ...pendingCategories,
+            ...pendingRequests
+        ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+        res.json(allRequests);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 
 const PORT = 5001;
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));

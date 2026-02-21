@@ -7,8 +7,8 @@ import { usePathname } from "next/navigation";
 export default function Footer() {
     const pathname = usePathname();
 
-    // Hide Footer on Admin pages
-    if (pathname && pathname.startsWith('/admin')) return null;
+    // Hide Footer on Admin and Seller pages
+    if (pathname && (pathname.startsWith('/admin') || pathname.startsWith('/seller'))) return null;
 
     return (
         <footer className="bg-[#172337] text-white text-[12px] leading-5 mt-10 border-t border-[#454d5e]">

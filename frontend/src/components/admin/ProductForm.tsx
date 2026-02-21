@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Trash2, Calculator } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 interface ProductFormProps {
     initialData?: any;
@@ -27,7 +28,9 @@ export default function ProductForm({ initialData, isEdit = false }: ProductForm
         brand: '',
         countInStock: '',
         supplier: '',      // Selected Supplier Name
-        supplierId: ''     // Selected Supplier ID
+        supplierId: '',    // Selected Supplier ID
+        tags: [] as string[],
+        tagInput: ''
     });
 
     const [loading, setLoading] = useState(false);
@@ -48,24 +51,45 @@ export default function ProductForm({ initialData, isEdit = false }: ProductForm
                 brand: initialData.brand || '',
                 countInStock: initialData.countInStock || '',
                 supplier: initialData.supplier || '',
-                supplierId: initialData.supplierId || initialData.sellerId || ''
+                supplierId: initialData.supplierId || initialData.sellerId || '',
+                tags: initialData.tags || [],
+                tagInput: ''
             });
         }
     }, [initialData]);
 
+    const { user } = useAuth();
+
+    useEffect(() => {
+        if (user) {
+            fetchData();
+        }
+    }, [user, initialData]); // depend on user
+
     const fetchData = async () => {
         try {
+            // content...
+
             const cRes = await fetch("http://localhost:5001/api/admin/categories");
             const cData = await cRes.json();
             setCategories(Array.isArray(cData) ? cData : []);
 
-            try {
-                const sRes = await fetch("http://localhost:5001/api/admin/sellers", { headers: { 'x-user-id': JSON.parse(localStorage.getItem('user') || '{}').id } });
-                const sData = await sRes.json();
-                setSuppliers(Array.isArray(sData) ? sData : []);
-            } catch (err) {
-                console.error("Failed to fetch suppliers", err);
-                setSuppliers([]);
+            if (user?.role === 'admin') {
+                try {
+                    const sRes = await fetch("http://localhost:5001/api/admin/sellers", { headers: { 'x-user-id': user.id } });
+                    const sData = await sRes.json();
+                    setSuppliers(Array.isArray(sData) ? sData : []);
+                } catch (err) {
+                    console.error("Failed to fetch suppliers", err);
+                    setSuppliers([]);
+                }
+            } else if (user?.role === 'seller') {
+                // Auto-set supplier for seller
+                setFormData(prev => ({
+                    ...prev,
+                    supplier: user?.name || '',
+                    supplierId: user?.id || ''
+                }));
             }
         } catch (err) {
             console.error("Failed to fetch dropdown data", err);
@@ -116,13 +140,35 @@ export default function ProductForm({ initialData, isEdit = false }: ProductForm
         setFormData(prev => ({ ...prev, images: newImages, image: index === 0 ? (newImages[0] || '') : prev.image }));
     };
 
+
+    // Tag Handlers
+    const handleAddTag = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault();
+            const val = formData.tagInput.trim();
+            if (val && !formData.tags.includes(val)) {
+                setFormData(prev => ({
+                    ...prev,
+                    tags: [...prev.tags, val],
+                    tagInput: ''
+                }));
+            }
+        }
+    };
+
+    const removeTag = (tagToRemove: string) => {
+        setFormData(prev => ({
+            ...prev,
+            tags: prev.tags.filter(t => t !== tagToRemove)
+        }));
+    };
+
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
 
-        const userStr = localStorage.getItem('user');
-        if (!userStr) return;
-        const user = JSON.parse(userStr);
+        if (!user) return;
 
         const url = isEdit
             ? `http://localhost:5001/api/admin/products/${initialData.id}`
@@ -136,7 +182,8 @@ export default function ProductForm({ initialData, isEdit = false }: ProductForm
         const payload = {
             ...formData,
             images: cleanImages,
-            image: cleanImages[0] || formData.image // Ensure main image is set
+            image: cleanImages[0] || formData.image, // Ensure main image is set
+            tags: formData.tags
         };
 
         try {
@@ -150,7 +197,11 @@ export default function ProductForm({ initialData, isEdit = false }: ProductForm
             });
 
             if (res.ok) {
-                router.push('/admin/products');
+                if (user.role === 'seller') {
+                    router.push('/seller/products');
+                } else {
+                    router.push('/admin/products');
+                }
             } else {
                 const err = await res.json();
                 alert(`Failed to save product: ${err.error}`);
@@ -230,20 +281,23 @@ export default function ProductForm({ initialData, isEdit = false }: ProductForm
                                 ))}
                             </select>
                         </div>
-                        <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1">Supplier</label>
-                            <select
-                                required
-                                value={formData.supplierId || ''}
-                                onChange={handleSupplierChange}
-                                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                            >
-                                <option value="">Select Supplier</option>
-                                {suppliers.map(s => (
-                                    <option key={s.id} value={s.id}>{s.name}</option>
-                                ))}
-                            </select>
-                        </div>
+                        {/* Show Supplier Dropdown ONLY for Admins */}
+                        {user?.role === 'admin' && (
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">Supplier</label>
+                                <select
+                                    required
+                                    value={formData.supplierId || ''}
+                                    onChange={handleSupplierChange}
+                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                                >
+                                    <option value="">Select Supplier</option>
+                                    {suppliers.map(s => (
+                                        <option key={s.id} value={s.id}>{s.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
@@ -265,6 +319,28 @@ export default function ProductForm({ initialData, isEdit = false }: ProductForm
                                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                             />
                         </div>
+                    </div>
+
+                    {/* Tags Input */}
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Tags / Keywords</label>
+                        <div className="border rounded-lg p-2 bg-white flex flex-wrap gap-2 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
+                            {formData.tags.map((tag, idx) => (
+                                <span key={idx} className="bg-blue-100 text-blue-700 text-sm px-2 py-1 rounded-md flex items-center gap-1">
+                                    #{tag}
+                                    <button type="button" onClick={() => removeTag(tag)} className="hover:text-blue-900">×</button>
+                                </span>
+                            ))}
+                            <input
+                                type="text"
+                                value={formData.tagInput}
+                                onChange={e => setFormData({ ...formData, tagInput: e.target.value })}
+                                onKeyDown={handleAddTag}
+                                placeholder="Type and press Enter..."
+                                className="flex-1 min-w-[120px] outline-none text-sm py-1"
+                            />
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1">Press Enter or Comma to add tags. Used for search.</p>
                     </div>
                 </div>
 
@@ -329,6 +405,6 @@ export default function ProductForm({ initialData, isEdit = false }: ProductForm
                     {loading ? 'Saving...' : (isEdit ? 'Update Product' : 'Create Product')}
                 </button>
             </div>
-        </form>
+        </form >
     );
 }

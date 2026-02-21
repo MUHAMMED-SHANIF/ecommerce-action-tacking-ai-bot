@@ -5,16 +5,58 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { ShieldCheck, Truck } from "lucide-react";
 
+import { useCart } from "@/context/CartContext";
+
 export default function CheckoutPage() {
     const { user } = useAuth();
     const router = useRouter();
     const [orderPlaced, setOrderPlaced] = useState(false);
+    const { items, totalAmount, totalDiscount, clearCart } = useCart();
 
     useEffect(() => {
         if (!user) {
             router.push("/login");
         }
     }, [user, router]);
+
+    const handlePlaceOrder = async () => {
+        if (!user) return;
+
+        const orderData = {
+            user: { id: user.id, name: user.name, email: user.email },
+            orderItems: items,
+            shippingAddress: {
+                address: "Alyssa, Begonia & Clove Embassy Tech Village, Outer Ring Road",
+                city: "Bengaluru",
+                postalCode: "560103",
+                country: "India"
+            },
+            paymentMethod: "COD",
+            itemsPrice: totalAmount,
+            taxPrice: 0,
+            shippingPrice: 0,
+            totalPrice: totalAmount
+        };
+
+        try {
+            const res = await fetch('http://localhost:5001/api/orders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(orderData)
+            });
+
+            if (res.ok) {
+                setOrderPlaced(true);
+                clearCart();
+            } else {
+                const err = await res.json();
+                alert(`Order failed: ${err.error}`);
+            }
+        } catch (error) {
+            console.error("Order placement failed", error);
+            alert("Failed to place order. Please try again.");
+        }
+    };
 
     if (!user) return null;
 
@@ -97,7 +139,7 @@ export default function CheckoutPage() {
                                 </label>
                             </div>
 
-                            <button onClick={() => setOrderPlaced(true)} className="bg-[#fb641b] text-white font-bold px-16 py-3 text-[16px] uppercase rounded-[2px] shadow hover:shadow-lg">
+                            <button onClick={handlePlaceOrder} className="bg-[#fb641b] text-white font-bold px-16 py-3 text-[16px] uppercase rounded-[2px] shadow hover:shadow-lg">
                                 Confirm Order
                             </button>
                         </div>
@@ -113,12 +155,12 @@ export default function CheckoutPage() {
                         </div>
                         <div className="p-4 flex flex-col gap-4 text-[15px]">
                             <div className="flex justify-between">
-                                <span>Price (2 items)</span>
-                                <span>₹1,04,890</span>
+                                <span>Price ({items.length} items)</span>
+                                <span>₹{(totalAmount + totalDiscount).toLocaleString()}</span>
                             </div>
                             <div className="flex justify-between text-[#388e3c]">
                                 <span>Discount</span>
-                                <span>− ₹18,901</span>
+                                <span>− ₹{totalDiscount.toLocaleString()}</span>
                             </div>
                             <div className="flex justify-between text-[#388e3c]">
                                 <span>Delivery Charges</span>
@@ -129,7 +171,7 @@ export default function CheckoutPage() {
 
                             <div className="flex justify-between font-semibold text-[18px]">
                                 <span>Total Amount</span>
-                                <span>₹85,989</span>
+                                <span>₹{totalAmount.toLocaleString()}</span>
                             </div>
 
                             <div className="border-t border-dashed border-gray-300 my-2"></div>

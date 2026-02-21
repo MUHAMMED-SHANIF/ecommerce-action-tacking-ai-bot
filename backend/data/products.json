@@ -13,13 +13,14 @@
     "brand": "fasttrack",
     "rating": 0,
     "numReviews": 0,
-    "countInStock": 100,
+    "countInStock": 99,
     "supplier": "fastrack",
     "sellerId": "1768175125672",
     "supplierId": "1768175125672",
     "originalPrice": "5000",
     "discount": "10",
-    "createdAt": "2026-01-11T23:51:25.889Z"
+    "createdAt": "2026-01-11T23:51:25.889Z",
+    "isPaused": false
   },
   {
     "id": "1768175657449",
@@ -36,13 +37,14 @@
     "brand": "samsung",
     "rating": 0,
     "numReviews": 0,
-    "countInStock": 10,
+    "countInStock": 9,
     "supplier": "samsung",
     "sellerId": "1768175228367",
     "supplierId": "1768175228367",
     "originalPrice": "170000",
     "discount": "5",
-    "createdAt": "2026-01-11T23:54:17.449Z"
+    "createdAt": "2026-01-11T23:54:17.449Z",
+    "isPaused": false
   },
   {
     "id": "1768180337852",
@@ -58,7 +60,7 @@
     "brand": "asus",
     "rating": 0,
     "numReviews": 0,
-    "countInStock": 3,
+    "countInStock": 1,
     "supplier": "asus",
     "sellerId": "1768175187096",
     "supplierId": "1768175187096",

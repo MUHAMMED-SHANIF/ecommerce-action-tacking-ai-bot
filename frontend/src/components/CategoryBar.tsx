@@ -29,14 +29,20 @@ export default function CategoryBar() {
 
                 if (lData.navbar && Array.isArray(lData.navbar) && lData.navbar.length > 0) {
                     const newCats = lData.navbar.map((item: any) => {
+                        // Defensive check
+                        const catName = item.category || "Unknown";
+
                         // Find matching category details
-                        const details = allCats.find((c: any) => c.name === item.category);
+                        const details = allCats.find((c: any) => c.name === catName);
+                        // Safe substring
+                        const safeName = typeof catName === 'string' ? catName : String(catName);
+
                         const img = details?.image
                             ? getImageUrl(details.image)
-                            : `https://placehold.co/128x128/png?text=${encodeURIComponent(item.category.substring(0, 10))}`;
+                            : `https://placehold.co/128x128/png?text=${encodeURIComponent(safeName.substring(0, 10))}`;
 
                         return {
-                            name: item.category,
+                            name: safeName,
                             img: img
                         };
                     });

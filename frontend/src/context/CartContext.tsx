@@ -20,6 +20,7 @@ interface CartContextType {
     items: CartItem[];
     addToCart: (item: any) => Promise<void>;
     removeFromCart: (itemId: number | string) => Promise<void>;
+    clearCart: () => Promise<void>;
     totalAmount: number;
     totalDiscount: number;
     totalOriginal: number;
@@ -145,8 +146,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const totalOriginal = items.reduce((acc, item) => acc + (item.originalPrice || 0) * (item.qty || 1), 0);
     const totalDiscount = totalOriginal - totalAmount;
 
+    const clearCart = async () => {
+        if (!user?.id) return;
+
+        setItems([]); // Local clear
+
+        try {
+            // Sync empty cart to server
+            await fetch(`${API_URL}/cart/${user.id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: [] })
+            });
+        } catch (err) {
+            console.error("Clear cart error", err);
+        }
+    };
+
     return (
-        <CartContext.Provider value={{ items, addToCart, removeFromCart, totalAmount, totalDiscount, totalOriginal }}>
+        <CartContext.Provider value={{ items, addToCart, removeFromCart, clearCart, totalAmount, totalDiscount, totalOriginal }}>
             {children}
         </CartContext.Provider>
     );

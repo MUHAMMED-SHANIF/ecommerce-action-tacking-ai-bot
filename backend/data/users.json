@@ -1,19 +1,27 @@
 [
   {
-    "id": "1767924481194",
-    "email": "user@123",
-    "name": "Test User",
-    "password": "04f8996da763b7a969b1028ee3007569eaf3a635486ddab211d512c85b9df8fb",
-    "role": "user",
-    "createdAt": "2026-01-09T02:08:01.194Z",
-    "phone": ""
-  },
-  {
     "id": "admin_user_1768150739848",
     "email": "admin@123",
-    "name": "Super Admin",
+    "name": "Supe",
     "password": "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918",
     "role": "admin",
-    "createdAt": "2026-01-11T16:58:59.848Z"
+    "createdAt": "2026-01-11T16:58:59.848Z",
+    "phone": "5544654"
+  },
+  {
+    "id": "1770544334567",
+    "email": "test@1",
+    "password": "a98ec5c5044800c88e862f007b98d89815fc40ca155d6ce7909530d792e909ce",
+    "role": "user",
+    "name": "forme",
+    "phone": "3431534543512312"
+  },
+  {
+    "id": "1770724210993",
+    "name": "adidas",
+    "email": "adidas@123",
+    "password": "08bb42a30ca57f3455e11ac74fd30eae1196b25a9e7d634bfc5704d542ab7d20",
+    "phone": "324324",
+    "role": "seller"
   }
 ]

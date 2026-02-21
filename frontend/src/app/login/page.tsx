@@ -27,6 +27,10 @@ export default function LoginPage() {
                             router.push("/admin/dashboard");
                             return;
                         }
+                        if (user.role === 'seller') {
+                            router.push("/seller/dashboard");
+                            return;
+                        }
                     } catch (e) {
                         console.error('Error parsing user data:', e);
                     }

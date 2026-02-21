@@ -11,6 +11,10 @@
     {
       "id": "1768171447735",
       "category": "watch"
+    },
+    {
+      "id": "1771083310322",
+      "category": "shoe"
     }
   ],
   "sections": [
@@ -23,6 +27,11 @@
       "id": "1768171515656",
       "title": "for you",
       "category": "watch"
+    },
+    {
+      "id": "1771083322114",
+      "title": "you may like",
+      "category": "Laptop"
     }
   ]
 }

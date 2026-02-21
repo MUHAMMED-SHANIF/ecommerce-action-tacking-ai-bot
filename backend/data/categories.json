@@ -13,5 +13,11 @@
     "id": "1768175055087",
     "name": "watch",
     "image": "/uploads/1768175053090-231859296.png"
+  },
+  {
+    "id": "1770727738927",
+    "name": "shoe",
+    "image": "http://localhost:5001/uploads/1770727738915-220501480.png",
+    "isApproved": true
   }
 ]

@@ -1,67 +1,9 @@
 [
   {
-    "userId": "1767924481194",
-    "items": [
-      {
-        "id": "e2",
-        "title": "Printers",
-        "image": "https://placehold.co/200x200/png?text=Printer",
-        "price": 3999,
-        "originalPrice": 6000,
-        "discount": 33
-      },
-      {
-        "id": "e5",
-        "title": "Ambrane Power Bank 20000mAh",
-        "image": "https://placehold.co/200x200/png?text=Power+Bank",
-        "price": 899,
-        "originalPrice": 1599,
-        "discount": 43
-      },
-      {
-        "id": "1",
-        "title": "Apple iPhone 14 (Blue, 128 GB)",
-        "image": "https://placehold.co/832x832/png?text=iPhone+14",
-        "price": 58999,
-        "originalPrice": 69900,
-        "discount": 15
-      },
-      {
-        "id": "e4",
-        "title": "Philips Shaver",
-        "category": "Electronics",
-        "brand": "Philips",
-        "price": 1299,
-        "originalPrice": 1899,
-        "discount": 31,
-        "rating": 4.6,
-        "reviews": 230,
-        "image": "https://placehold.co/200x200/png?text=Shaver",
-        "description": "Smooth shave with self-sharpening blades.",
-        "features": [
-          "Cordless",
-          "Waterproof",
-          "45 min runtime"
-        ]
-      },
-      {
-        "id": "e3",
-        "title": "Epson Projector",
-        "category": "Electronics",
-        "brand": "Epson",
-        "price": 6999,
-        "originalPrice": 18000,
-        "discount": 61,
-        "rating": 4,
-        "reviews": 45,
-        "image": "https://placehold.co/200x200/png?text=Projector",
-        "description": "Home cinema experience with high brightness.",
-        "features": [
-          "3000 Lumens",
-          "HDMI",
-          "Built-in Speaker"
-        ]
-      }
+    "userId": "1770544334567",
+    "products": [
+      "1768175485889",
+      "1768175657449"
     ]
   }
 ]
