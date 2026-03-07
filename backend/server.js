@@ -109,16 +109,40 @@ app.post('/api/upload', upload.single('image'), (req, res) => {
 });
 
 // --- ADMIN: BANNERS ---
+app.get('/api/banners', async (req, res) => {
+    try {
+        const { data: banners, error } = await supabase.from('banners').select('*').eq('active', true);
+        if (error) throw error;
+        res.json({
+            banners: banners.map(b => ({
+                ...b,
+                image: b.image,
+                targetUrl: b.link, // Keep frontend compatibility if needed
+                actionType: b.action_type,
+                targetId: b.target_id,
+                createdAt: b.created_at
+            })),
+            config: { autoPlay: true, showCarousel: true }
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.get('/api/admin/banners', isAdmin, async (req, res) => {
     try {
         const { data: banners, error } = await supabase.from('banners').select('*').order('created_at', { ascending: false });
         if (error) throw error;
-        res.json(banners.map(b => ({
-            ...b,
-            actionType: b.action_type,
-            targetId: b.target_id,
-            createdAt: b.created_at
-        })));
+        res.json({
+            banners: banners.map(b => ({
+                ...b,
+                image: b.image, // Use 'image' column directly
+                link: b.link,   // Use 'link' column directly
+                actionType: b.action_type,
+                targetId: b.target_id,
+                createdAt: b.created_at
+            }))
+        });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -134,7 +158,7 @@ app.post('/api/admin/banners', isAdmin, async (req, res) => {
 
         const { data: newBanner, error } = await supabase.from('banners').insert({
             title: title || "Untitled",
-            image,
+            image: image,
             link: link || "",
             action_type: actionType || "none",
             target_id: targetId || "",
@@ -281,25 +305,26 @@ app.delete('/api/admin/categories/:id', isAdmin, async (req, res) => {
 // --- ADMIN: SELLERS (Suppliers) ---
 app.get('/api/admin/sellers', isAdmin, async (req, res) => {
     try {
-        const { data: profiles, error } = await supabase.from('profiles').select('*').eq('role', 'seller');
+        const { data: authData, error } = await supabase.auth.admin.listUsers();
         if (error) throw error;
 
-        const sellers = profiles.map(p => ({
-            id: p.id,
-            name: p.full_name,
-            phone: p.phone_number,
-            address: '',
-            isTrusted: p.preferences?.isTrusted || false,
-            createdAt: p.created_at
-        }));
+        const sellers = (authData.users || []).filter(u => u.user_metadata?.role === 'seller').map(u => {
+            const addrs = u.user_metadata?.addresses || [];
+            let displayAddress = addrs.length > 0 ? [addrs[0].street, addrs[0].city, addrs[0].country].filter(Boolean).join(', ') : '';
+            const fullAddresses = addrs.map(a => [a.street, a.city, a.state, a.zip, a.country].filter(Boolean).join(', '));
 
-        const { data: authData } = await supabase.auth.admin.listUsers();
-        if (authData && authData.users) {
-            sellers.forEach(s => {
-                const au = authData.users.find(u => u.id === s.id);
-                if (au) s.email = au.email;
-            });
-        }
+            return {
+                id: u.id,
+                name: u.user_metadata?.name || u.email.split('@')[0],
+                email: u.email,
+                phone: u.user_metadata?.phone || '',
+                address: displayAddress,
+                fullAddresses: fullAddresses,
+                isTrusted: u.user_metadata?.isTrusted || false,
+                createdAt: u.created_at
+            };
+        });
+
         res.json(sellers);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -313,13 +338,30 @@ app.post('/api/admin/sellers', isAdmin, async (req, res) => {
 app.put('/api/admin/sellers/:id', isAdmin, async (req, res) => {
     try {
         const { id } = req.params;
-        const { data, error } = await supabase.from('profiles').update({
-            full_name: req.body.name,
-            phone_number: req.body.phone,
-            preferences: { isTrusted: req.body.isTrusted }
-        }).eq('id', id).select().single();
+        const { data: { user }, error: fetchErr } = await supabase.auth.admin.getUserById(id);
+        if (fetchErr || !user) throw fetchErr || new Error("Seller not found");
+
+        const newMeta = {
+            ...user.user_metadata,
+            name: req.body.name || user.user_metadata?.name,
+            phone: req.body.phone || user.user_metadata?.phone,
+            isTrusted: req.body.isTrusted !== undefined ? req.body.isTrusted : user.user_metadata?.isTrusted
+        };
+
+        const { data, error } = await supabase.auth.admin.updateUserById(id, {
+            email: req.body.email || user.email,
+            user_metadata: newMeta
+        });
+
         if (error) throw error;
-        res.json(data);
+
+        res.json({
+            id: data.user.id,
+            name: data.user.user_metadata?.name,
+            email: data.user.email,
+            phone: data.user.user_metadata?.phone,
+            isTrusted: data.user.user_metadata?.isTrusted
+        });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -633,8 +675,8 @@ app.get('/api/admin/home-layout', isAdmin, async (req, res) => {
     try {
         const { data, error } = await supabase.from('home_layout').select('*').order('position');
         if (error) throw error;
-        const navbar = data.filter(d => d.type === 'navbar').sort((a, b) => a.position - b.position).map(n => ({ category: n.category, title: n.title }));
-        const sections = data.filter(d => d.type === 'section').sort((a, b) => a.position - b.position).map(s => ({ title: s.title, category: s.category }));
+        const navbar = data.filter(d => d.type === 'navbar').sort((a, b) => a.position - b.position).map(n => ({ id: n.id, category: n.category, title: n.title }));
+        const sections = data.filter(d => d.type === 'section').sort((a, b) => a.position - b.position).map(s => ({ id: s.id, title: s.title, category: s.category }));
         res.json({ navbar, sections });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -648,7 +690,7 @@ app.post('/api/admin/home-layout', isAdmin, async (req, res) => {
         await supabase.from('home_layout').delete().neq('id', '00000000-0000-0000-0000-000000000000');
 
         if (navbar && navbar.length > 0) {
-            const inserts = navbar.map((nav, i) => ({ type: 'navbar', position: i, title: nav.title, category: nav.category }));
+            const inserts = navbar.map((nav, i) => ({ type: 'navbar', position: i, title: nav.title || nav.category, category: nav.category }));
             await supabase.from('home_layout').insert(inserts);
         }
         if (sections && sections.length > 0) {
@@ -684,8 +726,8 @@ app.get('/api/home-layout', async (req, res) => {
     try {
         const { data, error } = await supabase.from('home_layout').select('*').order('position');
         if (error) throw error;
-        const navbar = data.filter(d => d.type === 'navbar').sort((a, b) => a.position - b.position).map(n => ({ category: n.category, title: n.title }));
-        const sections = data.filter(d => d.type === 'section').sort((a, b) => a.position - b.position).map(s => ({ title: s.title, category: s.category }));
+        const navbar = data.filter(d => d.type === 'navbar').sort((a, b) => a.position - b.position).map(n => ({ id: n.id, category: n.category, title: n.title }));
+        const sections = data.filter(d => d.type === 'section').sort((a, b) => a.position - b.position).map(s => ({ id: s.id, title: s.title, category: s.category }));
         res.json({ navbar, sections });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -874,65 +916,54 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/register-seller', async (req, res) => {
     const { name, email, password, phone, addresses } = req.body;
     try {
+        const cleanEmail = email ? email.trim() : '';
         const { data, error } = await supabase.auth.admin.createUser({
-            email,
+            email: cleanEmail,
             password,
-            email_confirm: true,
+            email_confirm: false, // Auto-confirm to bypass email rate limits
             user_metadata: {
-                name,
-                phone,
-                role: 'seller'
+                name: name ? name.trim() : '',
+                phone: phone ? phone.trim() : '',
+                role: 'seller',
+                addresses: addresses || []
             }
         });
         if (error) throw error;
 
         const user = data.user;
 
-        // Best effort: save to sellers table now that users are in auth
-        if (user) {
-            // Save address string
-            let addressValue = "";
-            if (addresses && Array.isArray(addresses) && addresses.length > 0) {
-                addressValue = addresses.map(a => {
-                    const parts = [
-                        a.building ? `(${a.building})` : '',
-                        a.street,
-                        a.city,
-                        a.zip ? `-${a.zip}` : '',
-                        a.country
-                    ].filter(Boolean);
-                    return parts.join(" ");
-                }).join("\n");
-            }
-
-            // Optionally sync to a dedicated Sellers table in Postgres
-            // For now we persist to sellers.json merely to avoid breaking Admin seller sync for a moment
-            // But we will eventually migrate to solely relying on User metadata or a linked profiles table.
-            try {
-                const sellers = await readJSON(SELLERS_FILE);
-                const newSellerEntry = {
-                    id: user.id,
-                    name,
-                    email,
-                    phone,
-                    address: addressValue || "",
-                    isTrusted: false,
-                    createdAt: new Date().toISOString()
-                };
-                sellers.push(newSellerEntry);
-                await writeJSON(SELLERS_FILE, sellers);
-            } catch (err) { }
-        }
+        // Optionally, if we ever need to sync to a postgres table, we do it here.
+        // For now, we rely strictly on Supabase Auth metadata for seller identity.
 
         res.json({
             user: {
                 id: user?.id,
                 name,
-                email,
+                email: cleanEmail,
                 role: 'seller',
                 phone
             }
         });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.post('/api/auth/register', async (req, res) => {
+    const { name, email, password } = req.body;
+    try {
+        const cleanEmail = email ? email.trim() : '';
+        const { data, error } = await supabase.auth.admin.createUser({
+            email: cleanEmail,
+            password,
+            email_confirm: false, // Auto-confirm bypasses rate limits
+            user_metadata: {
+                name: name ? name.trim() : '',
+                role: 'user'
+            }
+        });
+        if (error) throw error;
+        res.status(201).json({ user: data.user });
     } catch (error) {
         res.status(400).json({ error: error.message });
     }
@@ -996,11 +1027,11 @@ app.post('/api/auth/change-password', async (req, res) => {
 app.get('/api/address/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
-        const { data: addresses, error } = await supabase.from('addresses').select('*').eq('user_id', userId);
-        if (error) throw error;
+        const { data: { user }, error } = await supabase.auth.admin.getUserById(userId);
+        if (error || !user) throw error || new Error("User not found");
 
-        // Return array of address data as frontend expects
-        res.json(addresses.map(a => a.address_data));
+        const addresses = user.user_metadata?.addresses || [];
+        res.json(addresses);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -1022,7 +1053,7 @@ app.get('/api/seller/products', async (req, res) => {
         if (error) throw error;
 
         // Map them cleanly for the frontend (like the public endpoint does)
-        const sellerProducts = dbProducts.map(p => ({
+        const sellerProducts = (dbProducts || []).map(p => ({
             id: p.id,
             title: p.name,
             price: p.price,
@@ -1152,17 +1183,11 @@ app.post('/api/address/:userId', async (req, res) => {
         const { userId } = req.params;
         const { addresses } = req.body; // Expects array of addresses
 
-        // Wipe old addresses for this user (simplistic sync, matching old logic of replacing array)
-        await supabase.from('addresses').delete().eq('user_id', userId);
+        const { error } = await supabase.auth.admin.updateUserById(userId, {
+            user_metadata: { addresses: addresses || [] }
+        });
 
-        if (addresses && addresses.length > 0) {
-            const inserts = addresses.map(a => ({
-                user_id: userId,
-                address_data: a
-            }));
-            const { error } = await supabase.from('addresses').insert(inserts);
-            if (error) throw error;
-        }
+        if (error) throw error;
 
         res.json({ message: "Addresses saved" });
     } catch (error) {

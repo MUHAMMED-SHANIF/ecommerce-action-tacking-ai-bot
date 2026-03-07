@@ -22,7 +22,7 @@ export default function SellerSettings() {
 
     const fetchAddresses = async () => {
         try {
-            const res = await fetch(`http://localhost:5001/api/address/${user?.id}`);
+            const res = await fetch(`http://localhost:5001/api/address/${user?.id}`, { cache: 'no-store' });
             const data = await res.json();
             if (Array.isArray(data)) {
                 setAddresses(data);

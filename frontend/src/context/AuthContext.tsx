@@ -79,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const login = async (email: string, password: string) => {
         try {
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
             if (error) {
                 alert(error.message);
                 return false;
@@ -109,38 +109,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const register = async (email: string, password: string, name?: string) => {
         try {
-            const { data, error } = await supabase.auth.signUp({
-                email,
-                password,
-                options: {
-                    data: {
-                        name,
-                        role: 'user'
-                    }
-                }
+            const res = await fetch("http://localhost:5001/api/auth/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: email.trim(), password, name })
             });
 
-            if (error) {
-                alert(error.message);
-                return false;
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.error || "Registration failed");
             }
 
-            // Optional: Auto sign in or show verify UI
-            if (data.session) {
-                const meta = data.user?.user_metadata || {};
-                const currentUser: User = {
-                    id: data.user!.id,
-                    email: data.user!.email || '',
-                    name: meta.name || name || data.user!.email?.split('@')[0],
-                    role: meta.role || 'user',
-                    token: data.session.access_token
-                };
-                setUser(currentUser);
-                localStorage.setItem("user", JSON.stringify(currentUser));
-            } else if (data.user) {
-                alert("Registration successful. Please check your email to confirm.");
-            }
-            return true;
+            // Immediately login the new user to grab session
+            return await login(email, password);
         } catch (error: any) {
             console.error("Register Error", error);
             alert(error.message || "Registration failed");

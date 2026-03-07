@@ -42,7 +42,7 @@ export default function AdminBanners() {
     }, [user]);
 
     const fetchBannersAndSettings = async () => {
-        const res = await fetch('http://localhost:5001/api/banners');
+        const res = await fetch('http://localhost:5001/api/banners', { cache: 'no-store' });
         const data = await res.json();
         setBanners(data.banners);
         setSettings(data.config || { autoPlay: true, showCarousel: true });

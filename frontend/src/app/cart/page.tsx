@@ -29,7 +29,7 @@ export default function CartPage() {
             router.push("/login");
         } else {
             // Fetch Addresses
-            fetch(`http://localhost:5001/api/address/${user.id}`)
+            fetch(`http://localhost:5001/api/address/${user.id}`, { cache: 'no-store' })
                 .then(res => res.json())
                 .then(data => {
                     setAddresses(Array.isArray(data) ? data : []);

@@ -22,7 +22,7 @@ export default function AdminDashboard() {
                     fetch('http://localhost:5001/api/admin/users', { headers }),
                     fetch('http://localhost:5001/api/products'),
                     fetch('http://localhost:5001/api/admin/sellers', { headers }),
-                    fetch('http://localhost:5001/api/requests', { headers }),
+                    fetch('http://localhost:5001/api/admin/unified-requests?history=false', { headers }),
                 ]);
 
                 const users = await usersRes.json();

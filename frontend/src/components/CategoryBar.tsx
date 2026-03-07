@@ -23,7 +23,7 @@ export default function CategoryBar() {
                 const lData = await lRes.json();
 
                 // Fetch Full Categories (Details including images)
-                const cRes = await fetch("http://localhost:5001/api/admin/categories");
+                const cRes = await fetch("http://localhost:5001/api/admin/categories", { cache: 'no-store' });
                 const cData = await cRes.json();
                 const allCats = Array.isArray(cData) ? cData : [];
 

@@ -57,9 +57,10 @@ export default function SellerProducts() {
         }
     };
 
-    const filteredProducts = products.filter(product =>
-        product.title.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredProducts = products.filter(product => {
+        const title = product.title || "";
+        return title.toLowerCase().includes(searchTerm.toLowerCase());
+    });
 
     if (loading) return <div className="p-8 text-center">Loading products...</div>;
 
@@ -130,7 +131,7 @@ export default function SellerProducts() {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="p-4 font-medium text-slate-700">₹{product.price.toLocaleString()}</td>
+                                        <td className="p-4 font-medium text-slate-700">₹{(product.price || 0).toLocaleString()}</td>
                                         <td className="p-4">
                                             <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${product.countInStock > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
                                                 }`}>

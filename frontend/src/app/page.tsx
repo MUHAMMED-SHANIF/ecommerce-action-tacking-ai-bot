@@ -59,7 +59,7 @@ export default function Home() {
         }
 
         // Fetch Banners
-        const bRes = await fetch("http://localhost:5001/api/banners");
+        const bRes = await fetch("http://localhost:5001/api/banners", { cache: "no-store" });
         if (bRes.ok) {
           const bData = await bRes.json();
           setBanners(bData.banners || []);
