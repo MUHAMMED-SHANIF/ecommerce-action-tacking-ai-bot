@@ -46,7 +46,7 @@ export default function CategoryRequest() {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "x-user-id": user.id
+                    'Authorization': `Bearer ${user?.token}`
                 },
                 body: JSON.stringify({ name, image: imageUrl })
             });

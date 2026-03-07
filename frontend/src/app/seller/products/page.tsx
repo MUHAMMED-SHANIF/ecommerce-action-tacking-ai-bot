@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Edit, Trash2, Search, Filter, AlertCircle, CheckCircle } from "lucide-react";
-
+import { Plus, Edit, Trash2, Search, Filter, AlertCircle, CheckCircle, Package, Clock } from "lucide-react";
 export default function SellerProducts() {
     const [products, setProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -16,7 +15,8 @@ export default function SellerProducts() {
 
         try {
             const res = await fetch("http://localhost:5001/api/seller/products", {
-                headers: { "x-user-id": user.id }
+                headers: { 'Authorization': `Bearer ${user?.token}` },
+                cache: 'no-store'
             });
             if (res.ok) {
                 const data = await res.json();
@@ -138,26 +138,26 @@ export default function SellerProducts() {
                                             </span>
                                         </td>
                                         <td className="p-4">
-                                            {product.isApproved ? (
+                                            {product.isApproved || product.status === 'approved' ? (
                                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600 border border-emerald-100">
                                                     <CheckCircle className="w-3 h-3" /> Approved
                                                 </span>
+                                            ) : product.status === 'rejected' ? (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-600 border border-red-100">
+                                                    <AlertCircle className="w-3 h-3" /> Rejected
+                                                </span>
                                             ) : (
                                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-600 border border-amber-100">
-                                                    <Clock className="w-3 h-3" /> Pending
+                                                    <Clock className="w-3 h-3" /> {product.status === 'requested' ? 'Requested' : 'Pending'}
                                                 </span>
                                             )}
                                         </td>
                                         <td className="p-4 text-right">
-                                            {/* <button className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                                                <Edit className="w-4 h-4" />
-                                            </button> */}
-                                            {/* <button 
-                                                onClick={() => handleDelete(product.id)}
-                                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-2"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button> */}
+                                            <Link href={`/seller/products/edit/${product.id}`}>
+                                                <button className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                                                    <Edit className="w-4 h-4" />
+                                                </button>
+                                            </Link>
                                         </td>
                                     </tr>
                                 ))
@@ -175,5 +175,3 @@ export default function SellerProducts() {
         </div>
     );
 }
-
-import { Package, Clock } from 'lucide-react'; // Fix imports

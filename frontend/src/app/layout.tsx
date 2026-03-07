@@ -5,6 +5,7 @@ import Footer from "@/components/Footer";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import { WishlistProvider } from "@/context/WishlistContext";
+import AIAssistant from "@/components/AIAssistant";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -29,6 +30,7 @@ export default function RootLayout({
                 {children}
               </main>
               <Footer />
+              <AIAssistant />
             </WishlistProvider>
           </CartProvider>
         </AuthProvider>

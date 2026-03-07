@@ -20,6 +20,7 @@ interface CartContextType {
     items: CartItem[];
     addToCart: (item: any) => Promise<void>;
     removeFromCart: (itemId: number | string) => Promise<void>;
+    updateCartItemQty: (itemId: number | string, delta: number) => Promise<void>;
     clearCart: () => Promise<void>;
     totalAmount: number;
     totalDiscount: number;
@@ -142,6 +143,36 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    const updateCartItemQty = async (itemId: number | string, delta: number) => {
+        if (!user?.id) return;
+
+        let updatedItems = items.map(i => {
+            if (String(i.id) === String(itemId)) {
+                return { ...i, qty: Math.max(1, i.qty + delta) };
+            }
+            return i;
+        });
+
+        setItems(updatedItems);
+
+        try {
+            const res = await fetch(`${API_URL}/cart/${user.id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: updatedItems })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                if (data && Array.isArray(data.items)) {
+                    setItems(data.items);
+                }
+            }
+        } catch (err) {
+            console.error("Update qty error", err);
+        }
+    };
+
     const totalAmount = items.reduce((acc, item) => acc + (item.price || 0) * (item.qty || 1), 0);
     const totalOriginal = items.reduce((acc, item) => acc + (item.originalPrice || 0) * (item.qty || 1), 0);
     const totalDiscount = totalOriginal - totalAmount;
@@ -164,7 +195,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <CartContext.Provider value={{ items, addToCart, removeFromCart, clearCart, totalAmount, totalDiscount, totalOriginal }}>
+        <CartContext.Provider value={{ items, addToCart, removeFromCart, updateCartItemQty, clearCart, totalAmount, totalDiscount, totalOriginal }}>
             {children}
         </CartContext.Provider>
     );

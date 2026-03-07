@@ -73,7 +73,7 @@ export default function CategoryForm({ initialData, isEdit = false }: CategoryFo
                 method,
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-user-id': user.id
+                    'Authorization': `Bearer ${user?.token}`
                 },
                 body: JSON.stringify(payload)
             });
@@ -81,7 +81,8 @@ export default function CategoryForm({ initialData, isEdit = false }: CategoryFo
             if (res.ok) {
                 router.push('/admin/categories');
             } else {
-                alert('Failed to save category');
+                const errData = await res.json().catch(() => ({}));
+                alert(`Failed to save category: ${errData.error || 'Unknown server error'}`);
             }
         } catch (err) {
             console.error(err);

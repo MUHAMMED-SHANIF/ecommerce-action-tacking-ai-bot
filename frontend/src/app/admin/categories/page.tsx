@@ -37,9 +37,12 @@ export default function AdminCategories() {
     }, [user]);
 
     const fetchCategories = async () => {
-        const res = await fetch('http://localhost:5001/api/admin/categories');
+        const res = await fetch('http://localhost:5001/api/admin/categories', {
+            headers: user?.token ? { 'Authorization': `Bearer ${user.token}` } : {},
+            cache: 'no-store'
+        });
         const data = await res.json();
-        setCategories(data);
+        setCategories(Array.isArray(data) ? data : []);
     };
 
     const fetchProducts = async () => {
@@ -52,7 +55,7 @@ export default function AdminCategories() {
         try {
             const res = await fetch(`http://localhost:5001/api/admin/categories/${id}/approve`, {
                 method: 'PUT',
-                headers: { 'x-user-id': user!.id }
+                headers: { 'Authorization': `Bearer ${user?.token}` }
             });
             if (res.ok) {
                 setCategories(categories.map(c =>
@@ -69,7 +72,7 @@ export default function AdminCategories() {
         if (!confirm('Delete this category?')) return;
         const res = await fetch(`http://localhost:5001/api/admin/categories/${id}`, {
             method: 'DELETE',
-            headers: { 'x-user-id': user!.id }
+            headers: { 'Authorization': `Bearer ${user?.token}` }
         });
         if (res.ok) fetchCategories();
     };

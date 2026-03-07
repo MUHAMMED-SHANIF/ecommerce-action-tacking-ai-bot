@@ -8,24 +8,43 @@ export default function SearchPage() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const query = searchParams.get("q");
+    const category = searchParams.get("category");
     const [products, setProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (query) {
+        const fetchProducts = async () => {
             setLoading(true);
-            fetch(`http://localhost:5001/api/products?q=${encodeURIComponent(query)}`)
-                .then(res => res.json())
-                .then(data => {
-                    setProducts(data);
-                    setLoading(false);
-                })
-                .catch(err => {
-                    console.error(err);
-                    setLoading(false);
-                });
-        }
-    }, [query]);
+            try {
+                let url = "http://localhost:5001/api/products";
+
+                if (query) {
+                    url += `?search=${encodeURIComponent(query)}`; // Fixed backend variable from `q` to `search` based on server.js code
+                } else if (category) {
+                    url += `?category=${encodeURIComponent(category)}`;
+                }
+
+                if (query || category) {
+                    const res = await fetch(url, { cache: 'no-store' });
+                    if (res.ok) {
+                        const data = await res.json();
+                        setProducts(Array.isArray(data) ? data : []);
+                    } else {
+                        setProducts([]);
+                    }
+                } else {
+                    setProducts([]); // Show initial empty state if no query
+                }
+            } catch (err) {
+                console.error(err);
+                setProducts([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchProducts();
+    }, [query, category]);
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-[1248px]">

@@ -35,13 +35,15 @@ export default function AdjustHomePage() {
         const fetchAll = async () => {
             try {
                 // 1. Fetch Categories for dropdowns
-                const catRes = await fetch("http://localhost:5001/api/admin/categories");
+                const catRes = await fetch("http://localhost:5001/api/admin/categories", {
+                    headers: user?.token ? { 'Authorization': `Bearer ${user.token}` } : {}
+                });
                 const catData = await catRes.json();
                 setCategories(Array.isArray(catData) ? catData : []);
 
                 // 2. Fetch Current Layout
                 const layoutRes = await fetch("http://localhost:5001/api/admin/home-layout", {
-                    headers: { 'x-user-id': user.id }
+                    headers: { 'Authorization': `Bearer ${user?.token}` }
                 });
                 const layoutData = await layoutRes.json();
 
@@ -68,7 +70,7 @@ export default function AdjustHomePage() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-user-id': user!.id
+                    'Authorization': `Bearer ${user?.token}`
                 },
                 body: JSON.stringify({
                     navbar: navbarItems,

@@ -76,7 +76,7 @@ export default function ProductForm({ initialData, isEdit = false }: ProductForm
 
             if (user?.role === 'admin') {
                 try {
-                    const sRes = await fetch("http://localhost:5001/api/admin/sellers", { headers: { 'x-user-id': user.id } });
+                    const sRes = await fetch("http://localhost:5001/api/admin/sellers", { headers: { 'Authorization': `Bearer ${user?.token}` } });
                     const sData = await sRes.json();
                     setSuppliers(Array.isArray(sData) ? sData : []);
                 } catch (err) {
@@ -140,18 +140,61 @@ export default function ProductForm({ initialData, isEdit = false }: ProductForm
         setFormData(prev => ({ ...prev, images: newImages, image: index === 0 ? (newImages[0] || '') : prev.image }));
     };
 
+    const handleImageUpload = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const formDataPayload = new FormData();
+        formDataPayload.append('image', file);
+
+        try {
+            setLoading(true);
+            const res = await fetch("http://localhost:5001/api/upload", {
+                method: 'POST',
+                body: formDataPayload
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                handleImageChange(index, data.imageUrl);
+            } else {
+                const err = await res.json();
+                alert(`Upload failed: ${err.error || 'Unknown error'}`);
+            }
+        } catch (err) {
+            console.error("Upload error:", err);
+            alert("Error uploading image");
+        } finally {
+            setLoading(false);
+        }
+    };
+
 
     // Tag Handlers
     const handleAddTag = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' || e.key === ',') {
             e.preventDefault();
-            const val = formData.tagInput.trim();
-            if (val && !formData.tags.includes(val)) {
-                setFormData(prev => ({
-                    ...prev,
-                    tags: [...prev.tags, val],
-                    tagInput: ''
-                }));
+            const val = formData.tagInput;
+            if (val.trim()) {
+                const newTags = val.split(',')
+                    .map(t => t.trim())
+                    .filter(t => t !== '');
+
+                setFormData(prev => {
+                    const updatedTags = [...prev.tags];
+                    newTags.forEach(tag => {
+                        if (!updatedTags.includes(tag)) {
+                            updatedTags.push(tag);
+                        }
+                    });
+                    return {
+                        ...prev,
+                        tags: updatedTags,
+                        tagInput: ''
+                    };
+                });
+            } else {
+                setFormData(prev => ({ ...prev, tagInput: '' }));
             }
         }
     };
@@ -166,9 +209,13 @@ export default function ProductForm({ initialData, isEdit = false }: ProductForm
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
 
-        if (!user) return;
+        if (!user) {
+            alert("User session not found. Please log in again.");
+            return;
+        }
+
+        setLoading(true);
 
         const url = isEdit
             ? `http://localhost:5001/api/admin/products/${initialData.id}`
@@ -191,7 +238,7 @@ export default function ProductForm({ initialData, isEdit = false }: ProductForm
                 method,
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-user-id': user.id
+                    'Authorization': `Bearer ${user?.token}`
                 },
                 body: JSON.stringify(payload)
             });
@@ -356,18 +403,27 @@ export default function ProductForm({ initialData, isEdit = false }: ProductForm
                         <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
                             {formData.images.map((img, index) => (
                                 <div key={index} className="flex gap-2 items-start">
-                                    <div className="flex-1">
-                                        <input
-                                            type="text"
-                                            value={img}
-                                            onChange={e => handleImageChange(index, e.target.value)}
-                                            className="w-full px-3 py-2 border rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                            placeholder="Image URL..."
-                                        />
-                                        {img && <img src={img} alt="Preview" className="h-20 mt-1 object-contain rounded border bg-gray-50" />}
+                                    <div className="flex-1 space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="text"
+                                                value={img}
+                                                onChange={e => handleImageChange(index, e.target.value)}
+                                                className="w-full px-3 py-2 border rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                                placeholder="Image URL..."
+                                            />
+                                            <span className="text-gray-400 text-sm font-medium">OR</span>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={(e) => handleImageUpload(index, e)}
+                                                className="text-sm border border-gray-300 rounded p-1.5 focus:outline-none"
+                                            />
+                                        </div>
+                                        {img && <img src={img.startsWith('http') || img.startsWith('data:') ? img : `http://localhost:5001${img}`} alt="Preview" className="h-20 mt-1 object-contain rounded border bg-gray-50" />}
                                     </div>
                                     {formData.images.length > 1 && (
-                                        <button type="button" onClick={() => removeImageField(index)} className="p-2 text-gray-400 hover:text-red-500">
+                                        <button type="button" onClick={() => removeImageField(index)} className="p-2 text-gray-400 hover:text-red-500 mt-1">
                                             <Trash2 size={18} />
                                         </button>
                                     )}

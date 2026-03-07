@@ -99,7 +99,7 @@ export default function BannerForm({ initialData, isEdit = false }: BannerFormPr
                 method,
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-user-id': user.id
+                    'Authorization': `Bearer ${user?.token}`
                 },
                 body: JSON.stringify(payload)
             });

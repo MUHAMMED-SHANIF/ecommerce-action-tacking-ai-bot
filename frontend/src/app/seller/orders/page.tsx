@@ -16,7 +16,7 @@ export default function SellerOrders() {
 
             try {
                 const res = await fetch("http://localhost:5001/api/seller/orders", {
-                    headers: { "x-user-id": user.id }
+                    headers: { 'Authorization': `Bearer ${user?.token}` }
                 });
                 if (res.ok) {
                     const data = await res.json();

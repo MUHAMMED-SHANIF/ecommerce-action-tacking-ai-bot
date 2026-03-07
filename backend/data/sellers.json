@@ -24,19 +24,20 @@
     "isTrusted": true
   },
   {
-    "id": "1768175276952",
-    "name": "akg watches",
-    "email": "akg@dummy",
-    "phone": "1234569878",
-    "address": "akg bil,kozhikkode\n676122",
-    "isTrusted": true
-  },
-  {
     "id": "1770724210993",
     "name": "adidas",
     "email": "adidas@123",
     "phone": "324324",
     "address": "4 2sadsfxzffxf, Default City",
     "isTrusted": true
+  },
+  {
+    "id": "1772125285161",
+    "name": "APPLE",
+    "email": "apple@123",
+    "phone": "43564387583",
+    "address": "(fdg) gdsfg gddfs -345 3fdvfg",
+    "isTrusted": true,
+    "createdAt": "2026-02-26T17:01:25.163Z"
   }
 ]

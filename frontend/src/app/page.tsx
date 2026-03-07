@@ -49,20 +49,29 @@ export default function Home() {
     const fetchData = async () => {
       try {
         // Fetch Products
-        const pRes = await fetch("http://localhost:5001/api/products");
-        const pData = await pRes.json();
-        setProducts(pData);
+        const pRes = await fetch("http://localhost:5001/api/products", { cache: 'no-store' });
+        if (pRes.ok) {
+          const pData = await pRes.json();
+          setProducts(Array.isArray(pData) ? pData : []);
+        } else {
+          console.error("Failed to fetch products:", pRes.status);
+          setProducts([]);
+        }
 
         // Fetch Banners
         const bRes = await fetch("http://localhost:5001/api/banners");
-        const bData = await bRes.json();
-        setBanners(bData.banners || []);
-        if (bData.config) setBannerConfig(bData.config);
+        if (bRes.ok) {
+          const bData = await bRes.json();
+          setBanners(bData.banners || []);
+          if (bData.config) setBannerConfig(bData.config);
+        }
 
         // Fetch Home Layout
         const lRes = await fetch("http://localhost:5001/api/home-layout");
-        const lData = await lRes.json();
-        if (lData.sections) setHomeSections(lData.sections);
+        if (lRes.ok) {
+          const lData = await lRes.json();
+          if (lData.sections) setHomeSections(lData.sections);
+        }
 
       } catch (err) {
         console.error("Fetch error:", err);

@@ -14,7 +14,7 @@ export default function AdminDashboard() {
             if (!userStr) return;
             const user = JSON.parse(userStr);
 
-            const headers = { 'Content-Type': 'application/json', 'x-user-id': user.id };
+            const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${user?.token}` };
 
             try {
                 // Parallel fetch

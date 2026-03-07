@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Send, Bot, User } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
 
 interface Message {
     role: "user" | "bot";
@@ -9,9 +11,22 @@ interface Message {
 }
 
 export default function ChatbotPage() {
+    const { user } = useAuth();
+    const router = useRouter();
+
+    useEffect(() => {
+        if (user && (user.role === 'admin' || user.role === 'seller')) {
+            router.push('/');
+        }
+    }, [user, router]);
+
     const [messages, setMessages] = useState<Message[]>([
         { role: "bot", text: "Hello! I'm your EMart AI assistant. How can I help you today?" }
     ]);
+
+    if (user && (user.role === 'admin' || user.role === 'seller')) {
+        return null; // prevent rendering while redirecting
+    }
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -33,12 +48,21 @@ export default function ChatbotPage() {
         setIsLoading(true);
 
         try {
-            const response = await fetch("http://localhost:8000/analyze_intent", {
+            // Use the Node.js AI Router Endpoint instead of direct python FastAPI
+            // Also need the auth context if available - getting id from local storage as fallback
+            let userId = undefined;
+            try {
+                const storedUser = localStorage.getItem('user');
+                if (storedUser) userId = JSON.parse(storedUser).id;
+            } catch (e) { }
+
+            const response = await fetch("http://localhost:5001/api/assistant/message", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
+                    ...(userId ? { 'Authorization': `Bearer ${userId}` } : {})
                 },
-                body: JSON.stringify({ text_input: userMessage }),
+                body: JSON.stringify({ message: userMessage, userId }),
             });
 
             if (!response.ok) {
@@ -46,7 +70,7 @@ export default function ChatbotPage() {
             }
 
             const data = await response.json();
-            setMessages(prev => [...prev, { role: "bot", text: data.reply_text }]);
+            setMessages(prev => [...prev, { role: "bot", text: data.reply || data.responseText || "Sorry, no valid reply returned." }]);
         } catch (error) {
             console.error("Chat Error:", error);
             setMessages(prev => [...prev, { role: "bot", text: "Sorry, I'm having trouble connecting to my brain right now. Please try again later." }]);
@@ -88,8 +112,8 @@ export default function ChatbotPage() {
                                     </div>
                                     <div
                                         className={`p-3 rounded-lg text-sm ${msg.role === "user"
-                                                ? "bg-[#22c55e] text-white rounded-br-none"
-                                                : "bg-gray-100 text-gray-800 rounded-bl-none"
+                                            ? "bg-[#22c55e] text-white rounded-br-none"
+                                            : "bg-gray-100 text-gray-800 rounded-bl-none"
                                             }`}
                                     >
                                         {msg.text}

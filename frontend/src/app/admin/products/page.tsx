@@ -69,7 +69,8 @@ export default function AdminProducts() {
         try {
             if (!silent) setLoading(true);
             const res = await fetch('http://localhost:5001/api/admin/products/all', {
-                headers: { 'x-user-id': user!.id }
+                headers: { 'Authorization': `Bearer ${user?.token}` },
+                cache: 'no-store'
             });
             const data = await res.json();
             setProducts(Array.isArray(data) ? data : []);
@@ -87,7 +88,7 @@ export default function AdminProducts() {
         try {
             const res = await fetch(`http://localhost:5001/api/admin/products/${id}/approve`, {
                 method: 'PUT',
-                headers: { 'x-user-id': user!.id }
+                headers: { 'Authorization': `Bearer ${user?.token}` }
             });
 
             if (res.ok) fetchProducts(true);
@@ -101,7 +102,7 @@ export default function AdminProducts() {
         try {
             const res = await fetch(`http://localhost:5001/api/admin/products/${id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'x-user-id': user!.id },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${user?.token}` },
                 body: JSON.stringify({ isPaused: !currentStatus })
             });
 
@@ -119,7 +120,7 @@ export default function AdminProducts() {
         try {
             const res = await fetch(`http://localhost:5001/api/admin/products/${id}`, {
                 method: 'DELETE',
-                headers: { 'x-user-id': user!.id }
+                headers: { 'Authorization': `Bearer ${user?.token}` }
             });
             if (res.ok) fetchProducts(true);
         } catch (err) {
@@ -134,7 +135,7 @@ export default function AdminProducts() {
                 try {
                     const res = await fetch(`http://localhost:5001/api/admin/products/all`, {
                         method: 'DELETE',
-                        headers: { 'x-user-id': user!.id },
+                        headers: { 'Authorization': `Bearer ${user?.token}` },
                     });
                     if (res.ok) fetchProducts();
                 } catch (err) {

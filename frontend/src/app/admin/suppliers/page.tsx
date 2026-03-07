@@ -51,7 +51,7 @@ export default function AdminSuppliers() {
     const fetchData = async () => {
         try {
             const [sRes, pRes] = await Promise.all([
-                fetch('http://localhost:5001/api/admin/sellers', { headers: { 'x-user-id': user!.id } }),
+                fetch('http://localhost:5001/api/admin/sellers', { headers: { 'Authorization': `Bearer ${user?.token}` } }),
                 fetch('http://localhost:5001/api/products')
             ]);
 
@@ -80,7 +80,7 @@ export default function AdminSuppliers() {
                 method,
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-user-id': user!.id
+                    'Authorization': `Bearer ${user?.token}`
                 },
                 body: JSON.stringify(formData)
             });
@@ -117,7 +117,7 @@ export default function AdminSuppliers() {
             try {
                 const res = await fetch(`http://localhost:5001/api/admin/sellers/${id}`, {
                     method: 'DELETE',
-                    headers: { 'x-user-id': user!.id }
+                    headers: { 'Authorization': `Bearer ${user?.token}` }
                 });
                 if (res.ok) fetchData();
             } catch (err) {

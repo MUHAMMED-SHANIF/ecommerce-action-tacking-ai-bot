@@ -21,7 +21,7 @@ export default function UsersPage() {
         try {
             setLoading(true);
             const res = await fetch('http://localhost:5001/api/admin/users', {
-                headers: { 'x-user-id': user.id }
+                headers: { 'Authorization': `Bearer ${user?.token}` }
             });
 
             if (res.ok) {
@@ -51,7 +51,7 @@ export default function UsersPage() {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-user-id': user.id
+                    'Authorization': `Bearer ${user?.token}`
                 },
                 body: JSON.stringify({ role: newRole })
             });
@@ -75,7 +75,7 @@ export default function UsersPage() {
             const res = await fetch(`http://localhost:5001/api/admin/users/${userId}`, {
                 method: 'DELETE',
                 headers: {
-                    'x-user-id': user.id
+                    'Authorization': `Bearer ${user?.token}`
                 }
             });
 

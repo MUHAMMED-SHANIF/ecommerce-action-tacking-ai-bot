@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Star, ShoppingCart, Zap, Tag, Heart } from "lucide-react";
+import { Star, ShoppingCart, Zap, Tag, Heart, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
@@ -128,7 +128,12 @@ function ProductContent() {
                             {product.rating} <Star className="w-3 h-3 fill-white" />
                         </span>
                         <span className="text-gray-500 text-[13px] font-medium">{product.reviews?.toLocaleString()} Ratings & Reviews</span>
-                        <Image src="https://static-assets-web.flixcart.com/fk-p-linchpin-web/fk-cp-zion/img/fa_62673a.png" alt="Assured" width={77} height={21} />
+                        {product.isTrustedSeller && (
+                            <span className="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-sm flex items-center gap-1 shadow-sm">
+                                <ShieldCheck className="w-4 h-4" />
+                                Trusted Seller
+                            </span>
+                        )}
                     </div>
 
                     {/* Price Section */}
@@ -156,41 +161,47 @@ function ProductContent() {
                         </div>
                     </div>
 
-                    {/* Offers - Hide in Preview if desired, or keep as info? Prompt said "dont need add to cart, buy now, wish list options and also dont need to the similiar product". Offers are info, so I'll keep them but hide actions. */}
-                    <div className="mb-6">
-                        <h3 className="text-[14px] font-medium mb-2">Available offers</h3>
-                        <ul className="flex flex-col gap-2">
-                            <li className="flex items-start gap-2 text-[14px] text-gray-700">
-                                <Tag className="w-4 h-4 text-[#388e3c] mt-0.5 flex-shrink-0" />
-                                <span>Bank Offer 5% Unlimited Cashback on Flipkart Axis Bank Credit Card</span>
-                            </li>
-                            <li className="flex items-start gap-2 text-[14px] text-gray-700">
-                                <Tag className="w-4 h-4 text-[#388e3c] mt-0.5 flex-shrink-0" />
-                                <span>Special Price Get extra discount</span>
-                            </li>
-                        </ul>
-                    </div>
 
                     {/* Actions - Hidden in Preview */}
                     {!isPreview && (
                         <div className="flex gap-4 my-8">
-                            <button
-                                onClick={() => {
-                                    if (user) {
-                                        addToCart({ ...product, image: images[0] });
-                                    } else {
-                                        window.location.href = "/login";
-                                    }
-                                }}
-                                className="flex-1 bg-[#ff9f00] text-white font-medium py-3.5 shadow px-2 uppercase text-[15px] flex items-center justify-center gap-2 hover:shadow-lg transition-shadow"
-                            >
-                                <ShoppingCart className="w-5 h-5 fill-white" />
-                                Add to Cart
-                            </button>
-                            <button className="flex-1 bg-[#fb641b] text-white font-medium py-3.5 shadow px-2 uppercase text-[15px] flex items-center justify-center gap-2 hover:shadow-lg transition-shadow">
-                                <Zap className="w-5 h-5 fill-white" />
-                                Buy Now
-                            </button>
+                            {product.countInStock > 0 ? (
+                                <>
+                                    <button
+                                        onClick={() => {
+                                            if (user) {
+                                                addToCart({ ...product, image: images[0] });
+                                            } else {
+                                                window.location.href = "/login";
+                                            }
+                                        }}
+                                        className="flex-1 bg-[#ff9f00] text-white font-medium py-3.5 shadow px-2 uppercase text-[15px] flex items-center justify-center gap-2 hover:shadow-lg transition-shadow"
+                                    >
+                                        <ShoppingCart className="w-5 h-5 fill-white" />
+                                        Add to Cart
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            if (user) {
+                                                router.push(`/checkout?buyNow=true&productId=${product.id}`);
+                                            } else {
+                                                window.location.href = "/login";
+                                            }
+                                        }}
+                                        className="flex-1 bg-[#fb641b] text-white font-medium py-3.5 shadow px-2 uppercase text-[15px] flex items-center justify-center gap-2 hover:shadow-lg transition-shadow"
+                                    >
+                                        <Zap className="w-5 h-5 fill-white" />
+                                        Buy Now
+                                    </button>
+                                </>
+                            ) : (
+                                <button
+                                    disabled
+                                    className="flex-1 bg-red-500 text-white font-medium py-3.5 shadow px-2 uppercase text-[15px] flex items-center justify-center gap-2 cursor-not-allowed opacity-90"
+                                >
+                                    Out of Stock
+                                </button>
+                            )}
                         </div>
                     )}
 

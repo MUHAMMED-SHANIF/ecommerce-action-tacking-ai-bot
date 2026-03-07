@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 
 export default function CartPage() {
     const { user } = useAuth();
-    const { items: cartItems, removeFromCart, totalAmount, totalDiscount, totalOriginal } = useCart();
+    const { items: cartItems, removeFromCart, updateCartItemQty, totalAmount, totalDiscount, totalOriginal } = useCart();
     const router = useRouter();
     const [addresses, setAddresses] = useState<any[]>([]);
     const [selectedAddressIndex, setSelectedAddressIndex] = useState<number>(0);
@@ -159,11 +159,17 @@ export default function CartPage() {
 
                                     <div className="flex items-center gap-8">
                                         <div className="flex items-center gap-2">
-                                            <button className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50" disabled>-</button>
+                                            <button
+                                                onClick={() => updateCartItemQty(item.id, -1)}
+                                                className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50 text-xl font-medium leading-none"
+                                                disabled={item.qty <= 1}
+                                            >−</button>
                                             <input type="text" value={item.qty} readOnly className="w-10 text-center border border-gray-300 py-0.5 text-[14px]" />
-                                            <button className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50">+</button>
+                                            <button
+                                                onClick={() => updateCartItemQty(item.id, 1)}
+                                                className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50 text-xl font-medium leading-none"
+                                            >+</button>
                                         </div>
-                                        <button className="font-medium text-[14px] hover:text-[#2874f0] uppercase">Save for later</button>
                                         <button
                                             onClick={() => removeFromCart(item.id)}
                                             className="font-medium text-[14px] hover:text-[#2874f0] uppercase"

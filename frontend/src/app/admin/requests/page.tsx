@@ -21,21 +21,31 @@ export default function AdminRequests() {
     const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
     const [dateRange, setDateRange] = useState<{ start: string, end: string }>({ start: '', end: '' });
     const [loading, setLoading] = useState(true);
+    const [showHistory, setShowHistory] = useState(false);
+
+    // Toast state
+    const [toastMsg, setToastMsg] = useState<string>('');
+
+    // Reject Modal state
+    const [rejectItem, setRejectItem] = useState<RequestItem | null>(null);
+    const [rejectRemark, setRejectRemark] = useState('');
 
     useEffect(() => {
         if (user?.role === 'admin') {
             fetchRequests();
         }
-    }, [user]);
+    }, [user, showHistory]);
 
     useEffect(() => {
         filterAndSort();
     }, [requests, filterType, sortOrder, dateRange]);
 
     const fetchRequests = async () => {
+        setLoading(true);
         try {
-            const res = await fetch('http://localhost:5001/api/admin/unified-requests', {
-                headers: { 'x-user-id': user!.id }
+            const res = await fetch(`http://localhost:5001/api/admin/unified-requests?history=${showHistory}`, {
+                headers: { 'Authorization': `Bearer ${user?.token}` },
+                cache: 'no-store'
             });
             const data = await res.json();
             if (Array.isArray(data)) {
@@ -69,17 +79,22 @@ export default function AdminRequests() {
 
         // Sort
         res.sort((a, b) => {
-            const dateA = new Date(a.date).getTime();
-            const dateB = new Date(b.date).getTime();
+            let dateA = new Date(a.date).getTime();
+            let dateB = new Date(b.date).getTime();
+            if (isNaN(dateA)) dateA = Number(a.date) || 0;
+            if (isNaN(dateB)) dateB = Number(b.date) || 0;
             return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
         });
 
         setFilteredRequests(res);
     };
 
-    const handleApprove = async (item: RequestItem) => {
-        if (!confirm(`Approve this ${item.type}?`)) return;
+    const showToast = (msg: string) => {
+        setToastMsg(msg);
+        setTimeout(() => setToastMsg(''), 1000);
+    };
 
+    const handleApprove = async (item: RequestItem) => {
         try {
             let url = '';
             let method = 'PUT';
@@ -106,53 +121,63 @@ export default function AdminRequests() {
                 method,
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-user-id': user!.id
+                    'Authorization': `Bearer ${user?.token}`
                 },
                 body: JSON.stringify(body)
             });
 
             if (res.ok) {
-                // Remove from list
-                setRequests(prev => prev.filter(r => r.id !== item.id));
-                alert('Approved successfully');
+                // Remove from list if not history, if history, maybe update status? 
+                // Best is just re-fetch or remove from pending list
+                if (!showHistory) {
+                    setRequests(prev => prev.filter(r => r.id !== item.id));
+                } else {
+                    fetchRequests();
+                }
+                showToast(`Approved successfully`);
             } else {
-                alert('Failed to approve');
+                showToast('Failed to approve');
             }
         } catch (err) {
             console.error(err);
-            alert('Error processing request');
+            showToast('Error processing request');
         }
     };
 
-    const handleReject = async (item: RequestItem) => {
-        if (!confirm(`Reject/Delete this ${item.type}?`)) return;
+    const openRejectModal = (item: RequestItem) => {
+        setRejectItem(item);
+        setRejectRemark('');
+    };
+
+    const submitReject = async () => {
+        if (!rejectItem) return;
+        const item = rejectItem;
 
         try {
             let url = '';
-            let method = 'DELETE'; // Most rejects are deletes, except generic requests
-            let body = null;
+            let method = 'PUT'; // Use PUT for reviews so we can attach remarks
+            let body: any = { status: 'rejected', adminRemark: rejectRemark || 'Rejected by Admin' };
 
             switch (item.type) {
                 case 'seller':
                     url = `http://localhost:5001/api/admin/sellers/${item.id}`;
+                    body = { isTrusted: false, rejected: true, remark: rejectRemark }; // Needs backend support, or fallback
                     break;
                 case 'product':
-                    url = `http://localhost:5001/api/admin/products/${item.id}`;
+                    url = `http://localhost:5001/api/admin/products/${item.id}/review`;
                     break;
                 case 'category':
-                    url = `http://localhost:5001/api/admin/categories/${item.id}`;
+                    url = `http://localhost:5001/api/admin/categories/${item.id}/review`;
                     break;
                 case 'general_request':
                     url = `http://localhost:5001/api/requests/${item.id}`;
-                    method = 'PUT';
-                    body = { status: 'rejected' };
                     break;
             }
 
             const options: any = {
                 method,
                 headers: {
-                    'x-user-id': user!.id,
+                    'Authorization': `Bearer ${user?.token}`,
                     ...(body ? { 'Content-Type': 'application/json' } : {})
                 }
             };
@@ -161,14 +186,20 @@ export default function AdminRequests() {
             const res = await fetch(url, options);
 
             if (res.ok) {
-                setRequests(prev => prev.filter(r => r.id !== item.id));
-                alert('Rejected/Deleted successfully');
+                if (!showHistory) {
+                    setRequests(prev => prev.filter(r => r.id !== item.id));
+                } else {
+                    fetchRequests();
+                }
+                showToast('Rejected successfully');
             } else {
-                alert('Failed to reject');
+                showToast('Failed to reject');
             }
         } catch (err) {
             console.error(err);
-            alert('Error processing request');
+            showToast('Error processing request');
+        } finally {
+            setRejectItem(null);
         }
     };
 
@@ -196,6 +227,24 @@ export default function AdminRequests() {
             {/* Filters */}
             <div className="bg-white p-4 rounded shadow mb-6 flex flex-wrap gap-4 items-end">
                 <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">View</label>
+                    <div className="flex bg-gray-100 rounded p-1">
+                        <button
+                            onClick={() => setShowHistory(false)}
+                            className={`px-4 py-2 rounded text-sm ${!showHistory ? 'bg-white shadow text-blue-600 font-medium' : 'text-gray-600 hover:text-gray-900'}`}
+                        >
+                            Pending
+                        </button>
+                        <button
+                            onClick={() => setShowHistory(true)}
+                            className={`px-4 py-2 rounded text-sm ${showHistory ? 'bg-white shadow text-blue-600 font-medium' : 'text-gray-600 hover:text-gray-900'}`}
+                        >
+                            History
+                        </button>
+                    </div>
+                </div>
+
+                <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Type</label>
                     <div className="flex bg-gray-100 rounded p-1">
                         {['all', 'seller', 'product', 'category', 'general_request'].map(t => (
@@ -207,25 +256,6 @@ export default function AdminRequests() {
                                 {t.replace('_', ' ')}
                             </button>
                         ))}
-                    </div>
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
-                    <div className="flex gap-2 items-center">
-                        <input
-                            type="date"
-                            className="border rounded px-3 py-2 text-sm"
-                            value={dateRange.start}
-                            onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                        />
-                        <span className="text-gray-500">-</span>
-                        <input
-                            type="date"
-                            className="border rounded px-3 py-2 text-sm"
-                            value={dateRange.end}
-                            onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                        />
                     </div>
                 </div>
 
@@ -247,14 +277,14 @@ export default function AdminRequests() {
                 {loading ? (
                     <div className="p-8 text-center text-gray-500">Loading requests...</div>
                 ) : filteredRequests.length === 0 ? (
-                    <div className="p-8 text-center text-gray-500">No pending requests found.</div>
+                    <div className="p-8 text-center text-gray-500">{showHistory ? "No history found." : "No pending requests found."}</div>
                 ) : (
                     <table className="w-full">
                         <thead className="bg-gray-50 border-b">
                             <tr>
                                 <th className="text-left p-4 w-16">Type</th>
                                 <th className="text-left p-4">Request Details</th>
-                                <th className="text-left p-4">Date</th>
+                                <th className="text-left p-4">Date & Status</th>
                                 <th className="text-right p-4">Actions</th>
                             </tr>
                         </thead>
@@ -271,21 +301,40 @@ export default function AdminRequests() {
                                         <div className="text-sm text-gray-500">{item.subtitle}</div>
                                     </td>
                                     <td className="p-4 text-sm text-gray-600">
-                                        {new Date(item.date).toLocaleDateString()}
+                                        <div className="font-medium">{new Date(item.date).toLocaleDateString()}</div>
+                                        {showHistory && (() => {
+                                            const status = (item as any).status || item.data?.metadata?.status || item.data?.status || (item.type === 'seller' && item.data?.isTrusted ? 'approved' : 'rejected');
+                                            const badgeColor = status === 'approved' ? 'bg-green-100 text-green-700' : status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700';
+                                            const displayStatus = status.charAt(0).toUpperCase() + status.slice(1);
+                                            return (
+                                                <div className={`mt-1 text-xs font-semibold px-2 py-0.5 rounded inline-block ${badgeColor}`}>
+                                                    {displayStatus}
+                                                </div>
+                                            );
+                                        })()}
+                                        {showHistory && (item as any).remark && (
+                                            <div className="text-xs text-gray-500 mt-1 max-w-[200px] truncate" title={(item as any).remark}>
+                                                Remark: {(item as any).remark}
+                                            </div>
+                                        )}
                                     </td>
                                     <td className="p-4 text-right">
-                                        <button
-                                            onClick={() => handleApprove(item)}
-                                            className="bg-green-100 text-green-700 px-3 py-1 rounded hover:bg-green-200 mr-2 text-sm font-medium"
-                                        >
-                                            Approve
-                                        </button>
-                                        <button
-                                            onClick={() => handleReject(item)}
-                                            className="bg-red-100 text-red-700 px-3 py-1 rounded hover:bg-red-200 text-sm font-medium"
-                                        >
-                                            Reject
-                                        </button>
+                                        {!showHistory && (
+                                            <>
+                                                <button
+                                                    onClick={() => handleApprove(item)}
+                                                    className="bg-green-100 text-green-700 px-3 py-1 rounded hover:bg-green-200 mr-2 text-sm font-medium"
+                                                >
+                                                    Approve
+                                                </button>
+                                                <button
+                                                    onClick={() => openRejectModal(item)}
+                                                    className="bg-red-100 text-red-700 px-3 py-1 rounded hover:bg-red-200 text-sm font-medium"
+                                                >
+                                                    Reject
+                                                </button>
+                                            </>
+                                        )}
                                     </td>
                                 </tr>
                             ))}
@@ -293,6 +342,41 @@ export default function AdminRequests() {
                     </table>
                 )}
             </div>
+            {/* Reject Modal */}
+            {rejectItem && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded p-6 shadow-xl w-full max-w-sm">
+                        <h3 className="text-lg font-bold mb-4">Reject Request</h3>
+                        <p className="text-sm text-gray-600 mb-4 flex items-center gap-2">
+                            <span>You are rejecting:</span>
+                            <span className="font-semibold">{rejectItem.title}</span>
+                        </p>
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Reason for Rejection (Visible to Seller)</label>
+                            <textarea
+                                className="w-full border rounded p-2 text-sm text-black"
+                                rows={3}
+                                value={rejectRemark}
+                                onChange={e => setRejectRemark(e.target.value)}
+                                placeholder="E.g. Image quality is too low..."
+                                autoFocus
+                            />
+                        </div>
+                        <div className="flex gap-2 justify-end">
+                            <button onClick={() => setRejectItem(null)} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded">Cancel</button>
+                            <button onClick={submitReject} className="bg-red-600 text-white px-4 py-2 text-sm font-medium hover:bg-red-700 rounded shadow">Confirm Reject</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Toast Notification */}
+            {toastMsg && (
+                <div className="fixed bottom-4 right-4 bg-gray-800 text-white px-6 py-3 rounded shadow-lg text-sm font-medium animate-fade-in-up z-50 flex items-center gap-2">
+                    <Check className="w-4 h-4 text-green-400" />
+                    {toastMsg}
+                </div>
+            )}
         </div>
     );
 }

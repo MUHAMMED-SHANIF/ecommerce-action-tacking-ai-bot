@@ -52,7 +52,8 @@ export default function AdminBanners() {
         const pRes = await fetch('http://localhost:5001/api/products');
         setProducts(await pRes.json());
 
-        const cRes = await fetch('http://localhost:5001/api/admin/categories');
+        const headers: HeadersInit = user?.token ? { 'Authorization': `Bearer ${user.token}` } : {};
+        const cRes = await fetch('http://localhost:5001/api/admin/categories', { headers });
         setCategories(await cRes.json());
     };
 
@@ -61,7 +62,7 @@ export default function AdminBanners() {
         if (!confirm('Delete this banner?')) return;
         const res = await fetch(`http://localhost:5001/api/admin/banners/${id}`, {
             method: 'DELETE',
-            headers: { 'x-user-id': user!.id }
+            headers: { 'Authorization': `Bearer ${user?.token}` }
         });
         if (res.ok) fetchBannersAndSettings();
     };
@@ -69,7 +70,7 @@ export default function AdminBanners() {
     const saveSettings = async () => {
         const res = await fetch('http://localhost:5001/api/admin/banner-settings', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-user-id': user!.id },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${user?.token}` },
             body: JSON.stringify(settings)
         });
         if (res.ok) {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Package, ShoppingBag, Clock, TrendingUp, AlertCircle, CheckCircle } from 'lucide-react';
+import { Package, ShoppingBag, Clock, TrendingUp, AlertCircle, CheckCircle, PlusCircle, Globe } from 'lucide-react';
 import Link from 'next/link';
 
 export default function SellerDashboard() {
@@ -16,7 +16,7 @@ export default function SellerDashboard() {
             if (!userStr) return;
             const user = JSON.parse(userStr);
 
-            const headers = { 'Content-Type': 'application/json', 'x-user-id': user.id };
+            const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${user?.token}` };
 
             try {
                 const [statsRes, reqRes] = await Promise.all([
@@ -164,5 +164,3 @@ export default function SellerDashboard() {
     );
 }
 
-// Minimal icon component import fix (moved to top)
-import { PlusCircle, Globe } from 'lucide-react';

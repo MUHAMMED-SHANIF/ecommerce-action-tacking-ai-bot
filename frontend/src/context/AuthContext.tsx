@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 interface User {
     id: string;
@@ -9,6 +10,7 @@ interface User {
     name?: string;
     role?: string;
     phone?: string;
+    token?: string;
 }
 
 interface AuthContextType {
@@ -22,8 +24,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const API_URL = "http://127.0.0.1:5001/api";
-
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -31,100 +31,142 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         const initAuth = async () => {
-            const storedUser = localStorage.getItem("user");
-            if (storedUser) {
-                try {
-                    const parsedUser = JSON.parse(storedUser);
-                    // Verify with backend
-                    const res = await fetch(`${API_URL}/auth/verify`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ userId: parsedUser.id })
-                    });
-
-                    if (res.ok) {
-                        const data = await res.json();
-                        setUser(data.user);
-                        localStorage.setItem("user", JSON.stringify(data.user));
-                    } else {
-                        // Backend doesn't know this user (e.g. valid session but DB wiped)
-                        console.warn("User not found in backend, logging out.");
-                        localStorage.removeItem("user");
-                        setUser(null);
-                    }
-                } catch (error) {
-                    console.error("Failed to parse user data or verify", error);
-                    localStorage.removeItem("user");
-                    setUser(null);
-                }
+            const { data: { session }, error } = await supabase.auth.getSession();
+            if (session?.user) {
+                const meta = session.user.user_metadata || {};
+                const currentUser: User = {
+                    id: session.user.id,
+                    email: session.user.email || '',
+                    name: meta.name || session.user.email?.split('@')[0],
+                    role: meta.role || 'user',
+                    phone: meta.phone || '',
+                    token: session.access_token
+                };
+                setUser(currentUser);
+                localStorage.setItem("user", JSON.stringify(currentUser));
+            } else {
+                setUser(null);
+                localStorage.removeItem("user");
             }
             setIsLoading(false);
+
+            // Listen for auth changes
+            const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+                if (event === 'SIGNED_IN' && session) {
+                    const meta = session.user.user_metadata || {};
+                    const currentUser: User = {
+                        id: session.user.id,
+                        email: session.user.email || '',
+                        name: meta.name || session.user.email?.split('@')[0],
+                        role: meta.role || 'user',
+                        phone: meta.phone || '',
+                        token: session.access_token
+                    };
+                    setUser(currentUser);
+                    localStorage.setItem("user", JSON.stringify(currentUser));
+                } else if (event === 'SIGNED_OUT') {
+                    setUser(null);
+                    localStorage.removeItem("user");
+                }
+            });
+
+            return () => {
+                authListener.subscription.unsubscribe();
+            };
         };
         initAuth();
     }, []);
 
     const login = async (email: string, password: string) => {
         try {
-            const res = await fetch(`${API_URL}/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
-            });
-
-            if (!res.ok) {
-                const err = await res.json();
-                alert(err.error || "Login failed");
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            if (error) {
+                alert(error.message);
                 return false;
             }
 
-            const data = await res.json();
-            setUser(data.user);
-            localStorage.setItem("user", JSON.stringify(data.user));
+            // onAuthStateChange handles state setting, but we can do it here too for instant visual update
+            if (data.session) {
+                const meta = data.user.user_metadata || {};
+                const currentUser: User = {
+                    id: data.user.id,
+                    email: data.user.email || '',
+                    name: meta.name || data.user.email?.split('@')[0],
+                    role: meta.role || 'user',
+                    phone: meta.phone || '',
+                    token: data.session.access_token
+                };
+                setUser(currentUser);
+                localStorage.setItem("user", JSON.stringify(currentUser));
+            }
             return true;
-        } catch (error) {
+        } catch (error: any) {
             console.error("Login Error", error);
+            alert(error.message || "Login failed");
             return false;
         }
     };
 
     const register = async (email: string, password: string, name?: string) => {
         try {
-            const res = await fetch(`${API_URL}/auth/register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password, name })
+            const { data, error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: {
+                        name,
+                        role: 'user'
+                    }
+                }
             });
 
-            if (!res.ok) {
-                const err = await res.json();
-                alert(err.error || "Registration failed");
+            if (error) {
+                alert(error.message);
                 return false;
             }
 
-            const data = await res.json();
-            // Option: Auto-login after register, or redirect to login. The backend returns 'user' in data.user if we want.
-            // For now, let's just return true and let UI handle redirect to login or auto-login.
-            // Let's Auto-Login for better UX:
-            setUser(data.user);
-            localStorage.setItem("user", JSON.stringify(data.user));
+            // Optional: Auto sign in or show verify UI
+            if (data.session) {
+                const meta = data.user?.user_metadata || {};
+                const currentUser: User = {
+                    id: data.user!.id,
+                    email: data.user!.email || '',
+                    name: meta.name || name || data.user!.email?.split('@')[0],
+                    role: meta.role || 'user',
+                    token: data.session.access_token
+                };
+                setUser(currentUser);
+                localStorage.setItem("user", JSON.stringify(currentUser));
+            } else if (data.user) {
+                alert("Registration successful. Please check your email to confirm.");
+            }
             return true;
-        } catch (error) {
+        } catch (error: any) {
             console.error("Register Error", error);
+            alert(error.message || "Registration failed");
             return false;
         }
     };
 
-    const logout = () => {
+    const logout = async () => {
+        await supabase.auth.signOut();
         setUser(null);
         localStorage.removeItem("user");
-        router.push("/login"); // or router.push('/') if preferred
+        router.push("/login");
     };
 
-    const updateProfile = (name: string, phone: string) => {
+    const updateProfile = async (name: string, phone: string) => {
         if (user) {
-            const updatedUser = { ...user, name, phone };
-            setUser(updatedUser);
-            localStorage.setItem("user", JSON.stringify(updatedUser));
+            const { data, error } = await supabase.auth.updateUser({
+                data: { name, phone }
+            });
+            if (!error && data.user) {
+                const updatedUser = { ...user, name, phone };
+                setUser(updatedUser);
+                localStorage.setItem("user", JSON.stringify(updatedUser));
+            } else {
+                alert("Failed to update profile: " + (error?.message || "Unknown error"));
+            }
         }
     };
 

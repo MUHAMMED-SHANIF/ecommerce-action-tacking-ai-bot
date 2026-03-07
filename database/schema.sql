@@ -119,3 +119,40 @@ DROP POLICY IF EXISTS "Public profiles are viewable by everyone." ON profiles;
 
 -- 9. Profiles self-access policy
 CREATE POLICY IF NOT EXISTS "Users can read own profile" ON profiles FOR SELECT USING (auth.uid() = id);
+
+-- CONVERSATIONS (AI Assistant)
+CREATE TABLE IF NOT EXISTS conversations (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  role TEXT CHECK (role IN ('user', 'assistant')) NOT NULL,
+  message TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- We remove RLS constraint for local saving until full Supabase Auth migration
+-- ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Users can view their own conversations" ON conversations FOR SELECT USING (auth.uid()::text = user_id);
+-- CREATE POLICY "Users can insert their own conversations" ON conversations FOR INSERT WITH CHECK (auth.uid()::text = user_id);
+
+-- BANNERS
+CREATE TABLE IF NOT EXISTS banners (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  title TEXT NOT NULL,
+  image TEXT NOT NULL,
+  link TEXT,
+  action_type TEXT DEFAULT 'none',
+  target_id TEXT,
+  active BOOLEAN DEFAULT true,
+  duration INTEGER DEFAULT 5,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- HOME LAYOUT
+CREATE TABLE IF NOT EXISTS home_layout (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  type TEXT CHECK (type IN ('navbar', 'section')) NOT NULL,
+  position INTEGER NOT NULL,
+  title TEXT,
+  category TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);

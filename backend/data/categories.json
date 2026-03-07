@@ -19,5 +19,11 @@
     "name": "shoe",
     "image": "http://localhost:5001/uploads/1770727738915-220501480.png",
     "isApproved": true
+  },
+  {
+    "id": "1772133413417",
+    "name": "Earbuds",
+    "image": "http://localhost:5001/uploads/1772133413378-452529969.webp",
+    "isApproved": false
   }
 ]
