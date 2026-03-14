@@ -33,6 +33,48 @@ export default function SellerOrders() {
         fetchOrders();
     }, []);
 
+    const handleStatusUpdate = async (orderId: string, productId: string, status: string) => {
+        const userStr = localStorage.getItem("user");
+        if (!userStr) return;
+        const user = JSON.parse(userStr);
+
+        try {
+            const res = await fetch(`http://localhost:5001/api/seller/orders/${orderId}/items/${productId}/status`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${user.token}`
+                },
+                body: JSON.stringify({ status })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+
+                // Update local state to reflect changes instantly without re-fetching
+                setOrders(prevOrders => prevOrders.map(order => {
+                    if (order.id === orderId) {
+                        return {
+                            ...order,
+                            status: data.overallOrderStatus, // Update overall status if API changed it
+                            orderItems: order.orderItems.map((item: any) => {
+                                if (item.id === productId) {
+                                    return { ...item, seller_status: status };
+                                }
+                                return item;
+                            })
+                        };
+                    }
+                    return order;
+                }));
+            } else {
+                alert("Failed to update status");
+            }
+        } catch (err) {
+            console.error("Error updating status", err);
+        }
+    };
+
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'Delivered': return 'bg-emerald-50 text-emerald-600 border-emerald-100';
@@ -74,24 +116,46 @@ export default function SellerOrders() {
                             </div>
 
                             <div className="space-y-3">
-                                {/* Only show items belonging to this seller? 
-                                    The API returns full order. 
-                                    Ideally, we should filter items here or backend.
-                                    Let's filtering items here might be complex without seller ID context easily available again.
-                                    Actually, we can store user ID in state. 
-                                */}
                                 {order.orderItems.map((item: any) => (
-                                    <div key={item.id} className="flex items-center gap-4 py-2">
-                                        <div className="w-12 h-12 bg-slate-100 rounded-lg overflow-hidden shrink-0 border border-slate-200">
-                                            {item.image ? (
-                                                <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
-                                            ) : (
-                                                <Package className="w-full h-full p-3 text-slate-300" />
-                                            )}
+                                    <div key={item.id} className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-3 border-b border-slate-50 last:border-0">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 bg-slate-100 rounded-lg overflow-hidden shrink-0 border border-slate-200">
+                                                {item.image ? (
+                                                    <img src={item.image.startsWith('http') ? item.image : `http://localhost:5001${item.image}`} alt={item.name} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <Package className="w-full h-full p-3 text-slate-300" />
+                                                )}
+                                            </div>
+                                            <div className="flex-1">
+                                                <h4 className="font-medium text-slate-800 line-clamp-1">{item.name}</h4>
+                                                <p className="text-xs text-slate-500">Qty: {item.qty} × ₹{item.price.toLocaleString()}</p>
+                                            </div>
                                         </div>
-                                        <div className="flex-1">
-                                            <h4 className="font-medium text-slate-800 line-clamp-1">{item.title}</h4>
-                                            <p className="text-xs text-slate-500">Qty: {item.qty} × ₹{item.price.toLocaleString()}</p>
+
+                                        <div className="flex items-center gap-2">
+                                            {order.status.toLowerCase() === 'cancelled' ? (
+                                                <span className="px-2 py-1 rounded text-xs font-bold bg-slate-100 text-slate-500">
+                                                    Order Cancelled
+                                                </span>
+                                            ) : item.seller_status === 'pending' ? (
+                                                <>
+                                                    <button
+                                                        onClick={() => handleStatusUpdate(order.id, item.id, 'accepted')}
+                                                        className="px-3 py-1.5 text-xs font-medium bg-emerald-50 text-emerald-600 rounded-md hover:bg-emerald-100 transition-colors">
+                                                        Accept
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleStatusUpdate(order.id, item.id, 'rejected')}
+                                                        className="px-3 py-1.5 text-xs font-medium bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors">
+                                                        Reject
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <span className={`px-2 py-1 rounded text-xs font-bold capitalize ${item.seller_status === 'accepted' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+                                                    }`}>
+                                                    {item.seller_status}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 ))}
@@ -117,6 +181,6 @@ export default function SellerOrders() {
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     );
 }

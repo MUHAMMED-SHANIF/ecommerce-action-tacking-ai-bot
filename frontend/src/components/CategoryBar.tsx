@@ -20,10 +20,12 @@ export default function CategoryBar() {
             try {
                 // Fetch Layout (What to show)
                 const lRes = await fetch("http://localhost:5001/api/home-layout");
+                if (!lRes.ok) throw new Error(`Layout fetch failed: ${lRes.status}`);
                 const lData = await lRes.json();
 
                 // Fetch Full Categories (Details including images)
                 const cRes = await fetch("http://localhost:5001/api/admin/categories", { cache: 'no-store' });
+                if (!cRes.ok) throw new Error(`Categories fetch failed: ${cRes.status}`);
                 const cData = await cRes.json();
                 const allCats = Array.isArray(cData) ? cData : [];
 
@@ -68,7 +70,7 @@ export default function CategoryBar() {
             <div className="container mx-auto px-4 max-w-[1248px] overflow-x-auto no-scrollbar">
                 <div className="flex justify-between min-w-[300px] md:min-w-0">
                     {categories.map((cat, idx) => (
-                        <Link href={`/search?category=${encodeURIComponent(cat.name)}`} key={idx} className="flex flex-col items-center gap-1 group cursor-pointer hover:text-[#22c55e] min-w-[80px]">
+                        <Link href={`/category/${encodeURIComponent(cat.name)}`} key={idx} className="flex flex-col items-center gap-1 group cursor-pointer hover:text-[#22c55e] min-w-[80px]">
                             <div className="relative w-16 h-16 rounded-full overflow-hidden bg-gray-50 border border-gray-100 group-hover:border-[#22c55e] transition-colors">
                                 <img
                                     src={cat.img}

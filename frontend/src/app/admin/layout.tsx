@@ -85,6 +85,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             </Link>
                         </li>
                         <li>
+                            <Link href="/admin/orders" className={`block px-4 py-2 rounded-lg ${pathname.startsWith('/admin/orders') ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'}`}>
+                                Orders
+                            </Link>
+                        </li>
+                        <li>
                             <Link href="/admin/banners" className={`block px-4 py-2 rounded-lg ${pathname.startsWith('/admin/banners') ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'}`}>
                                 Banners
                             </Link>

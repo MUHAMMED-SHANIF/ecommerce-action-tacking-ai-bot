@@ -30,6 +30,11 @@ export default function AdminRequests() {
     const [rejectItem, setRejectItem] = useState<RequestItem | null>(null);
     const [rejectRemark, setRejectRemark] = useState('');
 
+    // View Modal state
+    const [selectedRequest, setSelectedRequest] = useState<RequestItem | null>(null);
+
+    const closeViewModal = () => setSelectedRequest(null);
+
     useEffect(() => {
         if (user?.role === 'admin') {
             fetchRequests();
@@ -285,7 +290,7 @@ export default function AdminRequests() {
                                 <th className="text-left p-4 w-16">Type</th>
                                 <th className="text-left p-4">Request Details</th>
                                 <th className="text-left p-4">Date & Status</th>
-                                <th className="text-right p-4">Actions</th>
+                                <th className="text-right p-4 w-48">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -319,6 +324,12 @@ export default function AdminRequests() {
                                         )}
                                     </td>
                                     <td className="p-4 text-right">
+                                        <button
+                                            onClick={() => setSelectedRequest(item)}
+                                            className="bg-blue-50 text-blue-600 px-3 py-1 rounded hover:bg-blue-100 mr-2 text-sm font-medium"
+                                        >
+                                            View
+                                        </button>
                                         {!showHistory && (
                                             <>
                                                 <button
@@ -342,6 +353,112 @@ export default function AdminRequests() {
                     </table>
                 )}
             </div>
+
+            {/* View Details Modal */}
+            {selectedRequest && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+                    <div className="bg-white rounded p-6 shadow-xl w-full max-w-4xl my-8">
+                        <div className="flex justify-between items-center mb-6 border-b pb-4">
+                            <h3 className="text-xl font-bold flex items-center gap-2">
+                                {getTypeIcon(selectedRequest.type)}
+                                Request Details: {selectedRequest.type.toUpperCase()}
+                            </h3>
+                            <button onClick={closeViewModal} className="text-gray-500 hover:text-gray-700">
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        {/* Content based on type */}
+                        <div className="mb-6 max-h-[60vh] overflow-y-auto pr-2">
+                            {selectedRequest.type === 'product' ? (
+                                <div className="space-y-4">
+                                    <h4 className="font-semibold text-lg pb-2">Product Information</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-500 mb-1">Product Name</label>
+                                            <div className="p-2.5 bg-gray-50 rounded border text-black font-medium">{selectedRequest.data?.name || selectedRequest.data?.title || 'N/A'}</div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-500 mb-1">Price</label>
+                                            <div className="p-2.5 bg-green-50 text-green-700 font-bold rounded border py-[11px]">₹{(selectedRequest.data?.price || 0).toLocaleString()}</div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-500 mb-1">Brand</label>
+                                            <div className="p-2.5 bg-gray-50 rounded border text-black">{selectedRequest.data?.brand || selectedRequest.data?.metadata?.brand || 'N/A'}</div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-500 mb-1">Stock Quantity</label>
+                                            <div className="p-2.5 bg-gray-50 rounded border text-black">{selectedRequest.data?.stock_quantity || selectedRequest.data?.countInStock || 'N/A'}</div>
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <label className="block text-sm font-medium text-gray-500 mb-1">Description</label>
+                                            <div className="p-3 bg-gray-50 rounded border whitespace-pre-wrap text-black text-sm">{selectedRequest.data?.description || 'N/A'}</div>
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <label className="block text-sm font-medium text-gray-500 mb-1">Tags</label>
+                                            <div className="flex flex-wrap gap-2">
+                                                {(selectedRequest.data?.tags || selectedRequest.data?.metadata?.tags || []).map((tag: string, i: number) => (
+                                                    <span key={i} className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-xs font-semibold border border-indigo-100">{tag}</span>
+                                                ))}
+                                                {!(selectedRequest.data?.tags || selectedRequest.data?.metadata?.tags)?.length && <span className="text-gray-400 text-sm">No tags specified</span>}
+                                            </div>
+                                        </div>
+                                        {selectedRequest.data?.image_url && (
+                                            <div className="md:col-span-2 mt-4">
+                                                <label className="block text-sm font-medium text-gray-500 mb-2">Main Image</label>
+                                                <div className="bg-gray-50 border rounded p-4 flex justify-center">
+                                                    <img src={selectedRequest.data.image_url} alt="Product" className="max-h-72 object-contain rounded" />
+                                                </div>
+                                            </div>
+                                        )}
+                                        {selectedRequest.data?.metadata?.images?.length > 0 && (
+                                            <div className="md:col-span-2 mt-4">
+                                                <label className="block text-sm font-medium text-gray-500 mb-2">Additional Images</label>
+                                                <div className="flex gap-4 overflow-x-auto bg-gray-50 border rounded p-4">
+                                                    {selectedRequest.data.metadata.images.map((img: string, i: number) => (
+                                                        <img key={i} src={img} alt="Additional" className="h-32 w-32 object-cover rounded shadow-sm border border-gray-200" />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <h4 className="font-semibold text-lg border-b pb-2">Record Data</h4>
+                                    <pre className="bg-gray-50 p-4 rounded border overflow-x-auto text-sm text-gray-800 shadow-inner">
+                                        {JSON.stringify(selectedRequest.data, null, 2)}
+                                    </pre>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Actions */}
+                        {!showHistory && (
+                            <div className="flex justify-end gap-3 border-t pt-6 mt-4">
+                                <button
+                                    onClick={() => { closeViewModal(); openRejectModal(selectedRequest); }}
+                                    className="bg-red-50 text-red-600 px-6 py-2.5 rounded font-semibold hover:bg-red-100 border border-red-200"
+                                >
+                                    Reject Request
+                                </button>
+                                <button
+                                    onClick={() => { handleApprove(selectedRequest); closeViewModal(); }}
+                                    className="bg-green-600 text-white px-8 py-2.5 rounded font-semibold hover:bg-green-700 shadow-md"
+                                >
+                                    Approve {selectedRequest.type.charAt(0).toUpperCase() + selectedRequest.type.slice(1)}
+                                </button>
+                            </div>
+                        )}
+                        {showHistory && (
+                            <div className="flex justify-end gap-3 border-t pt-6 mt-4">
+                                <button onClick={closeViewModal} className="bg-gray-100 text-gray-700 px-8 py-2.5 rounded font-semibold hover:bg-gray-200 border">Close</button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* Reject Modal */}
             {rejectItem && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">

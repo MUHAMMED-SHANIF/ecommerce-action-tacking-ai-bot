@@ -109,7 +109,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const register = async (email: string, password: string, name?: string) => {
         try {
-            const res = await fetch("http://localhost:5001/api/auth/register", {
+            const baseUrl = typeof window !== "undefined" ? `http://${window.location.hostname}:5001` : "http://localhost:5001";
+            const res = await fetch(`${baseUrl}/api/auth/register`, {
+
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email: email.trim(), password, name })

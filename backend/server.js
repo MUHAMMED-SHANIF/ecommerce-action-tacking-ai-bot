@@ -486,6 +486,7 @@ app.get('/api/admin/products/all', isAdmin, async (req, res) => {
             category: p.categories?.name || 'Uncategorized',
             countInStock: p.stock_quantity,
             image: p.image_url,
+            brand: p.brand || p.metadata?.brand,
             rating: p.metadata?.rating || 0,
             numReviews: p.metadata?.numReviews || 0,
             originalPrice: p.metadata?.originalPrice,
@@ -495,7 +496,7 @@ app.get('/api/admin/products/all', isAdmin, async (req, res) => {
             supplier: p.metadata?.supplier,
             sellerId: p.metadata?.sellerId,
             isPaused: p.metadata?.isPaused === true,
-            tags: p.metadata?.tags || []
+            tags: p.tags || p.metadata?.tags || []
         }));
 
         res.json(formatted);
@@ -549,6 +550,8 @@ app.post('/api/admin/products', async (req, res) => {
             stock_quantity: Number(countInStock) || 0,
             category_id: categoryId || (catData ? catData.id : null),
             image_url: image || (images && images[0]) || null,
+            brand: brand || null,
+            tags: req.body.tags || [],
             metadata: metadata
         }).select().single();
 
@@ -595,6 +598,8 @@ app.put('/api/admin/products/:id', async (req, res) => {
             price: updateData.price ? Number(updateData.price) : existingProduct.price,
             stock_quantity: updateData.countInStock !== undefined ? Number(updateData.countInStock) : existingProduct.stock_quantity,
             image_url: updateData.image || existingProduct.image_url,
+            brand: updateData.brand !== undefined ? updateData.brand : existingProduct.brand,
+            tags: updateData.tags !== undefined ? updateData.tags : existingProduct.tags,
             metadata: metadata
         };
 
@@ -747,13 +752,19 @@ app.get('/api/products', async (req, res) => {
         query = query.eq('metadata->>status', 'approved').neq('metadata->>isPaused', 'true');
 
         if (category) {
-            query = query.ilike('categories.name', category);
+            // Find category ID first for accurate filtering
+            const { data: catData } = await supabase.from('categories').select('id').ilike('name', category).maybeSingle();
+            if (catData) {
+                query = query.eq('category_id', catData.id);
+            } else {
+                // If category doesn't exist, return empty results early
+                return res.json([]);
+            }
         }
 
         if (searchTerm) {
             const lowerSearch = searchTerm.toLowerCase();
             query = query.or(`name.ilike.%${lowerSearch}%,description.ilike.%${lowerSearch}%`);
-            // Note: Searching inside JSONB tags is more complex in simple PostgREST, leaving it at name/desc for now
         }
 
         const { data: products, error } = await query;
@@ -770,8 +781,8 @@ app.get('/api/products', async (req, res) => {
             description: p.description,
             image: p.image_url,
             images: p.metadata?.images || [p.image_url],
-            brand: p.metadata?.brand,
-            tags: p.metadata?.tags || [],
+            brand: p.brand || p.metadata?.brand,
+            tags: p.tags || p.metadata?.tags || [],
             rating: p.metadata?.rating || 0,
             numReviews: p.metadata?.numReviews || 0,
             countInStock: p.stock_quantity,
@@ -809,8 +820,8 @@ app.get('/api/products/:id', async (req, res) => {
             description: p.description,
             image: p.image_url,
             images: p.metadata?.images || [p.image_url],
-            brand: p.metadata?.brand,
-            tags: p.metadata?.tags || [],
+            brand: p.brand || p.metadata?.brand,
+            tags: p.tags || p.metadata?.tags || [],
             rating: p.metadata?.rating || 0,
             numReviews: p.metadata?.numReviews || 0,
             countInStock: p.stock_quantity,
@@ -881,105 +892,7 @@ app.post('/api/auth/verify', async (req, res) => {
     }
 });
 
-app.post('/api/auth/register', async (req, res) => {
-    const { name, email, password } = req.body;
-    try {
-        const { data, error } = await supabase.auth.admin.createUser({
-            email,
-            password,
-            email_confirm: true,
-            user_metadata: {
-                name,
-                role: 'user'
-            }
-        });
-        if (error) throw error;
-
-        // Sometimes Supabase returns user but no session if email confirmation is required
-        if (data.user) {
-            res.json({
-                user: {
-                    id: data.user.id,
-                    name,
-                    email: data.user.email,
-                    role: 'user'
-                }
-            });
-        } else {
-            res.status(400).json({ error: "Registration failed" });
-        }
-    } catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-
-app.post('/api/auth/register-seller', async (req, res) => {
-    const { name, email, password, phone, addresses } = req.body;
-    try {
-        const cleanEmail = email ? email.trim() : '';
-        const { data, error } = await supabase.auth.admin.createUser({
-            email: cleanEmail,
-            password,
-            email_confirm: false, // Auto-confirm to bypass email rate limits
-            user_metadata: {
-                name: name ? name.trim() : '',
-                phone: phone ? phone.trim() : '',
-                role: 'seller',
-                addresses: addresses || []
-            }
-        });
-        if (error) throw error;
-
-        const user = data.user;
-
-        // Optionally, if we ever need to sync to a postgres table, we do it here.
-        // For now, we rely strictly on Supabase Auth metadata for seller identity.
-
-        res.json({
-            user: {
-                id: user?.id,
-                name,
-                email: cleanEmail,
-                role: 'seller',
-                phone
-            }
-        });
-    } catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-
-app.post('/api/auth/register', async (req, res) => {
-    const { name, email, password } = req.body;
-    try {
-        const cleanEmail = email ? email.trim() : '';
-        const { data, error } = await supabase.auth.admin.createUser({
-            email: cleanEmail,
-            password,
-            email_confirm: false, // Auto-confirm bypasses rate limits
-            user_metadata: {
-                name: name ? name.trim() : '',
-                role: 'user'
-            }
-        });
-        if (error) throw error;
-        res.status(201).json({ user: data.user });
-    } catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-
-app.post('/api/auth/verify', async (req, res) => {
-    const { userId } = req.body;
-    const users = await readJSON(USERS_FILE);
-    const user = users.find(u => u.id === userId);
-
-    if (user) {
-        res.json({ user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone || "" } });
-    } else {
-        res.status(401).json({ error: "Invalid session" });
-    }
-});
+// Duplicate blocks removed. Supabase Auth is strictly enforced.
 
 app.post('/api/auth/update-profile', async (req, res) => {
     // Requires Admin rights to update other users via API, or user needs to use their token
@@ -1018,6 +931,54 @@ app.post('/api/auth/change-password', async (req, res) => {
         if (error) throw error;
 
         res.json({ message: "Password changed successfully" });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- CART ---
+app.get('/api/cart/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        // In a real app we'd have a cart_items table. 
+        // For this shim, we'll try to fetch from cart_items if it exists, 
+        // or return a default empty cart to prevent frontend crashes.
+        const { data: items, error } = await supabase.from('cart_items').select('*').eq('user_id', userId);
+        
+        // If the table doesn't exist or error, return empty but success to keep UI alive
+        if (error) {
+            console.warn(`Cart fetch error for ${userId}:`, error.message);
+            return res.json({ userId, items: [] });
+        }
+        
+        res.json({ userId, items: items || [] });
+    } catch (error) {
+        res.json({ userId, items: [] }); // Graceful fallback
+    }
+});
+
+app.post('/api/cart/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { items } = req.body; // Array of cart items
+
+        // 1. Clear existing
+        await supabase.from('cart_items').delete().eq('user_id', userId);
+
+        // 2. Insert new if any
+        if (items && items.length > 0) {
+            const payload = items.map(item => ({
+                user_id: userId,
+                product_id: item.id || item.productId,
+                quantity: item.qty || item.quantity || 1,
+                price: item.price,
+                // store other metadata in a JSON column if needed, 
+                // but since we only have basic columns, we'll stick to this.
+            }));
+            await supabase.from('cart_items').insert(payload);
+        }
+
+        res.json({ userId, items: items || [] });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -1062,8 +1023,8 @@ app.get('/api/seller/products', async (req, res) => {
             description: p.description,
             image: p.image_url,
             images: p.metadata?.images || [p.image_url],
-            brand: p.metadata?.brand,
-            tags: p.metadata?.tags || [],
+            brand: p.brand || p.metadata?.brand,
+            tags: p.tags || p.metadata?.tags || [],
             rating: p.metadata?.rating || 0,
             numReviews: p.metadata?.numReviews || 0,
             countInStock: p.stock_quantity,
@@ -1103,23 +1064,31 @@ app.get('/api/seller/orders', async (req, res) => {
         }
 
         // Fetch orders containing these products. 
-        const { data: orders, error } = await supabase.from('orders').select('*, order_items(*, products(name))');
+        const { data: orders, error } = await supabase.from('orders').select('*, order_items(*, products(name, image_url))');
         if (error) throw error;
 
         const sellerOrders = orders.filter(order =>
             order.order_items.some(item => productIds.includes(item.product_id))
-        ).map(order => ({
-            id: order.id,
-            totalPrice: order.total_amount,
-            status: order.status,
-            createdAt: order.created_at,
-            orderItems: order.order_items.filter(item => productIds.includes(item.product_id)).map(item => ({
-                id: item.product_id,
-                name: item.products ? item.products.name : "Product",
-                qty: item.quantity,
-                price: item.price_at_purchase
-            }))
-        }));
+        ).map(order => {
+            let address = {};
+            try { address = JSON.parse(order.shipping_address); } catch (e) { }
+
+            return {
+                id: order.id,
+                totalPrice: order.total_price,
+                status: order.status,
+                shippingAddress: address,
+                createdAt: order.created_at,
+                orderItems: order.order_items.filter(item => productIds.includes(item.product_id)).map(item => ({
+                    id: item.product_id,
+                    name: item.products ? item.products.name : "Product",
+                    image: item.products ? item.products.image_url : null,
+                    qty: item.quantity,
+                    price: item.price,
+                    seller_status: item.seller_status
+                }))
+            };
+        });
 
         res.json(sellerOrders);
     } catch (error) {
@@ -1137,31 +1106,105 @@ app.get('/api/seller/stats', async (req, res) => {
 
         const userId = user.id;
 
-        const { data: products } = await supabase.from('products').select('id')
-            .or(`metadata->>sellerId.eq.${userId},metadata->>supplierId.eq.${userId}`);
-        const productIds = products ? products.map(p => p.id) : [];
+        // Fetch ALL products then filter by sellerId/supplierId in metadata (JS side)
+        // This matches the pattern used in /api/seller/orders and /api/seller/unified-requests
+        const { data: allProducts } = await supabase
+            .from('products')
+            .select('id, name, price, stock_quantity, category_id, metadata');
+
+        const products = (allProducts || []).filter(p =>
+            p.metadata?.sellerId === userId || p.metadata?.supplierId === userId
+        );
+        const productIds = products.map(p => p.id);
+
+        // Fetch categories
+        const { data: categories } = await supabase.from('categories').select('id, name');
+        const catMap = {};
+        (categories || []).forEach(c => { catMap[c.id] = c.name; });
 
         let sellerOrders = [];
+        let orderItems = [];
         if (productIds.length > 0) {
-            const { data: orders } = await supabase.from('orders').select('status, order_items(product_id)');
+            const { data: orders } = await supabase
+                .from('orders')
+                .select('id, status, total_price, created_at, order_items(product_id, quantity, price, seller_status)');
             if (orders) {
-                sellerOrders = orders.filter(order =>
+                // Only include non-cancelled orders for analytics
+                const confirmedOrders = orders.filter(o => o.status !== 'cancelled');
+                sellerOrders = confirmedOrders.filter(order =>
                     order.order_items.some(item => productIds.includes(item.product_id))
+                );
+                orderItems = sellerOrders.flatMap(o =>
+                    o.order_items.filter(i => productIds.includes(i.product_id))
                 );
             }
         }
 
-        const pendingOrders = sellerOrders.filter(o => o.status !== 'delivered');
+        // Revenue
+        const totalRevenue = orderItems.reduce((sum, i) => sum + ((i.price || 0) * (i.quantity || 0)), 0);
+        const pendingOrders = sellerOrders.filter(o => o.status === 'pending').length;
+
+        // Top products by units sold
+        const productSales = {};
+        orderItems.forEach(item => {
+            if (!productSales[item.product_id]) {
+                const prod = products.find(p => p.id === item.product_id);
+                productSales[item.product_id] = {
+                    id: item.product_id,
+                    name: prod?.name || 'Unknown',
+                    category: catMap[prod?.category_id] || 'Unknown',
+                    price: prod?.price || 0,
+                    stock: prod?.stock_quantity || 0,
+                    totalQty: 0,
+                    totalRevenue: 0
+                };
+            }
+            productSales[item.product_id].totalQty += item.quantity || 0;
+            productSales[item.product_id].totalRevenue += (item.price || 0) * (item.quantity || 0);
+        });
+
+        const topProducts = Object.values(productSales)
+            .sort((a, b) => b.totalQty - a.totalQty)
+            .map((p, i) => ({ ...p, rank: i + 1 }));
+
+        // Category breakdown
+        const categorySales = {};
+        topProducts.forEach(p => {
+            const cat = p.category || 'Unknown';
+            if (!categorySales[cat]) categorySales[cat] = { name: cat, totalQty: 0, totalRevenue: 0 };
+            categorySales[cat].totalQty += p.totalQty;
+            categorySales[cat].totalRevenue += p.totalRevenue;
+        });
+        const topCategories = Object.values(categorySales).sort((a, b) => b.totalRevenue - a.totalRevenue);
+
+        // Recent orders (last 6)
+        const recentOrders = sellerOrders
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+            .slice(0, 6)
+            .map(o => ({
+                id: o.id,
+                status: o.status,
+                createdAt: o.created_at,
+                items: o.order_items.filter(i => productIds.includes(i.product_id)).map(i => {
+                    const prod = products.find(p => p.id === i.product_id);
+                    return { name: prod?.name || 'Product', qty: i.quantity, price: i.price, sellerStatus: i.seller_status };
+                })
+            }));
 
         res.json({
             totalProducts: productIds.length,
             totalOrders: sellerOrders.length,
-            pendingOrders: pendingOrders.length
+            pendingOrders,
+            totalRevenue,
+            topProducts: topProducts.slice(0, 5),
+            topCategories: topCategories.slice(0, 5),
+            recentOrders
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
+
 
 app.post('/api/seller/category-request', async (req, res) => {
     try {
@@ -1243,57 +1286,58 @@ app.delete('/api/wishlist/:userId/:productId', async (req, res) => {
 app.post('/api/orders', async (req, res) => {
     try {
         const { orderItems, shippingAddress, paymentMethod, itemsPrice, taxPrice, shippingPrice, totalPrice, user } = req.body;
+        const phone = user?.phone || "";
 
-        // Start transaction/batch logic. Supabase JS doesn't have native transactions for multiple tables easily without RPC
-        // We will decrement stock for each item first, then create the order.
-
+        // Start transaction/batch logic.
         for (const item of orderItems) {
-            // Get current stock
-            const { data: pData } = await supabase.from('products').select('stock_quantity').eq('id', item.id).single();
+            // Get current stock and seller details
+            const { data: pData } = await supabase.from('products').select('stock_quantity, metadata').eq('id', item.id).single();
             if (pData) {
                 const currentStock = pData.stock_quantity || 0;
                 const newStock = Math.max(0, currentStock - (item.qty || 1));
                 await supabase.from('products').update({ stock_quantity: newStock }).eq('id', item.id);
+                // Attach seller id to the item for the order items table
+                item.seller_id = pData.metadata?.sellerId || pData.metadata?.supplierId || null;
             }
         }
 
-        // Create the order entry
         const orderPayload = {
-            user_id: user?.id || null, // Assuming UUID, but user object from older impl might just have ID string
-            total_amount: Number(totalPrice),
-            status: "Processing",
-            metadata: {
-                orderItems,
-                shippingAddress,
-                paymentMethod,
-                itemsPrice,
-                taxPrice,
-                shippingPrice,
-                userSnapshot: user
-            }
+            total_price: Number(totalPrice),
+            status: "pending",
+            payment_status: "pending",
+            payment_method: paymentMethod || "card",
+            shipping_address: JSON.stringify(shippingAddress),
+            phone: phone
         };
 
-        // If user_id is a UUID we can use it, but since legacy user ID might be a timestamp string, 
-        // we might need to store the user_id in metadata instead if it violates foreign key `uuid`.
-        // We'll attempt to set user_id if it's a valid uuid, otherwise null.
         const isUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(user?.id);
         if (isUUID) {
             orderPayload.user_id = user.id;
-        } else {
-            delete orderPayload.user_id;
         }
 
         const { data: newOrder, error } = await supabase.from('orders').insert(orderPayload).select().single();
         if (error) throw error;
 
-        // Map it back to expected frontend structure
+        // Create order_items with seller details
+        const itemsPayload = orderItems.map(item => ({
+            order_id: newOrder.id,
+            product_id: item.id,
+            seller_id: item.seller_id || null,
+            seller_status: 'pending',
+            quantity: item.qty || 1,
+            price: item.price
+        }));
+
+        const { error: itemsError } = await supabase.from('order_items').insert(itemsPayload);
+        if (itemsError) throw itemsError;
+
         const formattedOrder = {
             id: newOrder.id,
-            user: newOrder.metadata.userSnapshot,
-            orderItems: newOrder.metadata.orderItems,
-            shippingAddress: newOrder.metadata.shippingAddress,
-            paymentMethod: newOrder.metadata.paymentMethod,
-            totalPrice: newOrder.total_amount,
+            user: user,
+            orderItems: orderItems,
+            shippingAddress: shippingAddress,
+            paymentMethod: newOrder.payment_method,
+            totalPrice: newOrder.total_price,
             createdAt: newOrder.created_at,
             status: newOrder.status
         };
@@ -1307,35 +1351,115 @@ app.post('/api/orders', async (req, res) => {
 app.get('/api/orders/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
-        // Search metadata for matching user ID (since user_id column might not capture legacy string IDs)
-        // Alternatively, if all users were migrated to Supabase Auth, they have UUIDs now.
-        // Let's check both column and JSONB metadata.
 
-        let { data: orders, error } = await supabase.from('orders')
-            .select('*')
-            .or(`user_id.eq.${userId},metadata->userSnapshot->>id.eq.${userId}`)
+        const { data: orders, error } = await supabase
+            .from('orders')
+            .select(`
+                *,
+                order_items (
+                    product_id,
+                    quantity,
+                    price,
+                    products ( name, image_url )
+                )
+            `)
+            .eq('user_id', userId)
             .order('created_at', { ascending: false });
 
-        if (error) {
-            // Fallback for when ID format restricts OR query
-            const { data: fallbackOrders } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
-            orders = fallbackOrders?.filter(o => o.user_id === userId || o.metadata?.userSnapshot?.id === userId) || [];
-            error = null;
-        }
+        if (error) throw error;
 
-        // Format to legacy structure
-        const userOrders = orders.map(o => ({
-            id: o.id,
-            user: o.metadata?.userSnapshot,
-            orderItems: o.metadata?.orderItems || [],
-            shippingAddress: o.metadata?.shippingAddress,
-            paymentMethod: o.metadata?.paymentMethod,
-            totalPrice: o.total_amount,
-            createdAt: o.created_at,
-            status: o.status
-        }));
+        // Format
+        const userOrders = (orders || []).map(o => {
+            let address = {};
+            try { address = JSON.parse(o.shipping_address); } catch (e) { }
+
+            return {
+                id: o.id,
+                user: { id: o.user_id },
+                orderItems: o.order_items.map(i => ({
+                    id: i.product_id,
+                    name: i.products?.name,
+                    image: i.products?.image_url,
+                    qty: i.quantity,
+                    price: i.price
+                })),
+                shippingAddress: address,
+                paymentMethod: o.payment_method,
+                totalPrice: o.total_price,
+                createdAt: o.created_at,
+                status: o.status
+            };
+        });
 
         res.json(userOrders);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.put('/api/orders/:id/cancel', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { data: order, error } = await supabase.from('orders').update({ status: 'cancelled' }).eq('id', id).select().single();
+        if (error) throw error;
+        res.json({ message: "Order cancelled successfully", order });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- SELLER ORDER MANAGEMENT ---
+app.put('/api/seller/orders/:orderId/items/:productId/status', async (req, res) => {
+    try {
+        const { orderId, productId } = req.params;
+        const { status } = req.body; // 'accepted' or 'rejected'
+
+        if (!['accepted', 'rejected'].includes(status)) {
+            return res.status(400).json({ error: "Invalid status. Must be accepted or rejected." });
+        }
+
+        // 1. Update the order_item seller_status
+        const { error: updateError } = await supabase
+            .from('order_items')
+            .update({ seller_status: status })
+            .match({ order_id: orderId, product_id: productId });
+
+        if (updateError) throw updateError;
+
+        // 2. Fetch all items for this specific order
+        const { data: items, error: itemsError } = await supabase
+            .from('order_items')
+            .select('seller_status')
+            .eq('order_id', orderId);
+
+        if (itemsError) throw itemsError;
+
+        // 3. Logic to auto-update main order status
+        let newOrderStatus = null;
+
+        // If ANY seller rejects their item, whole order could be considered cancelled (or handled via partial refunds, but we'll cancel as requested).
+        if (items.some(item => item.seller_status === 'rejected')) {
+            newOrderStatus = 'cancelled';
+        }
+        // If ALL items across ALL sellers are accepted, we ship the order automatically
+        else if (items.every(item => item.seller_status === 'accepted')) {
+            newOrderStatus = 'shipped';
+        }
+
+        // Apply automatic status change if logic triggered it
+        if (newOrderStatus) {
+            const { error: orderStatusErr } = await supabase
+                .from('orders')
+                .update({ status: newOrderStatus })
+                .eq('id', orderId);
+
+            if (orderStatusErr) throw orderStatusErr;
+        }
+
+        res.json({
+            message: `Order item marked as ${status}`,
+            overallOrderStatus: newOrderStatus || 'pending'
+        });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -1476,5 +1600,196 @@ app.get('/api/seller/unified-requests', async (req, res) => {
     }
 });
 
+// Admin Orders Analytics
+app.get('/api/admin/orders', isAdmin, async (req, res) => {
+    try {
+        // Fetch all orders
+        const { data: orders, error: ordersError } = await supabase
+            .from('orders')
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (ordersError) throw ordersError;
+
+        // Fetch all order items with product info
+        const { data: orderItems, error: itemsError } = await supabase
+            .from('order_items')
+            .select('*, products(id, name, category_id, price, stock_quantity, metadata)');
+        if (itemsError) throw itemsError;
+
+        // Fetch all products (for metadata like seller)
+        const { data: products } = await supabase.from('products').select('id, name, price, stock_quantity, category_id, metadata');
+
+        // Fetch categories for name lookup
+        const { data: categories } = await supabase.from('categories').select('id, name');
+
+        const catMap = {};
+        (categories || []).forEach(c => { catMap[c.id] = c.name; });
+
+        // Fetch all users/sellers
+        const { data: users } = await supabase.from('users').select('id, name, email, role');
+        const userMap = {};
+        (users || []).forEach(u => { userMap[u.id] = u; });
+
+        // Compute analytics — exclude cancelled orders
+        const confirmedOrders = orders.filter(o => o.status !== 'cancelled');
+        const totalOrders = confirmedOrders.length;
+        const totalRevenue = confirmedOrders.reduce((sum, o) => sum + (parseFloat(o.total_price) || 0), 0);
+        const cancelledOrders = orders.filter(o => o.status === 'cancelled').length;
+
+        // Only count items from non-cancelled orders
+        const confirmedOrderIds = new Set(confirmedOrders.map(o => o.id));
+
+        // Product sales aggregation (confirmed orders only)
+        const productSales = {};
+        (orderItems || []).filter(item => confirmedOrderIds.has(item.order_id)).forEach(item => {
+            const pid = item.product_id;
+            if (!productSales[pid]) {
+                productSales[pid] = {
+                    id: pid,
+                    name: item.products?.name || 'Unknown',
+                    totalQty: 0,
+                    totalRevenue: 0,
+                    price: item.products?.price || 0,
+                    stock: item.products?.stock_quantity || 0,
+                    categoryId: item.products?.category_id,
+                    category: catMap[item.products?.category_id] || 'Unknown'
+                };
+            }
+            productSales[pid].totalQty += item.quantity || 0;
+            productSales[pid].totalRevenue += (item.price || 0) * (item.quantity || 0);
+        });
+
+        const topProducts = Object.values(productSales)
+            .sort((a, b) => b.totalQty - a.totalQty)
+            .map((p, i) => ({ ...p, rank: i + 1 }));
+
+        // Seller aggregation from product metadata
+        const sellerSales = {};
+        (products || []).forEach(p => {
+            const sellerId = p.metadata?.sellerId || p.metadata?.supplierId;
+            if (!sellerId) return;
+            if (!sellerSales[sellerId]) {
+                // Priority: metadata.supplier (business name like "APPLE") > users table name > email prefix > fallback
+                const sellerBusinessName = p.metadata?.supplier || p.metadata?.supplierName || p.metadata?.sellerName;
+                const sellerUserName = userMap[sellerId]?.name;
+                const sellerEmail = userMap[sellerId]?.email;
+                const displayName = sellerBusinessName || sellerUserName || (sellerEmail ? sellerEmail.split('@')[0] : 'Unknown Seller');
+
+                sellerSales[sellerId] = {
+                    id: sellerId,
+                    name: displayName,
+                    email: userMap[sellerId]?.email || '',
+                    totalProducts: 0,
+                    categoryIds: new Set(),
+                    totalQty: 0,
+                    totalRevenue: 0,
+                    topProduct: null,
+                    topProductQty: 0
+                };
+            }
+            sellerSales[sellerId].totalProducts += 1;
+            if (p.category_id) sellerSales[sellerId].categoryIds.add(p.category_id);
+            const sold = productSales[p.id];
+            if (sold) {
+                sellerSales[sellerId].totalQty += sold.totalQty;
+                sellerSales[sellerId].totalRevenue += sold.totalRevenue;
+                if (sold.totalQty > sellerSales[sellerId].topProductQty) {
+                    sellerSales[sellerId].topProductQty = sold.totalQty;
+                    sellerSales[sellerId].topProduct = sold.name;
+                }
+            }
+        });
+
+        const topSellers = Object.values(sellerSales)
+            .map(s => ({ ...s, totalCategories: s.categoryIds.size, categoryIds: undefined }))
+            .sort((a, b) => b.totalRevenue - a.totalRevenue)
+            .map((s, i) => ({ ...s, rank: i + 1 }));
+
+        // Category aggregation
+        const categorySales = {};
+        topProducts.forEach(p => {
+            const cid = p.categoryId;
+            if (!cid) return;
+            if (!categorySales[cid]) {
+                categorySales[cid] = {
+                    id: cid,
+                    name: catMap[cid] || 'Unknown',
+                    totalQty: 0,
+                    totalRevenue: 0,
+                    topProduct: null,
+                    topProductQty: 0,
+                    products: []
+                };
+            }
+            categorySales[cid].totalQty += p.totalQty;
+            categorySales[cid].totalRevenue += p.totalRevenue;
+            categorySales[cid].products.push(p.name);
+            if (p.totalQty > categorySales[cid].topProductQty) {
+                categorySales[cid].topProductQty = p.totalQty;
+                categorySales[cid].topProduct = p.name;
+            }
+        });
+
+        const topCategories = Object.values(categorySales)
+            .sort((a, b) => b.totalRevenue - a.totalRevenue)
+            .map((c, i) => ({ ...c, rank: i + 1, products: c.products.slice(0, 5) }));
+
+        // Format orders list for the table
+        const ordersList = orders.map(o => {
+            const items = (orderItems || []).filter(i => i.order_id === o.id);
+            return {
+                id: o.id,
+                userId: o.user_id,
+                totalPrice: o.total_price,
+                status: o.status,
+                createdAt: o.created_at,
+                itemCount: items.length,
+                items: items.map(i => ({
+                    productId: i.product_id,
+                    name: i.products?.name,
+                    qty: i.quantity,
+                    price: i.price,
+                    sellerStatus: i.seller_status
+                }))
+            };
+        });
+
+        res.json({
+            analytics: {
+                totalOrders,       // confirmed only (non-cancelled)
+                totalRevenue,      // from confirmed orders only
+                cancelledOrders,   // informational count
+                totalProducts: (products || []).length,
+                totalSellers: Object.keys(sellerSales).length,
+                topProducts: topProducts.slice(0, 10),
+                topSellers: topSellers.slice(0, 10),
+                topCategories: topCategories.slice(0, 10)
+            },
+            orders: ordersList,
+            allProductStats: topProducts,
+            allSellerStats: topSellers,
+            allCategoryStats: topCategories
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 const PORT = 5001;
+
+// --- Catch-all for API Routes (JSON 404) ---
+app.use('/api', (req, res) => {
+    res.status(404).json({ error: `API route not found: ${req.originalUrl}`, success: false });
+});
+
+// --- Modern JSON Error Handler ---
+app.use((err, req, res, next) => {
+    console.error('[Global Error Handler]:', err);
+    res.status(err.status || 500).json({ 
+        error: err.message || 'Internal Server Error',
+        success: false 
+    });
+});
+
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+

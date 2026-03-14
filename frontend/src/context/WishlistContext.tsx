@@ -20,7 +20,14 @@ interface WishlistContextType {
 }
 
 const WishlistContext = createContext<WishlistContextType | undefined>(undefined);
-const API_URL = "http://localhost:5001/api";
+const getApiUrl = () => {
+  if (typeof window !== "undefined") {
+    return `http://${window.location.hostname}:5001/api`;
+  }
+  return "http://localhost:5001/api";
+};
+const API_URL = getApiUrl();
+
 
 export function WishlistProvider({ children }: { children: ReactNode }) {
     const { user } = useAuth();

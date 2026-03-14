@@ -1,3 +1,5 @@
+import { pauseListening, resumeListening } from './voice';
+
 export const speakText = (text: string) => {
     if (!('speechSynthesis' in window)) {
         console.warn("Text-to-speech not supported by this browser.");
@@ -18,5 +20,19 @@ export const speakText = (text: string) => {
         utterance.voice = preferredVoice;
     }
 
+    // Pause the microphone before we start speaking
+    pauseListening();
+
+    // Resume the microphone once the AI finishes speaking
+    utterance.onend = () => {
+        resumeListening();
+    };
+
+    // Also resume on error just in case it breaks
+    utterance.onerror = () => {
+        resumeListening();
+    };
+
     window.speechSynthesis.speak(utterance);
 };
+

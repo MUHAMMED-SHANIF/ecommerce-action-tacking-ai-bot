@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Menu, X, LayoutDashboard, Package, ShoppingBag, PlusCircle, Globe, Settings, LogOut, FileText } from 'lucide-react';
+import { Menu, X, LayoutDashboard, Package, ShoppingBag, PlusCircle, Globe, Settings, LogOut, FileText, BarChart2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 export default function SellerLayout({ children }: { children: React.ReactNode }) {
@@ -43,6 +43,7 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
         { href: '/seller/dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { href: '/seller/products', label: 'My Products', icon: Package },
         { href: '/seller/orders', label: 'Orders', icon: ShoppingBag },
+        { href: '/seller/analytics', label: 'My Analytics', icon: BarChart2 },
         { href: '/seller/requests', label: 'My Requests', icon: FileText },
         { href: '/seller/products/add', label: 'Add Product', icon: PlusCircle },
         { href: '/seller/category-request', label: 'Request Category', icon: Globe },
