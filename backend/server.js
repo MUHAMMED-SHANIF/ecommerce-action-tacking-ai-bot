@@ -864,16 +864,49 @@ app.get('/api/products', async (req, res) => {
             }
         }
 
+        let keywords = [];
         if (searchTerm) {
-            const lowerSearch = searchTerm.toLowerCase();
-            query = query.or(`name.ilike.%${lowerSearch}%,description.ilike.%${lowerSearch}%`);
+            const lowerSearch = searchTerm.toLowerCase().trim();
+            const cleanSearch = lowerSearch.replace(/[^a-z0-9\s]/g, ' ');
+            const stopWords = ['with', 'and', 'the', 'a', 'an', 'in', 'of', 'for', 'is', 'to', 'on'];
+            keywords = cleanSearch.split(/\s+/).filter(w => w.length > 1 && !stopWords.includes(w));
+
+            if (keywords.length > 0) {
+                keywords.forEach(kw => {
+                    query = query.or(`name.ilike.%${kw}%,description.ilike.%${kw}%`);
+                });
+            } else {
+                query = query.or(`name.ilike.%${lowerSearch}%,description.ilike.%${lowerSearch}%`);
+            }
         }
 
         if (maxPrice) {
             query = query.lte('price', maxPrice);
         }
 
-        const { data: products, error } = await query;
+        let { data: products, error } = await query;
+
+        // Typo Tolerance Fallback
+        if (products && products.length === 0 && searchTerm && keywords.length > 0) {
+            let fallbackQuery = supabase.from('products').select('*, categories(name)').eq('metadata->>status', 'approved').neq('metadata->>isPaused', 'true').order('created_at', { ascending: false });
+            
+            if (category) {
+                const { data: catData } = await supabase.from('categories').select('id').ilike('name', category).maybeSingle();
+                if (catData) fallbackQuery = fallbackQuery.eq('category_id', catData.id);
+            }
+            if (maxPrice) fallbackQuery = fallbackQuery.lte('price', maxPrice);
+
+            const longestKws = [...keywords].sort((a,b) => b.length - a.length).slice(0, 2);
+            longestKws.forEach(kw => {
+                const prefix = kw.length >= 4 ? kw.substring(0, 4) : kw;
+                fallbackQuery = fallbackQuery.or(`name.ilike.%${prefix}%,description.ilike.%${prefix}%`);
+            });
+
+            const { data: fallbackProducts } = await fallbackQuery;
+            if (fallbackProducts && fallbackProducts.length > 0) {
+                products = fallbackProducts;
+            }
+        }
 
         if (error) throw error;
 
