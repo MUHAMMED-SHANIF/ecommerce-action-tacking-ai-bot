@@ -111,7 +111,10 @@ IMPORTANT RULES:
         const ollamaBaseUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
         const response = await fetch(`${ollamaBaseUrl}/api/generate`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            },
             body: JSON.stringify({
                 model: 'mistral',
                 prompt: `${SYSTEM_PROMPT}\n\nUser Message: "${resolvedText}"\n\nJSON Response:`,
