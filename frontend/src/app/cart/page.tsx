@@ -152,9 +152,9 @@ export default function CartPage() {
                                     <p className="text-gray-500 text-[12px] mb-3">Seller: SuperComNet</p>
 
                                     <div className="flex items-baseline gap-3 mb-4">
-                                        <span className="text-[14px] text-gray-500 line-through">₹{item.originalPrice.toLocaleString()}</span>
-                                        <span className="text-[18px] font-semibold text-black">₹{item.price.toLocaleString()}</span>
-                                        <span className="text-[14px] text-[#388e3c] font-medium">{item.discount}% Off</span>
+                                        <span className="text-[14px] text-gray-500 line-through">₹{(item.originalPrice || item.price || 0).toLocaleString()}</span>
+                                        <span className="text-[18px] font-semibold text-black">₹{(item.price || 0).toLocaleString()}</span>
+                                        <span className="text-[14px] text-[#388e3c] font-medium">{item.discount || 0}% Off</span>
                                     </div>
 
                                     <div className="flex items-center gap-8">
