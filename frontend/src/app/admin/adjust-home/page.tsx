@@ -35,14 +35,14 @@ export default function AdjustHomePage() {
         const fetchAll = async () => {
             try {
                 // 1. Fetch Categories for dropdowns
-                const catRes = await fetch("http://localhost:5001/api/admin/categories", {
+                const catRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/categories`, {
                     headers: user?.token ? { 'Authorization': `Bearer ${user.token}` } : {}
                 });
                 const catData = await catRes.json();
                 setCategories(Array.isArray(catData) ? catData : []);
 
                 // 2. Fetch Current Layout
-                const layoutRes = await fetch("http://localhost:5001/api/admin/home-layout", {
+                const layoutRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/home-layout`, {
                     headers: { 'Authorization': `Bearer ${user?.token}` }
                 });
                 const layoutData = await layoutRes.json();
@@ -66,7 +66,7 @@ export default function AdjustHomePage() {
 
     const saveLayout = async () => {
         try {
-            const res = await fetch("http://localhost:5001/api/admin/home-layout", {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/home-layout`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

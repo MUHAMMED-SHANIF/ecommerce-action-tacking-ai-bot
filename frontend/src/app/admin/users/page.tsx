@@ -20,7 +20,7 @@ export default function UsersPage() {
 
         try {
             setLoading(true);
-            const res = await fetch('http://localhost:5001/api/admin/users', {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/users`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
 
@@ -47,7 +47,7 @@ export default function UsersPage() {
         if (!user) return;
 
         try {
-            const res = await fetch(`http://localhost:5001/api/admin/users/${userId}/role`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/users/${userId}/role`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -72,7 +72,7 @@ export default function UsersPage() {
         if (!user) return;
 
         try {
-            const res = await fetch(`http://localhost:5001/api/admin/users/${userId}`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/users/${userId}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${user?.token}`

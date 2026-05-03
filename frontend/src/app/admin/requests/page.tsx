@@ -48,7 +48,7 @@ export default function AdminRequests() {
     const fetchRequests = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`http://localhost:5001/api/admin/unified-requests?history=${showHistory}`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/unified-requests?history=${showHistory}`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` },
                 cache: 'no-store'
             });
@@ -107,17 +107,17 @@ export default function AdminRequests() {
 
             switch (item.type) {
                 case 'seller':
-                    url = `http://localhost:5001/api/admin/sellers/${item.id}`;
+                    url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/sellers/${item.id}`;
                     body = { isTrusted: true }; // Assuming we update this field
                     break;
                 case 'product':
-                    url = `http://localhost:5001/api/admin/products/${item.id}/approve`;
+                    url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/products/${item.id}/approve`;
                     break;
                 case 'category':
-                    url = `http://localhost:5001/api/admin/categories/${item.id}/approve`;
+                    url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/categories/${item.id}/approve`;
                     break;
                 case 'general_request':
-                    url = `http://localhost:5001/api/requests/${item.id}`;
+                    url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/requests/${item.id}`;
                     body = { status: 'approved' };
                     break;
             }
@@ -165,17 +165,17 @@ export default function AdminRequests() {
 
             switch (item.type) {
                 case 'seller':
-                    url = `http://localhost:5001/api/admin/sellers/${item.id}`;
+                    url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/sellers/${item.id}`;
                     body = { isTrusted: false, rejected: true, remark: rejectRemark }; // Needs backend support, or fallback
                     break;
                 case 'product':
-                    url = `http://localhost:5001/api/admin/products/${item.id}/review`;
+                    url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/products/${item.id}/review`;
                     break;
                 case 'category':
-                    url = `http://localhost:5001/api/admin/categories/${item.id}/review`;
+                    url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/categories/${item.id}/review`;
                     break;
                 case 'general_request':
-                    url = `http://localhost:5001/api/requests/${item.id}`;
+                    url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/requests/${item.id}`;
                     break;
             }
 

@@ -14,7 +14,7 @@ export default function SellerProducts() {
         const user = JSON.parse(userStr);
 
         try {
-            const res = await fetch("http://localhost:5001/api/seller/products", {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/seller/products`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` },
                 cache: 'no-store'
             });

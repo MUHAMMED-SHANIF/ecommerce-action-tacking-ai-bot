@@ -10,7 +10,7 @@ export default function EditProductPage() {
 
     useEffect(() => {
         if (id) {
-            fetch(`http://localhost:5001/api/products/${id}`)
+            fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/products/${id}`)
                 .then(res => res.json())
                 .then(data => setProduct(data))
                 .catch(err => console.error(err));

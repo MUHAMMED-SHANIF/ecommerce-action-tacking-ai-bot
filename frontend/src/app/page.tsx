@@ -49,7 +49,7 @@ export default function Home() {
     const fetchData = async () => {
       try {
         // Fetch Products
-        const pRes = await fetch("http://localhost:5001/api/products", { cache: 'no-store' });
+        const pRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/products`, { cache: 'no-store' });
         if (pRes.ok) {
           const pData = await pRes.json();
           setProducts(Array.isArray(pData) ? pData : []);
@@ -59,7 +59,7 @@ export default function Home() {
         }
 
         // Fetch Banners
-        const bRes = await fetch("http://localhost:5001/api/banners", { cache: "no-store" });
+        const bRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/banners`, { cache: "no-store" });
         if (bRes.ok) {
           const bData = await bRes.json();
           setBanners(bData.banners || []);
@@ -67,7 +67,7 @@ export default function Home() {
         }
 
         // Fetch Home Layout
-        const lRes = await fetch("http://localhost:5001/api/home-layout");
+        const lRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/home-layout`);
         if (lRes.ok) {
           const lData = await lRes.json();
           if (lData.sections) setHomeSections(lData.sections);
@@ -121,7 +121,7 @@ export default function Home() {
   const getImageUrl = (img: string) => {
     if (!img) return '';
     if (img.startsWith('http') || img.startsWith('data:')) return img;
-    return `http://localhost:5001${img}`;
+    return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}${img}`;
   };
 
   return (

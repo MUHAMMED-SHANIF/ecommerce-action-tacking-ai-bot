@@ -32,7 +32,7 @@ export default function CategoryForm({ initialData, isEdit = false }: CategoryFo
         formData.append('image', file);
 
         try {
-            const res = await fetch('http://localhost:5001/api/upload', {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/upload`, {
                 method: 'POST',
                 body: formData
             });
@@ -57,8 +57,8 @@ export default function CategoryForm({ initialData, isEdit = false }: CategoryFo
         const user = JSON.parse(userStr);
 
         const url = isEdit
-            ? `http://localhost:5001/api/admin/categories/${initialData.id}`
-            : 'http://localhost:5001/api/admin/categories';
+            ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/categories/${initialData.id}`
+            : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/categories`;
 
         const method = isEdit ? 'PUT' : 'POST';
 
@@ -95,7 +95,7 @@ export default function CategoryForm({ initialData, isEdit = false }: CategoryFo
     const getImageUrl = (img: string) => {
         if (!img) return '';
         if (img.startsWith('http') || img.startsWith('data:')) return img;
-        return `http://localhost:5001${img}`;
+        return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}${img}`;
     };
 
     return (

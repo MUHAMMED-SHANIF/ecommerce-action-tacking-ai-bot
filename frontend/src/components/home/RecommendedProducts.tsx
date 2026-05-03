@@ -42,7 +42,7 @@ export default function RecommendedProducts() {
 
                 if (topCategory) {
                     setCategoryName(topCategory);
-                    const res = await fetch(`http://localhost:5001/api/products?category=${encodeURIComponent(topCategory)}`);
+                    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/products?category=${encodeURIComponent(topCategory)}`);
                     if (res.ok) {
                         const data = await res.json();
                         // Filter out duplicates from history if desired? Or just show top products.

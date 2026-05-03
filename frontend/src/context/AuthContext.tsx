@@ -109,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const register = async (email: string, password: string, name?: string) => {
         try {
-            const baseUrl = typeof window !== "undefined" ? `http://${window.location.hostname}:5001` : "http://localhost:5001";
+            const baseUrl = typeof window !== "undefined" ? `${process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}`}` : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}`;
             const res = await fetch(`${baseUrl}/api/auth/register`, {
 
                 method: "POST",

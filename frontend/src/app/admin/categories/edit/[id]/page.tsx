@@ -13,7 +13,7 @@ function EditCategoryContent() {
     useEffect(() => {
         const fetchCategory = async () => {
             try {
-                const res = await fetch(`http://localhost:5001/api/admin/categories`, { cache: 'no-store' });
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/categories`, { cache: 'no-store' });
                 const data = await res.json();
                 const found = data.find((c: any) => c.id === id);
                 if (found) setCategory(found);

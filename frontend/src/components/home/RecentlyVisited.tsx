@@ -30,7 +30,7 @@ export default function RecentlyVisited() {
                 // or just rely on what we *could* have stored. 
                 // Better to fetch fresh data to get price updates etc.
                 const promises = top10.map((h: any) =>
-                    fetch(`http://localhost:5001/api/products/${h.id}`).then(r => r.ok ? r.json() : null)
+                    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/products/${h.id}`).then(r => r.ok ? r.json() : null)
                 );
 
                 const results = await Promise.all(promises);

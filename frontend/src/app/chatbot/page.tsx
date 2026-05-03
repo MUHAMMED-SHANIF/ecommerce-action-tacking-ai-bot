@@ -12,9 +12,9 @@ import { useRouter } from "next/navigation";
 
 const getApiUrl = () => {
   if (typeof window !== "undefined") {
-    return `http://${window.location.hostname}:5001`;
+    return `${process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}`}`;
   }
-  return "http://localhost:5001";
+  return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}`;
 };
 
 const API = getApiUrl();

@@ -27,7 +27,7 @@ export default function AdminOrdersPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const res = await fetch('http://localhost:5001/api/admin/orders', {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/orders`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
             const json = await res.json();

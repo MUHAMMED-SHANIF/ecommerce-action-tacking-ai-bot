@@ -70,13 +70,13 @@ export default function ProductForm({ initialData, isEdit = false }: ProductForm
         try {
             // content...
 
-            const cRes = await fetch("http://localhost:5001/api/admin/categories");
+            const cRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/categories`);
             const cData = await cRes.json();
             setCategories(Array.isArray(cData) ? cData : []);
 
             if (user?.role === 'admin') {
                 try {
-                    const sRes = await fetch("http://localhost:5001/api/admin/sellers", { headers: { 'Authorization': `Bearer ${user?.token}` } });
+                    const sRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/sellers`, { headers: { 'Authorization': `Bearer ${user?.token}` } });
                     const sData = await sRes.json();
                     setSuppliers(Array.isArray(sData) ? sData : []);
                 } catch (err) {
@@ -149,7 +149,7 @@ export default function ProductForm({ initialData, isEdit = false }: ProductForm
 
         try {
             setLoading(true);
-            const res = await fetch("http://localhost:5001/api/upload", {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/upload`, {
                 method: 'POST',
                 body: formDataPayload
             });
@@ -218,8 +218,8 @@ export default function ProductForm({ initialData, isEdit = false }: ProductForm
         setLoading(true);
 
         const url = isEdit
-            ? `http://localhost:5001/api/admin/products/${initialData.id}`
-            : 'http://localhost:5001/api/admin/products';
+            ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/products/${initialData.id}`
+            : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/products`;
 
         const method = isEdit ? 'PUT' : 'POST';
 
@@ -412,7 +412,7 @@ export default function ProductForm({ initialData, isEdit = false }: ProductForm
                                                 className="w-full text-sm border border-gray-300 rounded p-2 focus:outline-none bg-white"
                                             />
                                         </div>
-                                        {img && <img src={img.startsWith('http') || img.startsWith('data:') ? img : `http://localhost:5001${img}`} alt="Preview" className="h-20 mt-1 object-contain rounded border bg-gray-50" />}
+                                        {img && <img src={img.startsWith('http') || img.startsWith('data:') ? img : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}${img}`} alt="Preview" className="h-20 mt-1 object-contain rounded border bg-gray-50" />}
                                     </div>
                                     {formData.images.length > 1 && (
                                         <button type="button" onClick={() => removeImageField(index)} className="p-2 text-gray-400 hover:text-red-500 mt-1">

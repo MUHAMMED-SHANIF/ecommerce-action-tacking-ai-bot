@@ -42,25 +42,25 @@ export default function AdminBanners() {
     }, [user]);
 
     const fetchBannersAndSettings = async () => {
-        const res = await fetch('http://localhost:5001/api/banners', { cache: 'no-store' });
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/banners`, { cache: 'no-store' });
         const data = await res.json();
         setBanners(data.banners);
         setSettings(data.config || { autoPlay: true, showCarousel: true });
     };
 
     const fetchOptions = async () => {
-        const pRes = await fetch('http://localhost:5001/api/products');
+        const pRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/products`);
         setProducts(await pRes.json());
 
         const headers: HeadersInit = user?.token ? { 'Authorization': `Bearer ${user.token}` } : {};
-        const cRes = await fetch('http://localhost:5001/api/admin/categories', { headers });
+        const cRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/categories`, { headers });
         setCategories(await cRes.json());
     };
 
     const handleDelete = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
         if (!confirm('Delete this banner?')) return;
-        const res = await fetch(`http://localhost:5001/api/admin/banners/${id}`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/banners/${id}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${user?.token}` }
         });
@@ -68,7 +68,7 @@ export default function AdminBanners() {
     };
 
     const saveSettings = async () => {
-        const res = await fetch('http://localhost:5001/api/admin/banner-settings', {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/banner-settings`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${user?.token}` },
             body: JSON.stringify(settings)
@@ -88,7 +88,7 @@ export default function AdminBanners() {
     const getImageUrl = (img: string | undefined) => {
         if (!img) return 'https://placehold.co/128x128?text=No+Image';
         if (img.startsWith('http') || img.startsWith('data:')) return img;
-        return `http://localhost:5001${img}`;
+        return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}${img}`;
     };
 
     return (

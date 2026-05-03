@@ -75,7 +75,7 @@ export default function RecentOrders({ user, apiBase }: RecentOrdersProps) {
                                         {order.orderItems?.map((item: any, idx: number) => (
                                             <li key={idx} className="flex justify-between text-sm text-slate-600 items-center">
                                                 <div className="flex items-center gap-2">
-                                                    {item.image ? <img src={item.image.startsWith('http') ? item.image : `http://localhost:5001${item.image}`} className="w-8 h-8 rounded object-cover" /> : null}
+                                                    {item.image ? <img src={item.image.startsWith('http') ? item.image : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}${item.image}`} className="w-8 h-8 rounded object-cover" /> : null}
                                                     <span>{item.qty}x {item.name}</span>
                                                 </div>
                                                 <span>₹{item.price}</span>

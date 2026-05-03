@@ -33,16 +33,16 @@ export default function CategoryRequest() {
             if (imageFile) {
                 const uploadData = new FormData();
                 uploadData.append("image", imageFile);
-                const uploadRes = await fetch("http://localhost:5001/api/upload", {
+                const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/upload`, {
                     method: "POST",
                     body: uploadData
                 });
                 if (!uploadRes.ok) throw new Error("Image upload failed");
                 const uploadJson = await uploadRes.json();
-                imageUrl = "http://localhost:5001" + uploadJson.imageUrl;
+                imageUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}` + uploadJson.imageUrl;
             }
 
-            const res = await fetch("http://localhost:5001/api/seller/category-request", {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/seller/category-request`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

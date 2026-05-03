@@ -22,7 +22,7 @@ export default function SellerSettings() {
 
     const fetchAddresses = async () => {
         try {
-            const res = await fetch(`http://localhost:5001/api/address/${user?.id}`, { cache: 'no-store' });
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/address/${user?.id}`, { cache: 'no-store' });
             const data = await res.json();
             if (Array.isArray(data)) {
                 setAddresses(data);
@@ -38,7 +38,7 @@ export default function SellerSettings() {
         setMessage('');
 
         try {
-            const res = await fetch('http://localhost:5001/api/auth/update-profile', {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/auth/update-profile`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user?.id, name, phone })
@@ -76,7 +76,7 @@ export default function SellerSettings() {
     const saveAddresses = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`http://localhost:5001/api/address/${user?.id}`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/address/${user?.id}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ addresses })
@@ -106,7 +106,7 @@ export default function SellerSettings() {
         }
         setLoading(true);
         try {
-            const res = await fetch('http://localhost:5001/api/auth/change-password', {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/auth/change-password`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user?.id, oldPassword: currentPassword, newPassword })

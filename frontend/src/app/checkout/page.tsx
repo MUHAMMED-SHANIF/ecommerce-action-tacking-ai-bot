@@ -42,7 +42,7 @@ function CheckoutContent() {
         }
 
         // Fetch Addresses
-        fetch(`http://localhost:5001/api/address/${user.id}`, { cache: 'no-store' })
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/address/${user.id}`, { cache: 'no-store' })
             .then(res => res.json())
             .then(data => {
                 setAddresses(Array.isArray(data) ? data : []);
@@ -51,7 +51,7 @@ function CheckoutContent() {
 
         const fetchSingleProduct = async () => {
             try {
-                const res = await fetch(`http://localhost:5001/api/products/${productId}`);
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/products/${productId}`);
                 if (res.ok) {
                     const product = await res.json();
                     setOrderItems([{
@@ -96,7 +96,7 @@ function CheckoutContent() {
         const updatedList = [...addresses, newAddress];
 
         try {
-            const res = await fetch(`http://localhost:5001/api/address/${user.id}`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/address/${user.id}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ addresses: updatedList })
@@ -147,7 +147,7 @@ function CheckoutContent() {
         };
 
         try {
-            const res = await fetch('http://localhost:5001/api/orders', {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/orders`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(orderData)

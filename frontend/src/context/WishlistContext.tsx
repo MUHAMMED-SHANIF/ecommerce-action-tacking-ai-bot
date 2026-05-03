@@ -22,9 +22,9 @@ interface WishlistContextType {
 const WishlistContext = createContext<WishlistContextType | undefined>(undefined);
 const getApiUrl = () => {
   if (typeof window !== "undefined") {
-    return `http://${window.location.hostname}:5001/api`;
+    return `${process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}`}/api`;
   }
-  return "http://localhost:5001/api";
+  return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api`;
 };
 const API_URL = getApiUrl();
 

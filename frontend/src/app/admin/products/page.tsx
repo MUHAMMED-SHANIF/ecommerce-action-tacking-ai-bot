@@ -68,7 +68,7 @@ export default function AdminProducts() {
     const fetchProducts = async (silent = false) => {
         try {
             if (!silent) setLoading(true);
-            const res = await fetch('http://localhost:5001/api/admin/products/all', {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/products/all`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` },
                 cache: 'no-store'
             });
@@ -86,7 +86,7 @@ export default function AdminProducts() {
     const handleApprove = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
         try {
-            const res = await fetch(`http://localhost:5001/api/admin/products/${id}/approve`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/products/${id}/approve`, {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
@@ -100,7 +100,7 @@ export default function AdminProducts() {
     const handleTogglePause = async (id: string, currentStatus: boolean | undefined, e: React.MouseEvent) => {
         e.stopPropagation();
         try {
-            const res = await fetch(`http://localhost:5001/api/admin/products/${id}`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/products/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${user?.token}` },
                 body: JSON.stringify({ isPaused: !currentStatus })
@@ -118,7 +118,7 @@ export default function AdminProducts() {
         if (!confirm('Are you sure you want to delete this product?')) return;
 
         try {
-            const res = await fetch(`http://localhost:5001/api/admin/products/${id}`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/products/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
@@ -133,7 +133,7 @@ export default function AdminProducts() {
             const secondConfirm = prompt("Type 'DELETE' to confirm deletion of all products.");
             if (secondConfirm === 'DELETE') {
                 try {
-                    const res = await fetch(`http://localhost:5001/api/admin/products/all`, {
+                    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/products/all`, {
                         method: 'DELETE',
                         headers: { 'Authorization': `Bearer ${user?.token}` },
                     });

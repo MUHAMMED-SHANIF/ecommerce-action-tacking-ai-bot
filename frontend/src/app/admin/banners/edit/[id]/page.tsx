@@ -13,7 +13,7 @@ function EditBannerContent() {
     useEffect(() => {
         const fetchBanner = async () => {
             try {
-                const res = await fetch(`http://localhost:5001/api/banners`, { cache: 'no-store' });
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/banners`, { cache: 'no-store' });
                 const data = await res.json();
                 const found = data.banners.find((b: any) => b.id === id);
                 if (found) setBanner(found);

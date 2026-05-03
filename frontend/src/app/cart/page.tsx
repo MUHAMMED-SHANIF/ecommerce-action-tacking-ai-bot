@@ -29,7 +29,7 @@ export default function CartPage() {
             router.push("/login");
         } else {
             // Fetch Addresses
-            fetch(`http://localhost:5001/api/address/${user.id}`, { cache: 'no-store' })
+            fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/address/${user.id}`, { cache: 'no-store' })
                 .then(res => res.json())
                 .then(data => {
                     setAddresses(Array.isArray(data) ? data : []);
@@ -43,7 +43,7 @@ export default function CartPage() {
         const updatedList = [...addresses, newAddress];
 
         try {
-            const res = await fetch(`http://localhost:5001/api/address/${user.id}`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/address/${user.id}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ addresses: updatedList })

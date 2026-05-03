@@ -36,7 +36,7 @@ export default function SellerRequestsPage() {
     const fetchRequests = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`http://localhost:5001/api/seller/unified-requests?history=${showHistory}`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/seller/unified-requests?history=${showHistory}`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` },
                 cache: 'no-store'
             });

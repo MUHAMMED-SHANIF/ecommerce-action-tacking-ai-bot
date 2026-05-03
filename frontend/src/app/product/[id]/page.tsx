@@ -33,7 +33,7 @@ function ProductContent() {
     useEffect(() => {
         if (id) {
             setLoading(true);
-            fetch(`http://localhost:5001/api/products/${id}`)
+            fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/products/${id}`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.error) {
@@ -47,7 +47,7 @@ function ProductContent() {
 
                         // Fetch similar (same category) ONLY IF NOT PREVIEW
                         if (!isPreview) {
-                            fetch(`http://localhost:5001/api/products?category=${data.category}`)
+                            fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/products?category=${data.category}`)
                                 .then(res => res.json())
                                 .then(sim => {
                                     if (Array.isArray(sim)) {

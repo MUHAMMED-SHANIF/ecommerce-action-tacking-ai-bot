@@ -19,7 +19,7 @@ export default function SellerAnalytics() {
             if (!userStr) return;
             const user = JSON.parse(userStr);
             try {
-                const res = await fetch('http://localhost:5001/api/seller/stats', {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/seller/stats`, {
                     headers: { 'Authorization': `Bearer ${user?.token}` }
                 });
                 if (res.ok) setData(await res.json());

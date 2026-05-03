@@ -37,7 +37,7 @@ export default function AdminCategories() {
     }, [user]);
 
     const fetchCategories = async () => {
-        const res = await fetch('http://localhost:5001/api/admin/categories', {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/categories`, {
             headers: user?.token ? { 'Authorization': `Bearer ${user.token}` } : {},
             cache: 'no-store'
         });
@@ -46,14 +46,14 @@ export default function AdminCategories() {
     };
 
     const fetchProducts = async () => {
-        const res = await fetch('http://localhost:5001/api/products');
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/products`);
         const data = await res.json();
         setProducts(data);
     };
 
     const handleApprove = async (id: string) => {
         try {
-            const res = await fetch(`http://localhost:5001/api/admin/categories/${id}/approve`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/categories/${id}/approve`, {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
@@ -70,7 +70,7 @@ export default function AdminCategories() {
     const handleDelete = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
         if (!confirm('Delete this category?')) return;
-        const res = await fetch(`http://localhost:5001/api/admin/categories/${id}`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/categories/${id}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${user?.token}` }
         });
@@ -80,7 +80,7 @@ export default function AdminCategories() {
     const getImageUrl = (img: string) => {
         if (!img) return '';
         if (img.startsWith('http') || img.startsWith('data:')) return img;
-        return `http://localhost:5001${img}`;
+        return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}${img}`;
     };
 
     const filteredCategories = categories.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));

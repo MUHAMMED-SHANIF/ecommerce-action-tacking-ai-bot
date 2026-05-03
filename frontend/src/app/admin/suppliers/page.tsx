@@ -51,8 +51,8 @@ export default function AdminSuppliers() {
     const fetchData = async () => {
         try {
             const [sRes, pRes] = await Promise.all([
-                fetch('http://localhost:5001/api/admin/sellers', { headers: { 'Authorization': `Bearer ${user?.token}` } }),
-                fetch('http://localhost:5001/api/products')
+                fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/sellers`, { headers: { 'Authorization': `Bearer ${user?.token}` } }),
+                fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/products`)
             ]);
 
             const sData = await sRes.json();
@@ -72,8 +72,8 @@ export default function AdminSuppliers() {
 
         const method = editingSupplier ? 'PUT' : 'POST';
         const url = editingSupplier
-            ? `http://localhost:5001/api/admin/sellers/${editingSupplier.id}`
-            : `http://localhost:5001/api/admin/sellers`;
+            ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/sellers/${editingSupplier.id}`
+            : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/sellers`;
 
         try {
             const res = await fetch(url, {
@@ -115,7 +115,7 @@ export default function AdminSuppliers() {
     const handleDelete = async (id: string, name: string) => {
         if (confirm(`WARNING: Deleting supplier "${name}" will permenantly DELETE ALL THEIR PRODUCTS. Continue?`)) {
             try {
-                const res = await fetch(`http://localhost:5001/api/admin/sellers/${id}`, {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/sellers/${id}`, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${user?.token}` }
                 });

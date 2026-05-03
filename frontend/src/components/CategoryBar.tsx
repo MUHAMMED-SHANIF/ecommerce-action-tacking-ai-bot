@@ -19,12 +19,12 @@ export default function CategoryBar() {
         const fetchData = async () => {
             try {
                 // Fetch Layout (What to show)
-                const lRes = await fetch("http://localhost:5001/api/home-layout");
+                const lRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/home-layout`);
                 if (!lRes.ok) throw new Error(`Layout fetch failed: ${lRes.status}`);
                 const lData = await lRes.json();
 
                 // Fetch Full Categories (Details including images)
-                const cRes = await fetch("http://localhost:5001/api/admin/categories", { cache: 'no-store' });
+                const cRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/categories`, { cache: 'no-store' });
                 if (!cRes.ok) throw new Error(`Categories fetch failed: ${cRes.status}`);
                 const cData = await cRes.json();
                 const allCats = Array.isArray(cData) ? cData : [];
@@ -60,7 +60,7 @@ export default function CategoryBar() {
     const getImageUrl = (img: string) => {
         if (!img) return '';
         if (img.startsWith('http') || img.startsWith('data:')) return img;
-        return `http://localhost:5001${img}`;
+        return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}${img}`;
     };
 
     if (categories.length === 0) return null;

@@ -19,11 +19,11 @@ export default function AdminDashboard() {
 
             try {
                 const [usersRes, productsRes, sellersRes, requestsRes, ordersRes] = await Promise.all([
-                    fetch('http://localhost:5001/api/admin/users', { headers }),
-                    fetch('http://localhost:5001/api/products'),
-                    fetch('http://localhost:5001/api/admin/sellers', { headers }),
-                    fetch('http://localhost:5001/api/admin/unified-requests?history=false', { headers }),
-                    fetch('http://localhost:5001/api/admin/orders', { headers }),
+                    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/users`, { headers }),
+                    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/products`),
+                    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/sellers`, { headers }),
+                    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/unified-requests?history=false`, { headers }),
+                    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/orders`, { headers }),
                 ]);
 
                 const [usersData, productsData, sellersData, requestsData, ordersData] = await Promise.all([

@@ -36,10 +36,10 @@ export default function BannerForm({ initialData, isEdit = false }: BannerFormPr
 
     const fetchOptions = async () => {
         try {
-            const pRes = await fetch('http://localhost:5001/api/products');
+            const pRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/products`);
             setProducts(await pRes.json());
 
-            const cRes = await fetch('http://localhost:5001/api/admin/categories');
+            const cRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/categories`);
             setCategories(await cRes.json());
         } catch (err) {
             console.error(err);
@@ -55,7 +55,7 @@ export default function BannerForm({ initialData, isEdit = false }: BannerFormPr
         formData.append('image', file);
 
         try {
-            const res = await fetch('http://localhost:5001/api/upload', {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/upload`, {
                 method: 'POST',
                 body: formData
             });
@@ -80,8 +80,8 @@ export default function BannerForm({ initialData, isEdit = false }: BannerFormPr
         const user = JSON.parse(userStr);
 
         const url = isEdit
-            ? `http://localhost:5001/api/admin/banners/${initialData.id}`
-            : 'http://localhost:5001/api/admin/banners';
+            ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/banners/${initialData.id}`
+            : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/banners`;
 
         const method = isEdit ? 'PUT' : 'POST';
 
@@ -120,7 +120,7 @@ export default function BannerForm({ initialData, isEdit = false }: BannerFormPr
     const getImageUrl = (img: string) => {
         if (!img) return '';
         if (img.startsWith('http') || img.startsWith('data:')) return img;
-        return `http://localhost:5001${img}`;
+        return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}${img}`;
     };
 
     return (

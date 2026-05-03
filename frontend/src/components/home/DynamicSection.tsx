@@ -14,7 +14,7 @@ export default function DynamicSection({ title, category }: DynamicSectionProps)
     useEffect(() => {
         const fetchProds = async () => {
             try {
-                const res = await fetch(`http://localhost:5001/api/products?category=${encodeURIComponent(category)}`);
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/products?category=${encodeURIComponent(category)}`);
                 if (res.ok) {
                     const data = await res.json();
                     setProducts(data.slice(0, 5)); // Limit to 5 for creating a row

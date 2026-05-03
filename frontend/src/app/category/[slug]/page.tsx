@@ -20,7 +20,7 @@ export default function CategoryPage() {
             setLoading(true);
             try {
                 const res = await fetch(
-                    `http://localhost:5001/api/products?category=${encodeURIComponent(categoryName)}`,
+                    `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/products?category=${encodeURIComponent(categoryName)}`,
                     { cache: 'no-store' }
                 );
                 if (res.ok) {

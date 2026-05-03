@@ -15,7 +15,7 @@ export default function SellerOrders() {
             const user = JSON.parse(userStr);
 
             try {
-                const res = await fetch("http://localhost:5001/api/seller/orders", {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/seller/orders`, {
                     headers: { 'Authorization': `Bearer ${user?.token}` }
                 });
                 if (res.ok) {
@@ -39,7 +39,7 @@ export default function SellerOrders() {
         const user = JSON.parse(userStr);
 
         try {
-            const res = await fetch(`http://localhost:5001/api/seller/orders/${orderId}/items/${productId}/status`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/seller/orders/${orderId}/items/${productId}/status`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -121,7 +121,7 @@ export default function SellerOrders() {
                                         <div className="flex items-center gap-4">
                                             <div className="w-12 h-12 bg-slate-100 rounded-lg overflow-hidden shrink-0 border border-slate-200">
                                                 {item.image ? (
-                                                    <img src={item.image.startsWith('http') ? item.image : `http://localhost:5001${item.image}`} alt={item.name} className="w-full h-full object-cover" />
+                                                    <img src={item.image.startsWith('http') ? item.image : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}${item.image}`} alt={item.name} className="w-full h-full object-cover" />
                                                 ) : (
                                                     <Package className="w-full h-full p-3 text-slate-300" />
                                                 )}

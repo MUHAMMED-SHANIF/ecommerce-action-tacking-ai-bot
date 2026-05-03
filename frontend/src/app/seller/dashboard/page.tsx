@@ -19,8 +19,8 @@ export default function SellerDashboard() {
 
             try {
                 const [statsRes, reqRes] = await Promise.all([
-                    fetch('http://localhost:5001/api/seller/stats', { headers }),
-                    fetch('http://localhost:5001/api/requests', { headers })
+                    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/seller/stats`, { headers }),
+                    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/requests`, { headers })
                 ]);
                 if (statsRes.ok) {
                     const statsData = await statsRes.json();

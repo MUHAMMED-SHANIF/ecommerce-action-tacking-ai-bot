@@ -24,7 +24,7 @@ export default function SearchPage() {
         const fetchProducts = async () => {
             setLoading(true);
             try {
-                let url = "http://localhost:5001/api/products";
+                let url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/products`;
                 const params = new URLSearchParams();
                 if (query) params.set("search", query);
                 if (categoryParam) params.set("category", categoryParam);
