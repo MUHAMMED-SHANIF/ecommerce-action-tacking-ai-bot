@@ -36,9 +36,8 @@ const nextConfig: NextConfig = {
         hostname: 'th.bing.com',
       },
       {
-        protocol: 'http',
-        hostname: 'localhost',
-        port: '5001'
+        protocol: 'https',
+        hostname: 'xhdkzuefhpqzkigegxkn.supabase.co',
       },
     ],
   },
