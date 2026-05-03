@@ -21,30 +21,36 @@ app.use((req, res, next) => {
     next();
 });
 
-// Serve static files from "uploads"
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Ensure uploads directory exists
-const UPLOADS_DIR = path.join(__dirname, 'uploads');
-fs.mkdir(UPLOADS_DIR, { recursive: true }).catch(console.error);
 
-// Configure Multer
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, UPLOADS_DIR);
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + path.extname(file.originalname));
-    }
-});
-const upload = multer({ storage: storage });
-
-const DATA_DIR = path.join(__dirname, 'data');
-const USERS_FILE = path.join(DATA_DIR, 'users.json');
+// Configure Multer for Supabase memory storage
+const upload = multer({ storage: multer.memoryStorage() });
 // Keeping USERS_FILE solely for `isAdmin` fallback if needed, but going to rewrite `isAdmin` as well.
 
 // --- Helper Functions ---
+
+const deleteImageFromSupabase = async (imageUrl) => {
+    if (!imageUrl || typeof imageUrl !== 'string') return;
+    try {
+        if (imageUrl.includes('emart-assets')) {
+            const parts = imageUrl.split('/');
+            let fileName = parts[parts.length - 1];
+            if (fileName.includes('?')) {
+                fileName = fileName.split('?')[0];
+            }
+            if (fileName) {
+                const { error } = await supabase.storage.from('emart-assets').remove([fileName]);
+                if (error) {
+                    console.error(`Failed to delete image ${fileName} from storage:`, error);
+                } else {
+                    console.log(`Deleted image ${fileName} from storage`);
+                }
+            }
+        }
+    } catch (err) {
+        console.error("Error deleting image from storage:", err);
+    }
+};
 const readJSON = async (file) => {
     try {
         const data = await fs.readFile(file, 'utf8');
@@ -62,13 +68,7 @@ const writeJSON = async (file, data) => {
     }
 };
 
-// --- Init Data ---
-const initDB = async () => {
-    await fs.mkdir(DATA_DIR, { recursive: true }).catch(() => { });
-};
-initDB();
-
-// --- Auth Middleware ---
+// --- Helper Functions ---
 const isAdmin = async (req, res, next) => {
     // We expect a valid auth token to verify user role securely, but legacy frontend might still use x-user-id temporarily
     const token = req.headers.authorization?.split(' ')[1];
@@ -103,12 +103,32 @@ const assistantRoutes = require('./routes/assistant');
 app.use('/api/assistant', assistantRoutes);
 
 // --- UPLOAD ---
-app.post('/api/upload', upload.single('image'), (req, res) => {
+app.post('/api/upload', upload.single('image'), async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: 'No file uploaded' });
     }
-    // Return relative path
-    res.json({ imageUrl: `/uploads/${req.file.filename}` });
+    try {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const fileName = uniqueSuffix + path.extname(req.file.originalname);
+
+        const { data, error } = await supabase.storage
+            .from('emart-assets')
+            .upload(fileName, req.file.buffer, {
+                contentType: req.file.mimetype,
+                upsert: false
+            });
+
+        if (error) throw error;
+
+        const { data: { publicUrl } } = supabase.storage
+            .from('emart-assets')
+            .getPublicUrl(fileName);
+
+        res.json({ imageUrl: publicUrl });
+    } catch (err) {
+        console.error("Upload Error:", err);
+        res.status(500).json({ error: 'Failed to upload to Supabase' });
+    }
 });
 
 // --- ADMIN: BANNERS ---
@@ -185,8 +205,16 @@ app.post('/api/admin/banners', isAdmin, async (req, res) => {
 app.delete('/api/admin/banners/:id', isAdmin, async (req, res) => {
     try {
         const { id } = req.params;
+        // Fetch to get image URL before deleting
+        const { data: banner } = await supabase.from('banners').select('image').eq('id', id).single();
+        
         const { error } = await supabase.from('banners').delete().eq('id', id);
         if (error) throw error;
+
+        if (banner && banner.image) {
+            await deleteImageFromSupabase(banner.image);
+        }
+
         res.json({ message: "Banner deleted" });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -196,6 +224,9 @@ app.delete('/api/admin/banners/:id', isAdmin, async (req, res) => {
 app.put('/api/admin/banners/:id', isAdmin, async (req, res) => {
     try {
         const { id } = req.params;
+
+        // Fetch existing banner to compare image
+        const { data: existingBanner } = await supabase.from('banners').select('image').eq('id', id).single();
 
         // Convert camelCase to snake_case for Supabase
         const updateData = {};
@@ -209,6 +240,11 @@ app.put('/api/admin/banners/:id', isAdmin, async (req, res) => {
 
         const { data: updated, error } = await supabase.from('banners').update(updateData).eq('id', id).select().single();
         if (error) throw error;
+
+        // Delete old image if it changed
+        if (existingBanner && existingBanner.image && updateData.image && existingBanner.image !== updateData.image) {
+            await deleteImageFromSupabase(existingBanner.image);
+        }
 
         res.json({
             ...updated,
@@ -271,6 +307,8 @@ app.put('/api/admin/categories/:id', isAdmin, async (req, res) => {
         const { id } = req.params;
         const { name, image } = req.body;
 
+        const { data: existingCategory } = await supabase.from('categories').select('image_url').eq('id', id).single();
+
         const updateData = {};
         if (name) {
             updateData.name = name;
@@ -283,6 +321,11 @@ app.put('/api/admin/categories/:id', isAdmin, async (req, res) => {
         const { data: updated, error } = await supabase.from('categories').update(updateData).eq('id', id).select().single();
 
         if (error) throw error;
+
+        // Delete old image if it changed
+        if (existingCategory && existingCategory.image_url && image !== undefined && existingCategory.image_url !== image) {
+            await deleteImageFromSupabase(existingCategory.image_url);
+        }
 
         res.json({
             ...updated,
@@ -297,8 +340,15 @@ app.put('/api/admin/categories/:id', isAdmin, async (req, res) => {
 app.delete('/api/admin/categories/:id', isAdmin, async (req, res) => {
     try {
         const { id } = req.params;
+        const { data: category } = await supabase.from('categories').select('image_url').eq('id', id).single();
+
         const { error } = await supabase.from('categories').delete().eq('id', id);
         if (error) throw error;
+
+        if (category && category.image_url) {
+            await deleteImageFromSupabase(category.image_url);
+        }
+
         res.json({ message: "Category deleted" });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -469,8 +519,22 @@ app.delete('/api/admin/users/:id', isAdmin, async (req, res) => {
 // --- ADMIN: PRODUCTS ---
 app.delete('/api/admin/products/all', isAdmin, async (req, res) => {
     try {
+        const { data: products } = await supabase.from('products').select('image_url, metadata');
+
         const { error } = await supabase.from('products').delete().neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
         if (error) throw error;
+
+        if (products && products.length > 0) {
+            for (const p of products) {
+                if (p.image_url) await deleteImageFromSupabase(p.image_url);
+                if (p.metadata?.images && Array.isArray(p.metadata.images)) {
+                    for (const img of p.metadata.images) {
+                        if (img !== p.image_url) await deleteImageFromSupabase(img);
+                    }
+                }
+            }
+        }
+
         res.json({ message: "All products deleted" });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -574,6 +638,20 @@ app.put('/api/admin/products/:id', async (req, res) => {
         const { data: existingProduct, error: fetchErr } = await supabase.from('products').select('*').eq('id', id).single();
         if (fetchErr || !existingProduct) return res.status(404).json({ error: "Product not found" });
 
+        // Build list of old images
+        const oldImages = new Set();
+        if (existingProduct.image_url) oldImages.add(existingProduct.image_url);
+        if (existingProduct.metadata?.images && Array.isArray(existingProduct.metadata.images)) {
+            existingProduct.metadata.images.forEach(img => oldImages.add(img));
+        }
+
+        // Build list of new images
+        const newImages = new Set();
+        if (updateData.image) newImages.add(updateData.image);
+        if (updateData.images && Array.isArray(updateData.images)) {
+            updateData.images.forEach(img => newImages.add(img));
+        }
+
         // Update logic
         const metadata = { ...existingProduct.metadata, ...updateData };
         let newStatus = metadata.status;
@@ -600,7 +678,7 @@ app.put('/api/admin/products/:id', async (req, res) => {
             description: updateData.description || existingProduct.description,
             price: updateData.price ? Number(updateData.price) : existingProduct.price,
             stock_quantity: updateData.countInStock !== undefined ? Number(updateData.countInStock) : existingProduct.stock_quantity,
-            image_url: updateData.image || existingProduct.image_url,
+            image_url: updateData.image !== undefined ? updateData.image : existingProduct.image_url,
             brand: updateData.brand !== undefined ? updateData.brand : existingProduct.brand,
             tags: updateData.tags !== undefined ? updateData.tags : existingProduct.tags,
             metadata: metadata
@@ -615,6 +693,14 @@ app.put('/api/admin/products/:id', async (req, res) => {
         const { data: updatedProduct, error } = await supabase.from('products').update(dbUpdate).eq('id', id).select().single();
 
         if (error) throw error;
+
+        // Cleanup orphaned images
+        for (const oldImg of oldImages) {
+            if (!newImages.has(oldImg)) {
+                await deleteImageFromSupabase(oldImg);
+            }
+        }
+
         res.json(updatedProduct);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -624,8 +710,20 @@ app.put('/api/admin/products/:id', async (req, res) => {
 app.delete('/api/admin/products/:id', isAdmin, async (req, res) => {
     try {
         const { id } = req.params;
+        const { data: product } = await supabase.from('products').select('image_url, metadata').eq('id', id).single();
+
         const { error } = await supabase.from('products').delete().eq('id', id);
         if (error) throw error;
+
+        if (product) {
+            if (product.image_url) await deleteImageFromSupabase(product.image_url);
+            if (product.metadata?.images && Array.isArray(product.metadata.images)) {
+                for (const img of product.metadata.images) {
+                    if (img !== product.image_url) await deleteImageFromSupabase(img);
+                }
+            }
+        }
+
         res.json({ message: "Product deleted" });
     } catch (error) {
         res.status(500).json({ error: error.message });
