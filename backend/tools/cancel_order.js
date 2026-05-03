@@ -21,13 +21,35 @@ module.exports = {
             dbQuery = supabase.from('orders').select('id, status, total_price').eq('id', order_id).maybeSingle();
         }
 
-        const isUUID = /^[0-9a-f-]{36}$/i.test(user.id);
-        // We apply user_id filter via RLS in the actual update
+        // Support both full UUID and short display IDs (first 8 chars of UUID)
+        let orderQuery;
+        if (order_id) {
+            const isFullUUID = /^[0-9a-f-]{36}$/i.test(order_id);
+            if (isFullUUID) {
+                orderQuery = supabase.from('orders').select('id, status, total_price').eq('id', order_id).eq('user_id', user.id).maybeSingle();
+            } else {
+                // Fetch all recent pending/paid orders and find the matching short ID manually in JS
+                // because PostgREST does not support ILIKE on UUID fields.
+                const { data: allOrders } = await supabase
+                    .from('orders')
+                    .select('id, status, total_price')
+                    .eq('user_id', user.id)
+                    .in('status', ['pending', 'paid'])
+                    .order('created_at', { ascending: false });
+                
+                const matched = (allOrders || []).find(o => o.id.toLowerCase().startsWith(order_id.toLowerCase()));
+                
+                if (matched) {
+                    orderQuery = Promise.resolve({ data: matched, error: null });
+                } else {
+                    orderQuery = Promise.resolve({ data: null, error: null });
+                }
+            }
+        } else {
+            orderQuery = supabase.from('orders').select('id, status, total_price').eq('user_id', user.id).in('status', ['pending', 'paid']).order('created_at', { ascending: false }).limit(1).maybeSingle();
+        }
 
-        const { data: order, error: fetchErr } = await (order_id
-            ? supabase.from('orders').select('id, status, total_price').eq('id', order_id).eq('user_id', user.id).maybeSingle()
-            : supabase.from('orders').select('id, status, total_price').eq('user_id', user.id).in('status', ['pending', 'paid']).order('created_at', { ascending: false }).limit(1).maybeSingle()
-        );
+        const { data: order, error: fetchErr } = await orderQuery;
 
         if (fetchErr) throw fetchErr;
         if (!order) {

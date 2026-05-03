@@ -2,12 +2,14 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
-  Mic, MicOff, Send, X, Bot, User, Loader2,
+  Mic, MicOff, Send, Square, X, Bot, User, Loader2,
   ShoppingCart, Package, Trash2, ChevronDown, Sparkles
 } from "lucide-react";
 import { startContinuousListening, stopListening } from "@/utils/voice";
 import { speakText } from "@/utils/speak";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/context/ToastContext";
+import { useRouter } from "next/navigation";
 
 const getApiUrl = () => {
   if (typeof window !== "undefined") {
@@ -46,6 +48,8 @@ interface PendingConfirmation {
 
 export default function AIAssistant() {
   const { user } = useAuth();
+  const { showToast } = useToast();
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -55,7 +59,13 @@ export default function AIAssistant() {
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [listeningStatus, setListeningStatus] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const pendingConfirmationRef = useRef<PendingConfirmation | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    pendingConfirmationRef.current = pendingConfirmation;
+  }, [pendingConfirmation]);
 
   // All hooks must be unconditional — put early return AFTER all hooks
   const scrollToBottom = () => {
@@ -78,7 +88,8 @@ export default function AIAssistant() {
   const loadHistory = async () => {
     try {
       const res = await fetch(`${API}/api/assistant/history`, {
-        headers: { Authorization: `Bearer ${user!.token}` }
+        headers: { Authorization: `Bearer ${user!.token}` },
+        cache: 'no-store'
       });
       if (!res.ok) throw new Error(`History fetch failed: ${res.status}`);
       const data = await res.json();
@@ -112,6 +123,7 @@ export default function AIAssistant() {
     confirmedAction?: { confirmed: boolean; action: string; params: any }
   ) => {
     if (!text.trim() && !confirmedAction) return;
+    if (isProcessing) return; // Prevent concurrent processing which causes audio pipeline overlapping
 
     if (!user) {
       setMessages(prev => [...prev, {
@@ -122,11 +134,43 @@ export default function AIAssistant() {
       return;
     }
 
+    // Intercept spoken or typed answers to an active confirmation prompt
+    if (pendingConfirmationRef.current && !confirmedAction) {
+      const lower = text.toLowerCase().trim();
+      const isCancel = ['no', 'cancel', 'cancel it', 'stop', 'nope', 'nevermind', 'cancel order'].includes(lower);
+      const isConfirm = ['yes', 'yeah', 'ok', 'okay', 'proceed', 'do it', 'confirm', 'yep', 'place order', 'yes please'].includes(lower);
+      
+      if (isCancel) {
+        setMessages(prev => [...prev, 
+          { role: "user", text, timestamp: new Date() }, 
+          { role: "assistant", text: "No problem! I've cancelled that action. Is there anything else I can help you with?", timestamp: new Date() }
+        ]);
+        setPendingConfirmation(null);
+        speakText("No problem, I've cancelled that action.");
+        setInput("");
+        setIsProcessing(false);
+        return;
+      } else if (isConfirm) {
+        // Automatically inject the confirmedAction struct and proceed
+        confirmedAction = {
+          confirmed: true,
+          action: pendingConfirmationRef.current.action,
+          params: pendingConfirmationRef.current.params
+        };
+      }
+    }
+
     const userMsg: Message = { role: "user", text, timestamp: new Date() };
     setMessages(prev => [...prev, userMsg]);
     setInput("");
     setIsProcessing(true);
     setPendingConfirmation(null);
+
+    // Abort any ongoing request before starting a new one
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
 
     try {
       const body: any = { message: text };
@@ -142,7 +186,8 @@ export default function AIAssistant() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${user.token}`
         },
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
+        signal: abortControllerRef.current.signal
       });
 
       const data = await res.json();
@@ -171,7 +216,87 @@ export default function AIAssistant() {
       }
 
       speakText(data.reply);
+
+      // --- UI ACTION MAPPING MAPPING ---
+      console.log("AI ACTION DATA TOOL:", data.tool);
+      if (data.tool) {
+        if (data.tool === 'add_to_cart') showToast("Added to cart! 🛒");
+        if (data.tool === 'add_to_wishlist') showToast("Added to wishlist! ❤️");
+        
+        console.log("Will attempt to route for tool:", data.tool);
+        setTimeout(() => {
+          switch (data.tool) {
+             case "search_products":
+             case "recommend_products":
+              console.log("Handling search_products tool route...", data.data?.query);
+              {
+                const sq = data.data?.query;
+                const sc = data.data?.category;
+                const sp = data.data?.max_price;
+                const params = new URLSearchParams();
+                if (sq) params.set("q", sq);
+                if (sc) params.set("category", sc);
+                if (sp) params.set("maxPrice", sp.toString());
+                router.push(`/search?${params.toString()}`);
+              }
+              break;
+            case "get_product_details":
+              console.log("Handling get_product_details tool route...");
+              if (data.data?.product?.id) {
+                router.push(`/product/${data.data.product.id}`);
+              } else if (data.data?.id) {
+                router.push(`/product/${data.data.id}`);
+              }
+              break;
+            case "view_cart":
+            case "add_to_cart":
+            case "remove_from_cart":
+            case "update_cart_quantity":
+            case "move_wishlist_to_cart":
+              console.log("Handling cart route...");
+              router.push('/cart');
+              break;
+            case "add_to_wishlist":
+            case "remove_from_wishlist":
+            case "view_wishlist":
+              console.log("Handling wishlist route...");
+              router.push('/wishlist');
+              break;
+            case "track_order":
+            case "cancel_order":
+            case "create_order":
+            case "return_order":
+            case "view_orders":
+              console.log("Handling orders route...");
+              router.push('/profile?tab=orders');
+              break;
+            case "view_profile":
+            case "update_address":
+              console.log("Handling profile route...");
+              router.push('/profile');
+              break;
+            case "navigate_home":
+              router.push('/');
+              break;
+            case "go_back":
+              router.back();
+              break;
+            case "show_deals":
+              console.log("Handling deals route...");
+              router.push('/search'); // Fallback since /offers doesn't exist
+              break;
+            default:
+              console.log("Unhandled tool string:", data.tool);
+              break;
+          }
+        }, 1500); // 1.5s delay to let the voice start speaking before page transition
+      }
+
     } catch (err: any) {
+      if (err.name === "AbortError") {
+        console.log("Request aborted by user.");
+        return;
+      }
       console.error("AI Assistant Error:", err);
       const errMsg = err.message || "I'm having trouble right now. Please try again!";
       setMessages(prev => [...prev, {
@@ -182,7 +307,18 @@ export default function AIAssistant() {
 
       setIsProcessing(false);
     }
-  }, [user]);
+  }, [user, isProcessing, input, pendingConfirmation]);
+
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsProcessing(false);
+  };
 
   const handleSend = () => {
     if (input.trim()) sendMessage(input.trim());
@@ -207,7 +343,8 @@ export default function AIAssistant() {
     }
   };
 
-  const toggleListening = () => {
+
+  const toggleListening = async () => {
     if (isListening) {
       stopListening();
       setIsListening(false);
@@ -216,9 +353,9 @@ export default function AIAssistant() {
     }
 
     setIsListening(true);
-    setListeningStatus("Listening...");
+    setListeningStatus("Requesting mic...");
 
-    startContinuousListening(
+    await startContinuousListening(
       (transcript) => {
         setListeningStatus("Processing...");
         sendMessage(transcript);
@@ -240,6 +377,7 @@ export default function AIAssistant() {
         setInput(interim); // Live update the text area!
       }
     );
+    setListeningStatus("Listening...");
   };
 
   const clearHistory = async () => {
@@ -423,10 +561,17 @@ export default function AIAssistant() {
                   isListening ? "bg-emerald-50 border-emerald-300 ring-2 ring-emerald-100" : "bg-white border-gray-200"
                 }`}
               />
-              <button onClick={handleSend} disabled={!input.trim() || isProcessing || !user}
-                className="p-2.5 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                <Send className="w-4 h-4" />
-              </button>
+              {isProcessing ? (
+                <button onClick={handleStop}
+                  className="p-2.5 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-colors" title="Stop AI">
+                  <Square className="w-4 h-4 fill-current" />
+                </button>
+              ) : (
+                <button onClick={handleSend} disabled={!input.trim() || !user}
+                  className="p-2.5 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors" title="Send message">
+                  <Send className="w-4 h-4" />
+                </button>
+              )}
               <button onClick={toggleListening} disabled={isProcessing || !user}
                 className={`p-2.5 rounded-xl text-white transition-all disabled:opacity-40 ${
                   isListening ? "bg-red-500 hover:bg-red-600 animate-pulse" : "bg-gray-700 hover:bg-gray-800"

@@ -37,8 +37,11 @@ const getApiUrl = () => {
 const API_URL = getApiUrl();
 
 
+import { useToast } from "./ToastContext";
+
 export function CartProvider({ children }: { children: ReactNode }) {
     const { user } = useAuth();
+    const { showToast } = useToast();
     const [items, setItems] = useState<CartItem[]>([]);
 
     // Fetch Cart when user changes
@@ -47,9 +50,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
             fetch(`${API_URL}/cart/${user.id}`)
                 .then(res => res.json())
                 .then(data => {
-                    // Server returns { userId, items: [...] } or just items?
-                    // server.js: res.json(cart); -> cart is { userId, items: [] }
-                    // So data.items is the array.
                     if (data && Array.isArray(data.items)) {
                         setItems(data.items);
                     } else {
@@ -67,30 +67,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     const addToCart = async (product: any) => {
         if (!user?.id) {
-            // In a real app we might redirect here, but for now we rely on the component to check login
             return;
         }
 
-        // 1. Calculate New Cart State Locally
         let updatedItems = [...items];
         const existingIndex = updatedItems.findIndex(i => String(i.id) === String(product.id));
 
         if (existingIndex > -1) {
-            // Update Quantity
             updatedItems[existingIndex].qty += 1;
         } else {
-            // Add New Item
             updatedItems.push({
                 ...product,
                 qty: 1,
-                // Ensure ID is string to match consistent types if needed
                 id: String(product.id),
-                deliveryDate: "Wed Oct 25" // Mock date
+                deliveryDate: "Wed Oct 25" 
             });
         }
 
-        // 2. Optimistic Update
         setItems(updatedItems);
+        showToast(`Added ${product.title || product.name || 'item'} to cart!`);
 
         try {
             // 3. Sync Full Cart to Server

@@ -7,7 +7,8 @@ module.exports = {
     },
     requiresConfirmation: false,
     execute: async ({ params, user, supabase }) => {
-        const { category, budget } = params;
+        const category = params.category || params.type || params.query || params.product;
+        const budget = params.budget || params.max_price;
 
         // Find category by name
         let categoryId = null;
@@ -25,19 +26,21 @@ module.exports = {
             .select('id, name, price, description, image_url, brand, stock_quantity, categories(name), metadata')
             .eq('metadata->>status', 'approved')
             .neq('metadata->>isPaused', 'true')
-            .order('created_at', { ascending: false })
-            .limit(5);
+            .order('created_at', { ascending: false });
 
         if (categoryId) {
             dbQuery = dbQuery.eq('category_id', categoryId);
         } else if (category) {
-            // Fallback: search by name
-            dbQuery = dbQuery.ilike('name', `%${category}%`);
+            // Category was provided but no exact category matched. Try searching by name/description.
+            dbQuery = dbQuery.or(`name.ilike.%${category}%,description.ilike.%${category}%`);
         }
 
         if (budget) {
             dbQuery = dbQuery.lte('price', budget);
         }
+
+        // Apply a realistic limit
+        dbQuery = dbQuery.limit(5);
 
         const { data, error } = await dbQuery;
         if (error) throw error;
@@ -63,7 +66,10 @@ module.exports = {
         const budgetText = budget ? ` under ₹${budget.toLocaleString()}` : '';
         return {
             text: `Here are my top recommendations for ${category || 'you'}${budgetText}:`,
-            products
+            products,
+            category: category || null,
+            query: category || null,
+            max_price: budget || null
         };
     }
 };

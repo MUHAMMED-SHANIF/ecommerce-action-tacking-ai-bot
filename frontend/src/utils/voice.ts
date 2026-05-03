@@ -6,6 +6,8 @@ let recognition: any = null;
 let shouldContinue = false;
 let isPaused = false;
 let silenceTimer: any = null;
+let lastStartTime = 0;
+let restartTimer: any = null;
 
 // Store callbacks at module level to be accessible by startInstance
 let onResultCb: (text: string) => void = () => {};
@@ -13,7 +15,7 @@ let onStopCb: () => void = () => {};
 let onErrorCb: (err: any) => void = () => {};
 let onInterimResultCb: (text: string) => void = () => {};
 
-export const startContinuousListening = (
+export const startContinuousListening = async (
     onResult: (text: string) => void,
     onStop: () => void,
     onError?: (err: any) => void,
@@ -23,7 +25,16 @@ export const startContinuousListening = (
         (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-        onError?.('Speech recognition not supported in this browser. Try Chrome.');
+        onError?.('Speech recognition not supported in this browser. Try Chrome or Edge.');
+        return;
+    }
+
+    try {
+        // Explicitly request microphone permission first (fixes issues in Chrome/Safari)
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (err) {
+        console.error("Microphone access denied:", err);
+        onError?.("Microphone permission denied. Please allow microphone access in your browser settings.");
         return;
     }
 
@@ -41,12 +52,29 @@ export const startContinuousListening = (
 const startInstance = () => {
     if (!shouldContinue || isPaused) return;
 
+    // Prevent rapid double-starts by queuing them so mics never permanently die
+    clearTimeout(restartTimer);
+    const now = Date.now();
+    if (now - lastStartTime < 200) {
+        restartTimer = setTimeout(startInstance, 200);
+        return;
+    }
+    lastStartTime = now;
+
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) return;
 
+    // Fully cleanup old instance first
+    if (recognition) {
+        recognition.onend = null;
+        recognition.onresult = null;
+        recognition.onerror = null;
+        try { recognition.abort(); } catch (_) {}
+    }
+
     console.log("Voice: Initializing new instance...");
     recognition = new SpeechRecognition();
-    recognition.lang = 'en-US';
+    recognition.lang = 'en-IN'; // Optimizing accuracy for Indian English
     recognition.interimResults = true; 
     recognition.continuous = false; 
     recognition.maxAlternatives = 1;
@@ -82,7 +110,7 @@ const startInstance = () => {
                 onResultCb(currentText);
                 restart(); 
             }
-        }, 2000);
+        }, 1200); // 1.2s allows natural speaking pauses without triggering Chrome's stall penalty
     };
 
     recognition.onerror = (event: any) => {
@@ -91,7 +119,7 @@ const startInstance = () => {
         console.warn("Voice Error:", event.error);
         if (event.error === 'no-speech') return; 
         if (event.error === 'network') {
-            if (shouldContinue && !isPaused) setTimeout(restart, 2000);
+            if (shouldContinue && !isPaused) setTimeout(startInstance, 1000);
             return;
         }
         if (event.error === 'aborted') return;
@@ -100,7 +128,7 @@ const startInstance = () => {
 
     recognition.onend = () => {
         if (shouldContinue && !isPaused) {
-            setTimeout(startInstance, 100);
+            setTimeout(startInstance, 50);
         } else if (!shouldContinue) {
             console.log("Voice: Session ended");
             onStopCb();
@@ -111,14 +139,16 @@ const startInstance = () => {
         recognition.start();
     } catch (err) {
         console.error("Voice Start Failed:", err);
-        if (shouldContinue && !isPaused) setTimeout(restart, 1000);
+        if (shouldContinue && !isPaused) setTimeout(startInstance, 1000);
     }
 };
 
 const restart = () => {
     clearTimeout(silenceTimer);
     try { 
-        recognition?.abort(); 
+        if (recognition) {
+            recognition.stop(); // Graceful stop prevents Web Speech API crashes
+        }
     } catch (_) {}
 };
 
@@ -130,8 +160,11 @@ export const stopListening = () => {
     isPaused = false;
     clearTimeout(silenceTimer);
     try {
-        recognition?.abort();
-        recognition = null;
+        if (recognition) {
+            recognition.onend = null; // Prevent it from trying to start again
+            recognition.abort();
+            recognition = null;
+        }
     } catch (_) {}
     onStopCb();
 };
@@ -144,7 +177,9 @@ export const pauseListening = () => {
     isPaused = true;
     console.log("Voice: Paused");
     clearTimeout(silenceTimer);
-    try { recognition?.abort(); } catch (_) {}
+    try { 
+        if (recognition) recognition.abort(); 
+    } catch (_) {}
 };
 
 /**
@@ -155,7 +190,7 @@ export const resumeListening = () => {
         console.log("Voice: Resumed");
         isPaused = false;
         // Start a fresh instance now that we're unpaused
-        setTimeout(startInstance, 100);
+        setTimeout(startInstance, 50);
     } else {
         isPaused = false;
     }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Heart } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useWishlist } from "@/context/WishlistContext";
@@ -35,6 +36,18 @@ export default function ProductCard({ id, title, image, price, originalPrice, di
         }
     }
 
+    const [isAnimating, setIsAnimating] = useState(false);
+
+    const handleCardClick = () => {
+        setIsAnimating(true);
+        // Wait for 500ms animation to visually complete, then route
+        setTimeout(() => {
+            router.push(`/product/${id}`);
+            // State resets when route changes, but give it a moment
+            setTimeout(() => setIsAnimating(false), 200);
+        }, 500);
+    };
+
     const handleWishlistClick = async (e: React.MouseEvent) => {
         e.stopPropagation();
         e.preventDefault();
@@ -53,13 +66,27 @@ export default function ProductCard({ id, title, image, price, originalPrice, di
 
     return (
         <div
-            onClick={() => router.push(`/product/${id}`)}
-            className="bg-white p-4 rounded-sm hover:shadow-lg transition-shadow duration-200 cursor-pointer min-w-[200px] border border-transparent hover:border-gray-200 relative group"
+            onClick={handleCardClick}
+            className={`bg-white p-4 rounded-sm transition-all duration-500 cursor-pointer min-w-[200px] border border-transparent hover:border-gray-200 relative group
+                ${isAnimating 
+                    ? 'z-50 shadow-2xl scale-[1.15] opacity-0 blur-[2px] pointer-events-none' 
+                    : 'hover:shadow-lg hover:-translate-y-1'
+                }
+            `}
+            style={{ 
+                perspective: '1000px',
+                transformStyle: 'preserve-3d'
+            }}
         >
-            <div className="relative h-40 w-full mb-2">
+            <div 
+                className={`relative h-40 w-full mb-2 transition-transform duration-500
+                    ${isAnimating ? 'scale-[0.85] -translate-z-10' : 'group-hover:scale-105'}
+                `}
+            >
                 {/* Usage of standard img tag to allow external URLs without next.config.js changes */}
                 <img src={displayImage} alt={title} className="w-full h-full object-contain" />
             </div>
+
 
             {/* Like Button - Always Visible */}
             <div

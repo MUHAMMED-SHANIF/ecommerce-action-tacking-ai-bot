@@ -5,6 +5,7 @@ module.exports = {
         product_name: 'string - name or partial name of the product'
     },
     requiresConfirmation: false,
+    returnDirectText: true,
     execute: async ({ params, user, supabase }) => {
         const { product_name } = params;
 

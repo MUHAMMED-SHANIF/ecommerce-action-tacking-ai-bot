@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -80,21 +80,34 @@ export default function Home() {
     fetchData();
   }, []);
 
+  // Pad banners to ensure we have at least 3 for the carousel layout
+  const displayBanners = useMemo(() => {
+    let padded = [...banners];
+    if (padded.length === 1) {
+      padded.push({ id: 'placeholder-1', image: '', actionType: '', targetId: '' });
+      padded.push({ id: 'placeholder-2', image: '', actionType: '', targetId: '' });
+    } else if (padded.length === 2) {
+      padded.push({ id: 'placeholder-2', image: '', actionType: '', targetId: '' });
+    }
+    return padded;
+  }, [banners]);
+
   // Carousel Logic
   useEffect(() => {
-    if (bannerConfig.autoPlay && banners.length > 1) {
-      const currentBanner = banners[currentBannerIndex];
-      const duration = (currentBanner.duration || 5) * 1000; // Convert to ms
+    if (bannerConfig.autoPlay && displayBanners.length > 1) {
+      const currentBanner = displayBanners[currentBannerIndex] || displayBanners[0];
+      const duration = (currentBanner?.duration || 5) * 1000; // Convert to ms
 
       const timer = setTimeout(() => {
-        setCurrentBannerIndex((prev) => (prev + 1) % banners.length);
+        setCurrentBannerIndex((prev) => (prev + 1) % displayBanners.length);
       }, duration);
 
       return () => clearTimeout(timer);
     }
-  }, [bannerConfig.autoPlay, banners.length, currentBannerIndex, banners]);
+  }, [bannerConfig.autoPlay, displayBanners.length, currentBannerIndex, displayBanners]);
 
   const handleBannerClick = (b: Banner) => {
+    if (!b.image) return; // Prevent click on placeholders
     if (b.actionType === 'product' && b.targetId) {
       router.push(`/product/${b.targetId}`);
     } else if (b.actionType === 'category' && b.targetId) {
@@ -102,8 +115,8 @@ export default function Home() {
     }
   };
 
-  const nextBanner = () => setCurrentBannerIndex((prev) => (prev + 1) % banners.length);
-  const prevBanner = () => setCurrentBannerIndex((prev) => (prev - 1 + banners.length) % banners.length);
+  const nextBanner = () => setCurrentBannerIndex((prev) => (prev + 1) % displayBanners.length);
+  const prevBanner = () => setCurrentBannerIndex((prev) => (prev - 1 + displayBanners.length) % displayBanners.length);
 
   const getImageUrl = (img: string) => {
     if (!img) return '';
@@ -116,56 +129,82 @@ export default function Home() {
       {/* Category Bar Section */}
       <CategoryBar />
 
-      {/* Banner Section - Full Width, Outside Container */}
+      {/* Banner Section - Center Mode Carousel */}
       {banners.length > 0 ? (
-        <div className="w-full bg-white shadow-sm hover:shadow-md transition-shadow mb-4 mt-2">
-          <div className="relative w-full h-[180px] sm:h-[240px] md:h-[320px] lg:h-[380px]">
+        <div className="w-full bg-[#f1f2f4] overflow-hidden mb-6 mt-4">
+          <div className="relative w-full h-[160px] sm:h-[220px] md:h-[280px] lg:h-[340px] flex justify-center items-center">
             {bannerConfig.showCarousel ? (
               <>
-                {banners.map((b, index) => (
-                  <div
-                    key={b.id}
-                    className={`absolute inset-0 transition-opacity duration-700 ease-in-out cursor-pointer ${index === currentBannerIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
-                    onClick={() => handleBannerClick(b)}
-                  >
-                    <img
-                      src={getImageUrl(b.image)}
-                      alt="Banner"
-                      className="w-full h-full object-fill"
-                    />
-                  </div>
-                ))}
+                {displayBanners.map((b, index) => {
+                  let positionClass = 'translate-x-0 scale-50 opacity-0 z-0 pointer-events-none hidden';
+                  
+                  if (displayBanners.length >= 3) {
+                    if (index === currentBannerIndex) {
+                      positionClass = 'translate-x-0 scale-100 opacity-100 z-20 shadow-xl';
+                    } else if (index === (currentBannerIndex + 1) % displayBanners.length) {
+                      positionClass = 'translate-x-[96%] sm:translate-x-[96%] md:translate-x-[98%] lg:translate-x-[102%] scale-[0.9] opacity-70 z-10 cursor-pointer';
+                    } else if (index === (currentBannerIndex - 1 + displayBanners.length) % displayBanners.length) {
+                      positionClass = '-translate-x-[96%] sm:-translate-x-[96%] md:-translate-x-[98%] lg:-translate-x-[102%] scale-[0.9] opacity-70 z-10 cursor-pointer';
+                    }
+                  } else {
+                    if (index === currentBannerIndex) positionClass = 'translate-x-0 scale-100 opacity-100 z-20 shadow-xl';
+                  }
 
-                {banners.length > 1 && (
+                  return (
+                    <div
+                      key={`${b.id}-${index}`}
+                      className={`absolute w-[90%] sm:w-[80%] md:w-[75%] lg:w-[65%] max-w-[1000px] h-full transition-all duration-[800ms] ease-[cubic-bezier(0.25,0.8,0.25,1)] rounded-2xl overflow-hidden flex items-center justify-center bg-white ${positionClass}`}
+                      onClick={() => {
+                        if (index === currentBannerIndex) {
+                          handleBannerClick(b);
+                        } else {
+                          setCurrentBannerIndex(index);
+                        }
+                      }}
+                    >
+                      {b.image ? (
+                        <img
+                          src={getImageUrl(b.image)}
+                          alt="Banner"
+                          className="w-full h-full object-fill md:object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-white"></div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {displayBanners.length > 1 && (
                   <>
-                    <button onClick={(e) => { e.stopPropagation(); prevBanner(); }} className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/70 p-2 rounded-full hover:bg-white z-20 shadow-md">
+                    <button onClick={(e) => { e.stopPropagation(); prevBanner(); }} className="absolute left-2 sm:left-6 md:left-10 lg:left-16 top-1/2 -translate-y-1/2 bg-white/80 p-2 sm:p-3 rounded-full hover:bg-white z-30 shadow-lg transition-transform hover:scale-110">
                       <ChevronLeft size={24} />
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); nextBanner(); }} className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/70 p-2 rounded-full hover:bg-white z-20 shadow-md">
+                    <button onClick={(e) => { e.stopPropagation(); nextBanner(); }} className="absolute right-2 sm:right-6 md:right-10 lg:right-16 top-1/2 -translate-y-1/2 bg-white/80 p-2 sm:p-3 rounded-full hover:bg-white z-30 shadow-lg transition-transform hover:scale-110">
                       <ChevronRight size={24} />
                     </button>
                   </>
                 )}
 
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-20">
-                  {banners.map((_, i) => (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-30">
+                  {displayBanners.map((_, i) => (
                     <button
                       key={i}
                       onClick={(e) => { e.stopPropagation(); setCurrentBannerIndex(i); }}
-                      className={`h-2 rounded-full transition-all shadow-sm ${i === currentBannerIndex ? 'bg-white w-6' : 'bg-white/60 w-2'}`}
+                      className={`h-2 rounded-full transition-all shadow-sm ${i === currentBannerIndex ? 'bg-blue-600 w-8' : 'bg-white/80 w-2 hover:bg-white'}`}
                     />
                   ))}
                 </div>
               </>
             ) : (
               <div
-                className="w-full h-full cursor-pointer"
+                className="w-[90%] sm:w-[80%] md:w-[75%] lg:w-[65%] max-w-[1000px] h-full rounded-2xl overflow-hidden cursor-pointer shadow-xl"
                 onClick={() => handleBannerClick(banners[0])}
               >
                 <img
                   src={getImageUrl(banners[0].image)}
                   alt="Banner"
-                  className="w-full h-full object-fill"
+                  className="w-full h-full object-fill md:object-cover"
                 />
               </div>
             )}

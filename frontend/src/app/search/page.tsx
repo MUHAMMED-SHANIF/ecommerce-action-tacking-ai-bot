@@ -11,6 +11,7 @@ export default function SearchPage() {
     const router = useRouter();
     const query = searchParams.get("q") || searchParams.get("query") || "";
     const categoryParam = searchParams.get("category") || "";
+    const maxPriceParam = searchParams.get("maxPrice") || "";
 
     const [products, setProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -27,6 +28,7 @@ export default function SearchPage() {
                 const params = new URLSearchParams();
                 if (query) params.set("search", query);
                 if (categoryParam) params.set("category", categoryParam);
+                if (maxPriceParam) params.set("max_price", maxPriceParam);
                 if (params.toString()) url += "?" + params.toString();
 
                 const res = await fetch(url, { cache: "no-store" });

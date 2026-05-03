@@ -20,17 +20,28 @@ export const speakText = (text: string) => {
         utterance.voice = preferredVoice;
     }
 
+    // Prevent garbage collection bug in Chromium by keeping a reference
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).utterances = (window as any).utterances || [];
+    (window as any).utterances.push(utterance);
+
     // Pause the microphone before we start speaking
     pauseListening();
 
     // Resume the microphone once the AI finishes speaking
     utterance.onend = () => {
         resumeListening();
+        // Cleanup reference
+        const idx = (window as any).utterances.indexOf(utterance);
+        if (idx !== -1) (window as any).utterances.splice(idx, 1);
     };
 
     // Also resume on error just in case it breaks
     utterance.onerror = () => {
         resumeListening();
+        // Cleanup reference
+        const idx = (window as any).utterances.indexOf(utterance);
+        if (idx !== -1) (window as any).utterances.splice(idx, 1);
     };
 
     window.speechSynthesis.speak(utterance);

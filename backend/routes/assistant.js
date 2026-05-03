@@ -7,7 +7,7 @@ const { createClient } = require('@supabase/supabase-js');
 
 const router = express.Router();
 
-const HISTORY_LIMIT = 10; // Last N messages to include as context
+const HISTORY_LIMIT = 30; // Last N messages to include as context
 
 const getAuthSupabase = (token) =>
     createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
@@ -60,14 +60,15 @@ router.post('/message', requireAuth, async (req, res) => {
                 success: true,
                 reply: replyText,
                 data: actionResult.data,
-                pendingConfirmation: null
+                pendingConfirmation: null,
+                tool: pendingAction
             });
         }
 
         // --- 3. Fetch conversation history (last N messages) ---
         const { data: historyRows } = await serviceSupabase
             .from('ai_messages')
-            .select('role, message')
+            .select('role, message, metadata')
             .eq('user_id', user.id)
             .order('created_at', { ascending: false })
             .limit(HISTORY_LIMIT);
@@ -83,11 +84,16 @@ router.post('/message', requireAuth, async (req, res) => {
                 supabase.from('cart_items').select('quantity, products(name)').eq('user_id', user.id).limit(5),
                 supabase.from('addresses').select('city').eq('user_id', user.id).limit(3)
             ]);
+            
+            // Extract the most recently shown products from history
+            const contextProductsRow = (historyRows || []).find(m => m.role === 'assistant' && m.metadata?.rendered_products?.length > 0);
+            
             userContext = {
                 profile: profileRes.data,
                 orders: ordersRes.data || [],
                 cart: cartRes.data || [],
-                addresses: addressRes.data || []
+                addresses: addressRes.data || [],
+                lastProducts: contextProductsRow ? contextProductsRow.metadata.rendered_products : null
             };
         } catch (_) { /* context fetch failure is non-fatal */ }
 
@@ -103,9 +109,21 @@ router.post('/message', requireAuth, async (req, res) => {
             replyText = aiResult.text || "I'm here to help!";
 
         } else if (aiResult.type === 'tool_call') {
-            const toolResult = await handleToolCall(aiResult.tool, aiResult.params || {}, user, token);
-            replyText = toolResult.message;
-            responseData = toolResult.data;
+            const tool = require('../tools').getTool(aiResult.tool);
+            
+            // SECURITY ENFORCEMENT: Never let the AI bypass confirmation for destructive tools
+            if (tool && tool.requiresConfirmation) {
+                console.log(`[Assistant] Intercepted unauthorized tool_call for ${aiResult.tool}. Forcing confirmation.`);
+                replyText = aiResult.text_on_success || `Are you sure you want to ${aiResult.tool.replace(/_/g, ' ')}?`;
+                pendingConfirmation = {
+                    action: aiResult.tool,
+                    params: aiResult.params || {}
+                };
+            } else {
+                const toolResult = await handleToolCall(aiResult.tool, aiResult.params || {}, user, token, aiResult);
+                replyText = toolResult.message;
+                responseData = toolResult.data;
+            }
 
         } else if (aiResult.type === 'confirmation_request') {
             replyText = aiResult.question || `Are you sure you want to ${aiResult.action}?`;
@@ -120,24 +138,61 @@ router.post('/message', requireAuth, async (req, res) => {
         }
 
         // --- 7. Save assistant message ---
+        let rendered_products = null;
+        if (responseData?.products?.length > 0) {
+            rendered_products = responseData.products.map(p => ({ id: p.id, name: p.name, price: p.price }));
+        } else if (responseData?.product) {
+            rendered_products = [{ id: responseData.product.id, name: responseData.product.name, price: responseData.product.price }];
+        } else if (responseData?.comparison) {
+            rendered_products = [
+                { id: responseData.comparison.productA.id, name: responseData.comparison.productA.name, price: responseData.comparison.productA.price },
+                { id: responseData.comparison.productB.id, name: responseData.comparison.productB.name, price: responseData.comparison.productB.price }
+            ];
+        }
+
         await serviceSupabase.from('ai_messages').insert({
             user_id: user.id,
             role: 'assistant',
             message: replyText,
             metadata: {
                 type: aiResult.type,
-                tool: aiResult.tool || aiResult.action || null
+                tool: aiResult.tool || aiResult.action || null,
+                rendered_products
             }
         });
 
-        // --- 8. Respond ---
+        // --- 8. Garbage Collect Old History (Keep strictly last 30 messages) ---
+        // Fire-and-forget to avoid blocking the user's response
+        serviceSupabase
+            .from('ai_messages')
+            .select('created_at')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(30)
+            .then(({ data: keepMessages }) => {
+                if (keepMessages && keepMessages.length === 30) {
+                    const oldestKeepDate = keepMessages[29].created_at;
+                    serviceSupabase
+                        .from('ai_messages')
+                        .delete()
+                        .eq('user_id', user.id)
+                        .lt('created_at', oldestKeepDate)
+                        .then(() => console.log(`[History GC] Cleaned up old messages for user ${user.id}`))
+                        .catch(e => console.error("[History GC Error]", e.message));
+                }
+            })
+            .catch(e => console.error("[History GC Fetch Error]", e.message));
+
+        // --- 9. Respond ---
         return res.json({
             success: true,
             reply: replyText,
             data: responseData,
             pendingConfirmation,
-            intentType: aiResult.type
+            intentType: aiResult.type,
+            tool: aiResult.tool || (pendingConfirmation ? pendingConfirmation.action : null)
         });
+
 
     } catch (error) {
         console.error('[Assistant Route] Error:', error);
@@ -176,12 +231,12 @@ router.get('/history', requireAuth, async (req, res) => {
             .from('ai_messages')
             .select('id, role, message, metadata, created_at')
             .eq('user_id', req.user.id)
-            .order('created_at', { ascending: true })
+            .order('created_at', { ascending: false })
             .limit(limit);
 
         if (error) throw error;
 
-        return res.json({ success: true, history: data || [] });
+        return res.json({ success: true, history: (data || []).reverse() });
     } catch (error) {
         console.error('[History Route] Error:', error);
         return res.status(500).json({ error: 'Failed to load history' });

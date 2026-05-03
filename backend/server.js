@@ -96,6 +96,9 @@ const isAdmin = async (req, res, next) => {
 };
 
 // --- Routes ---
+const authRoutes = require('./routes/auth');
+app.use('/api/auth', authRoutes);
+
 const assistantRoutes = require('./routes/assistant');
 app.use('/api/assistant', assistantRoutes);
 
@@ -744,6 +747,7 @@ app.get('/api/products', async (req, res) => {
     try {
         const category = req.query.category;
         const searchTerm = req.query.search;
+        const maxPrice = req.query.max_price;
 
         let query = supabase.from('products').select('*, categories(name)').order('created_at', { ascending: false });
 
@@ -765,6 +769,10 @@ app.get('/api/products', async (req, res) => {
         if (searchTerm) {
             const lowerSearch = searchTerm.toLowerCase();
             query = query.or(`name.ilike.%${lowerSearch}%,description.ilike.%${lowerSearch}%`);
+        }
+
+        if (maxPrice) {
+            query = query.lte('price', maxPrice);
         }
 
         const { data: products, error } = await query;
@@ -1792,4 +1800,3 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
-

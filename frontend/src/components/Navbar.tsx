@@ -53,26 +53,30 @@ export default function Navbar() {
                     </div>
 
                     {/* Search Bar (Maximum Width) */}
-                    <div className="flex-1 shadow-md">
-                        <div className="relative flex items-center w-full bg-white rounded-md overflow-hidden">
-                            <input
-                                type="text"
-                                name="search-query"
-                                autoComplete="off"
-                                placeholder="Search for products, brands and more"
-                                className="w-full py-2.5 px-4 text-sm text-slate-700 focus:outline-none placeholder:text-slate-400"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                            />
-                            <button
-                                onClick={handleSearch}
-                                className="px-5 bg-white hover:bg-slate-50 transition-colors flex items-center justify-center h-full border-l border-slate-100"
-                            >
-                                <Search className="w-5 h-5 text-yellow-500" />
-                            </button>
+                    {pathname !== '/search' ? (
+                        <div className="flex-1 shadow-md">
+                            <div className="relative flex items-center w-full bg-white rounded-md overflow-hidden">
+                                <input
+                                    type="text"
+                                    name="search-query"
+                                    autoComplete="off"
+                                    placeholder="Search for products, brands and more"
+                                    className="w-full py-2.5 px-4 text-sm text-slate-700 focus:outline-none placeholder:text-slate-400"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                />
+                                <button
+                                    onClick={handleSearch}
+                                    className="px-5 bg-white hover:bg-slate-50 transition-colors flex items-center justify-center h-full border-l border-slate-100"
+                                >
+                                    <Search className="w-5 h-5 text-yellow-500" />
+                                </button>
+                            </div>
                         </div>
-                    </div>
+                    ) : (
+                        <div className="flex-1"></div>
+                    )}
 
                     {/* Right Section */}
                     <div className="flex items-center gap-8 font-medium text-[15px]">
@@ -113,7 +117,6 @@ export default function Navbar() {
                                             <button
                                                 onClick={() => {
                                                     logout();
-                                                    window.location.href = "/login";
                                                 }}
                                                 className="flex items-center gap-3 px-4 py-3 hover:bg-red-50 w-full text-left text-red-600 transition-colors"
                                             >

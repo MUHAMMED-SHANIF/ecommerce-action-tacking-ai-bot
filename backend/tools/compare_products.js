@@ -6,6 +6,7 @@ module.exports = {
         product_b: 'string - name of the second product to compare'
     },
     requiresConfirmation: false,
+    returnDirectText: true,
     execute: async ({ params, user, supabase }) => {
         const { product_a, product_b } = params;
 

@@ -66,11 +66,16 @@ export default function ChatbotPage() {
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const pendingConfirmationRef = useRef<PendingConfirmation | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
+
+  useEffect(() => {
+    pendingConfirmationRef.current = pendingConfirmation;
+  }, [pendingConfirmation]);
 
   useEffect(() => {
     scrollToBottom();
@@ -98,7 +103,8 @@ export default function ChatbotPage() {
     }
     try {
       const res = await fetch(`${API}/api/assistant/history`, {
-        headers: { Authorization: `Bearer ${user.token}` }
+        headers: { Authorization: `Bearer ${user.token}` },
+        cache: 'no-store'
       });
       if (!res.ok) throw new Error(`History fetch failed: ${res.status}`);
       const data = await res.json();
@@ -124,6 +130,32 @@ export default function ChatbotPage() {
     confirmedAction?: { confirmed: boolean; action: string; params: any }
   ) => {
     if (!text.trim() || !user) return;
+
+    // Intercept spoken or typed answers to an active confirmation prompt
+    if (pendingConfirmationRef.current && !confirmedAction) {
+      const lower = text.toLowerCase().trim();
+      const isCancel = ['no', 'cancel', 'cancel it', 'stop', 'nope', 'nevermind', 'cancel order'].includes(lower);
+      const isConfirm = ['yes', 'yeah', 'ok', 'okay', 'proceed', 'do it', 'confirm', 'yep', 'place order', 'yes please'].includes(lower);
+      
+      if (isCancel) {
+        setMessages(prev => [...prev, 
+          { role: "user", text, timestamp: new Date() }, 
+          { role: "assistant", text: "No problem! I've cancelled that action. Is there anything else I can help you with?", timestamp: new Date() }
+        ]);
+        setPendingConfirmation(null);
+        speakText("No problem, I've cancelled that action.");
+        setInput("");
+        setIsProcessing(false);
+        return;
+      } else if (isConfirm) {
+        // Automatically inject the confirmedAction struct and proceed
+        confirmedAction = {
+          confirmed: true,
+          action: pendingConfirmationRef.current.action,
+          params: pendingConfirmationRef.current.params
+        };
+      }
+    }
 
     setMessages(prev => [...prev, { role: "user", text, timestamp: new Date() }]);
     setInput("");
@@ -165,6 +197,52 @@ export default function ChatbotPage() {
         setPendingConfirmation(data.pendingConfirmation);
       }
       speakText(data.reply);
+
+      // --- UI ACTION MAPPING MAPPING ---
+      if (data.tool) {
+        setTimeout(() => {
+          switch (data.tool) {
+            case "search_products":
+            case "recommend_products":
+              {
+                const sq = data.data?.query;
+                const sc = data.data?.category;
+                if (sq) {
+                    router.push(`/search?q=${encodeURIComponent(sq)}`);
+                } else if (sc) {
+                    router.push(`/search?category=${encodeURIComponent(sc)}`);
+                } else {
+                    router.push(`/search`);
+                }
+              }
+              break;
+            case "get_product_details":
+              if (data.data?.product?.id) {
+                router.push(`/product/${data.data.product.id}`);
+              } else if (data.data?.id) {
+                router.push(`/product/${data.data.id}`);
+              }
+              break;
+            case "view_cart":
+            case "add_to_cart":
+            case "remove_from_cart":
+              router.push('/cart');
+              break;
+            case "add_to_wishlist":
+            case "remove_from_wishlist":
+              router.push('/wishlist');
+              break;
+            case "track_order":
+            case "cancel_order":
+            case "create_order":
+              router.push('/profile?tab=orders');
+              break;
+            default:
+              break;
+          }
+        }, 1500); // 1.5s delay to let the voice start speaking before page transition
+      }
+
     } catch (err: any) {
       console.error("Chatbot Error:", err);
       const errMsg = err.message || "I'm having trouble right now. Please try again!";
@@ -191,21 +269,22 @@ export default function ChatbotPage() {
     }
   };
 
-  const toggleListening = () => {
+  const toggleListening = async () => {
     if (isListening) {
       stopListening(); setIsListening(false); setListeningStatus(""); return;
     }
-    setIsListening(true); setListeningStatus("Listening...");
-    startContinuousListening(
+    setIsListening(true); setListeningStatus("Requesting mic...");
+    await startContinuousListening(
       (t) => {
         setListeningStatus("Processing...");
         sendMessage(t);
         setTimeout(() => setListeningStatus("Listening..."), 1500);
       },
       () => { setIsListening(false); setListeningStatus(""); },
-      (err) => { setIsListening(false); setListeningStatus(""); },
+      (err) => { setIsListening(false); setListeningStatus("Error"); },
       (interim) => { setInput(interim); } // Parallel conversion!
     );
+    setListeningStatus("Listening...");
   };
 
   const clearChat = async () => {

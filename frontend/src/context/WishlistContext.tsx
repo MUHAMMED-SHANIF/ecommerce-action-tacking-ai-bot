@@ -29,8 +29,11 @@ const getApiUrl = () => {
 const API_URL = getApiUrl();
 
 
+import { useToast } from "./ToastContext";
+
 export function WishlistProvider({ children }: { children: ReactNode }) {
     const { user } = useAuth();
+    const { showToast } = useToast();
     const [items, setItems] = useState<WishlistItem[]>([]);
 
     useEffect(() => {
@@ -41,22 +44,17 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
             }
 
             try {
-                // 1. Fetch Wishlist IDs from Server
                 const res = await fetch(`${API_URL}/wishlist/${user.id}`);
-                const wishlistIds: string[] = await res.json(); // Explicitly expect IDs
+                const wishlistIds: string[] = await res.json();
 
                 if (!Array.isArray(wishlistIds) || wishlistIds.length === 0) {
                     setItems([]);
                     return;
                 }
 
-                // 2. Fetch All Products to hydrate details
-                // (Optimization: In a real app, use an endpoint to fetch specific IDs, e.g. /products?ids=...)
-                // For now, fetching all is safe given the scale.
                 const prodRes = await fetch(`${API_URL}/products`);
                 const allProducts: WishlistItem[] = await prodRes.json();
 
-                // 3. Map IDs to Products
                 const hydratedItems = allProducts.filter(p => wishlistIds.includes(p.id.toString()));
                 setItems(hydratedItems);
 
@@ -72,7 +70,6 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     const addToWishlist = async (product: any) => {
         if (!user?.id) return;
 
-        // Optimistically Update UI
         const newItem = {
             id: product.id.toString(),
             title: product.title,
@@ -82,10 +79,11 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
             image: product.image
         };
 
-        // Avoid duplicates
         if (!items.some(i => i.id === newItem.id)) {
             setItems(prev => [...prev, newItem]);
         }
+        
+        showToast(`Added ${product.title || product.name || 'item'} to your wishlist!`);
 
         try {
             await fetch(`${API_URL}/wishlist/${user.id}`, {
