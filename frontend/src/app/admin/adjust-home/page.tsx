@@ -80,7 +80,8 @@ export default function AdjustHomePage() {
             if (res.ok) {
                 alert("Home Layout Saved Successfully!");
             } else {
-                alert("Failed to save.");
+                const err = await res.json().catch(() => ({}));
+                alert("Failed to save: " + (err.error || "Unknown Error"));
             }
         } catch (err) {
             console.error(err);

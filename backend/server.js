@@ -792,19 +792,55 @@ app.get('/api/admin/home-layout', isAdmin, async (req, res) => {
 app.post('/api/admin/home-layout', isAdmin, async (req, res) => {
     try {
         const { navbar, sections } = req.body;
-        // Wipe all layout
-        await supabase.from('home_layout').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        console.log("[Home Layout Update] Received:", { navbarCount: navbar?.length, sectionsCount: sections?.length });
+
+        // Wipe all layout - more reliable way to clear a table
+        const { error: deleteError } = await supabase.from('home_layout').delete().not('id', 'is', null);
+        if (deleteError) {
+            console.error("[Home Layout Update] Delete Error:", deleteError);
+            throw deleteError;
+        }
 
         if (navbar && navbar.length > 0) {
-            const inserts = navbar.map((nav, i) => ({ type: 'navbar', position: i, title: nav.title || nav.category, category: nav.category }));
-            await supabase.from('home_layout').insert(inserts);
+            // Filter out items with no category
+            const validNavbar = navbar.filter(n => n.category && n.category.trim() !== "");
+            if (validNavbar.length > 0) {
+                const inserts = validNavbar.map((nav, i) => ({ 
+                    type: 'navbar', 
+                    position: i, 
+                    title: nav.title || nav.category, 
+                    category: nav.category 
+                }));
+                const { error: insErr } = await supabase.from('home_layout').insert(inserts);
+                if (insErr) {
+                    console.error("[Home Layout Update] Navbar Insert Error:", insErr);
+                    throw insErr;
+                }
+            }
         }
+
         if (sections && sections.length > 0) {
-            const inserts = sections.map((sec, i) => ({ type: 'section', position: i, title: sec.title, category: sec.category }));
-            await supabase.from('home_layout').insert(inserts);
+            // Filter out items with no category
+            const validSections = sections.filter(s => s.category && s.category.trim() !== "");
+            if (validSections.length > 0) {
+                const inserts = validSections.map((sec, i) => ({ 
+                    type: 'section', 
+                    position: i, 
+                    title: sec.title || sec.category, 
+                    category: sec.category 
+                }));
+                const { error: insErr } = await supabase.from('home_layout').insert(inserts);
+                if (insErr) {
+                    console.error("[Home Layout Update] Sections Insert Error:", insErr);
+                    throw insErr;
+                }
+            }
         }
+        
+        console.log("[Home Layout Update] Success");
         res.json({ message: "Layout updated successfully" });
     } catch (error) {
+        console.error("[Home Layout Update] Final Catch Error:", error);
         res.status(500).json({ error: error.message });
     }
 });
