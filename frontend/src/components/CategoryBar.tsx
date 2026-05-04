@@ -31,16 +31,19 @@ export default function CategoryBar() {
 
                 if (lData.navbar && Array.isArray(lData.navbar) && lData.navbar.length > 0) {
                     const newCats = lData.navbar.map((item: any) => {
-                        // Defensive check
-                        const catName = item.category || "Unknown";
+                        const catName = (item.category || "Unknown").trim();
+                        
+                        // Find matching category details (Case-Insensitive)
+                        const details = allCats.find((c: any) => 
+                            c.name.toLowerCase().trim() === catName.toLowerCase()
+                        );
 
-                        // Find matching category details
-                        const details = allCats.find((c: any) => c.name === catName);
-                        // Safe substring
                         const safeName = typeof catName === 'string' ? catName : String(catName);
 
-                        const img = details?.image
-                            ? getImageUrl(details.image)
+                        // Use the image from details, or fall back to placeholder
+                        const rawImg = details?.image || details?.image_url;
+                        const img = rawImg
+                            ? getImageUrl(rawImg)
                             : `https://placehold.co/128x128/png?text=${encodeURIComponent(safeName.substring(0, 10))}`;
 
                         return {
@@ -51,7 +54,7 @@ export default function CategoryBar() {
                     setCategories(newCats);
                 }
             } catch (err) {
-                console.error("Failed to load nav layout", err);
+                console.error("Failed to load nav layout:", err);
             }
         };
         fetchData();
@@ -59,8 +62,13 @@ export default function CategoryBar() {
 
     const getImageUrl = (img: string) => {
         if (!img) return '';
+        // If it's already a full URL (Supabase/External), return it
         if (img.startsWith('http') || img.startsWith('data:')) return img;
-        return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}${img}`;
+        // Otherwise, it's a relative path from the backend
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+        // Ensure no double slashes
+        const cleanPath = img.startsWith('/') ? img : `/${img}`;
+        return `${baseUrl}${cleanPath}`;
     };
 
     if (categories.length === 0) return null;
