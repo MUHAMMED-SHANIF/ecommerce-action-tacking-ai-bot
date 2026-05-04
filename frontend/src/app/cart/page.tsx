@@ -143,7 +143,7 @@ export default function CartPage() {
                         {cartItems.map((item) => (
                             <div key={item.id} className="p-6 border-b border-gray-100 flex gap-6 relative">
                                 <div className="w-28 h-28 relative flex-shrink-0">
-                                    <Image src={item.image || "https://placehold.co/400x400.png"} alt={item.title || "Product"} fill className="object-contain" />
+                                    <img src={item.image || "https://placehold.co/400x400.png"} alt={item.title || "Product"} className="w-full h-full object-contain" />
                                 </div>
                                 <div className="flex-1">
                                     <h3 className="text-[16px] text-gray-800 font-medium hover:text-[#2874f0] cursor-pointer line-clamp-2 mb-1">

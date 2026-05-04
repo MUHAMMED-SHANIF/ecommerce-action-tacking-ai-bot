@@ -45,7 +45,7 @@ export default function WishlistPage() {
                     <div key={item.id} className="relative group">
                         <Link href={`/product/${item.id}`} className="block p-6 border-b border-gray-100 flex gap-6 hover:bg-gray-50 transition-colors">
                             <div className="relative w-28 h-28 shrink-0">
-                                <Image src={item.image} alt={item.title} fill className="object-contain" />
+                                <img src={item.image} alt={item.title} className="w-full h-full object-contain" />
                             </div>
                             <div className="flex-1">
                                 <h3 className="text-[16px] font-medium text-gray-800 mb-2 truncate max-w-2xl">{item.title}</h3>

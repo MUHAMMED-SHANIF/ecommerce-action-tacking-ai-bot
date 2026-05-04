@@ -38,29 +38,17 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         const fetchWishlist = async () => {
-            if (!user?.id) {
-                setItems([]);
-                return;
-            }
-
-            try {
-                const res = await fetch(`${API_URL}/wishlist/${user.id}`);
-                const wishlistIds: string[] = await res.json();
-
-                if (!Array.isArray(wishlistIds) || wishlistIds.length === 0) {
+            if (user?.id) {
+                try {
+                    const res = await fetch(`${API_URL}/wishlist/${user.id}`);
+                    const data = await res.json();
+                    setItems(Array.isArray(data) ? data : []);
+                } catch (err) {
+                    console.error("Failed to sync wishlist", err);
                     setItems([]);
-                    return;
                 }
-
-                const prodRes = await fetch(`${API_URL}/products`);
-                const allProducts: WishlistItem[] = await prodRes.json();
-
-                const hydratedItems = allProducts.filter(p => wishlistIds.includes(p.id.toString()));
-                setItems(hydratedItems);
-
-            } catch (err) {
-                console.error("Failed to sync wishlist", err);
-                setItems([]);
+            } else {
+                setItems([]); // Clear on logout
             }
         };
 
@@ -70,30 +58,29 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     const addToWishlist = async (product: any) => {
         if (!user?.id) return;
 
-        const newItem = {
-            id: product.id.toString(),
-            title: product.title,
+        const newItem: WishlistItem = {
+            id: (product.id || product._id).toString(),
+            title: product.title || product.name,
             price: product.price,
-            originalPrice: product.originalPrice,
-            discount: product.discount,
-            image: product.image
+            originalPrice: product.originalPrice || product.price,
+            discount: product.discount || 0,
+            image: product.image || product.image_url
         };
 
         if (!items.some(i => i.id === newItem.id)) {
             setItems(prev => [...prev, newItem]);
         }
         
-        showToast(`Added ${product.title || product.name || 'item'} to your wishlist!`);
+        showToast(`Added to your wishlist!`);
 
         try {
             await fetch(`${API_URL}/wishlist/${user.id}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ productId: product.id }) // Send ID as expected by server
+                body: JSON.stringify({ productId: newItem.id })
             });
         } catch (err) {
             console.error("Add to wishlist error", err);
-            // Revert on error? For now, keep it simple.
         }
     };
 
@@ -101,11 +88,10 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
         if (!user?.id) return;
         const idStr = itemId.toString();
 
-        // Optimistically Update UI
         setItems(prev => prev.filter(i => i.id !== idStr));
 
         try {
-            await fetch(`${API_URL}/wishlist/${user.id}/${itemId}`, {
+            await fetch(`${API_URL}/wishlist/${user.id}/${idStr}`, {
                 method: 'DELETE'
             });
         } catch (err) {
