@@ -872,9 +872,19 @@ app.get('/api/products', async (req, res) => {
             keywords = cleanSearch.split(/\s+/).filter(w => w.length > 1 && !stopWords.includes(w));
 
             if (keywords.length > 0) {
+                // Find category IDs that match any keyword
+                const { data: matchedCats } = await supabase.from('categories').select('id').or(keywords.map(kw => `name.ilike.%${kw}%`).join(','));
+                const matchedCatIds = (matchedCats || []).map(c => c.id);
+
+                const orConditions = [];
                 keywords.forEach(kw => {
-                    query = query.or(`name.ilike.%${kw}%,description.ilike.%${kw}%`);
+                    orConditions.push(`name.ilike.%${kw}%`);
+                    orConditions.push(`description.ilike.%${kw}%`);
                 });
+                if (matchedCatIds.length > 0) {
+                    orConditions.push(`category_id.in.(${matchedCatIds.join(',')})`);
+                }
+                query = query.or(orConditions.join(','));
             } else {
                 query = query.or(`name.ilike.%${lowerSearch}%,description.ilike.%${lowerSearch}%`);
             }
@@ -885,28 +895,6 @@ app.get('/api/products', async (req, res) => {
         }
 
         let { data: products, error } = await query;
-
-        // Typo Tolerance Fallback
-        if (products && products.length === 0 && searchTerm && keywords.length > 0) {
-            let fallbackQuery = supabase.from('products').select('*, categories(name)').eq('metadata->>status', 'approved').neq('metadata->>isPaused', 'true').order('created_at', { ascending: false });
-            
-            if (category) {
-                const { data: catData } = await supabase.from('categories').select('id').ilike('name', category).maybeSingle();
-                if (catData) fallbackQuery = fallbackQuery.eq('category_id', catData.id);
-            }
-            if (maxPrice) fallbackQuery = fallbackQuery.lte('price', maxPrice);
-
-            const longestKws = [...keywords].sort((a,b) => b.length - a.length).slice(0, 2);
-            longestKws.forEach(kw => {
-                const prefix = kw.length >= 4 ? kw.substring(0, 4) : kw;
-                fallbackQuery = fallbackQuery.or(`name.ilike.%${prefix}%,description.ilike.%${prefix}%`);
-            });
-
-            const { data: fallbackProducts } = await fallbackQuery;
-            if (fallbackProducts && fallbackProducts.length > 0) {
-                products = fallbackProducts;
-            }
-        }
 
         if (error) throw error;
 
@@ -1079,20 +1067,31 @@ app.post('/api/auth/change-password', async (req, res) => {
 app.get('/api/cart/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
-        // In a real app we'd have a cart_items table. 
-        // For this shim, we'll try to fetch from cart_items if it exists, 
-        // or return a default empty cart to prevent frontend crashes.
-        const { data: items, error } = await supabase.from('cart_items').select('*').eq('user_id', userId);
+        const { data: dbItems, error } = await supabase
+            .from('cart_items')
+            .select('quantity, price, products(id, name, image_url, price, metadata)')
+            .eq('user_id', userId);
         
-        // If the table doesn't exist or error, return empty but success to keep UI alive
-        if (error) {
-            console.warn(`Cart fetch error for ${userId}:`, error.message);
-            return res.json({ userId, items: [] });
-        }
+        if (error) throw error;
         
-        res.json({ userId, items: items || [] });
+        const formattedItems = (dbItems || []).map(item => {
+            const p = item.products;
+            if (!p) return null;
+            return {
+                id: p.id,
+                title: p.name,
+                price: item.price || p.price,
+                originalPrice: p.metadata?.originalPrice || p.price,
+                discount: p.metadata?.discount || 0,
+                image: p.image_url,
+                qty: item.quantity || 1
+            };
+        }).filter(Boolean);
+        
+        res.json({ userId, items: formattedItems });
     } catch (error) {
-        res.json({ userId, items: [] }); // Graceful fallback
+        console.error("Cart fetch error:", error.message);
+        res.json({ userId, items: [] });
     }
 });
 

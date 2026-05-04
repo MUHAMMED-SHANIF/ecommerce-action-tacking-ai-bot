@@ -395,6 +395,15 @@ export default function AIAssistant() {
   };
 
 
+  const [visibleProducts, setVisibleProducts] = useState<Record<number, number>>({});
+
+  const toggleShowMore = (msgIdx: number) => {
+    setVisibleProducts(prev => ({
+      ...prev,
+      [msgIdx]: (prev[msgIdx] || 3) + 3
+    }));
+  };
+
   if (!user || user.role !== "user") return null;
 
   return (
@@ -451,12 +460,12 @@ export default function AIAssistant() {
                   {/* Product cards */}
                   {msg.products && msg.products.length > 0 && (
                     <div className="space-y-1.5">
-                      {msg.products.slice(0, 3).map((p) => (
-                        <div key={p.id} className="bg-white border border-gray-100 rounded-xl p-2.5 shadow-sm flex gap-2.5">
+                      {msg.products.slice(0, visibleProducts[i] || 3).map((p) => (
+                        <div key={p.id} className="bg-white border border-gray-100 rounded-xl p-2.5 shadow-sm flex gap-2.5 hover:border-emerald-200 transition-colors cursor-pointer" onClick={() => router.push(`/product/${p.id}`)}>
                           {p.image ? (
                             <img src={p.image.startsWith('/') ? `${API}${p.image}` : p.image}
                               alt={p.name}
-                              className="w-14 h-14 object-cover rounded-lg shrink-0 bg-gray-100" />
+                              className="w-14 h-14 object-contain rounded-lg shrink-0 bg-gray-50" />
                           ) : (
                             <div className="w-14 h-14 bg-gray-100 rounded-lg shrink-0 flex items-center justify-center">
                               <Package className="w-6 h-6 text-gray-400" />
@@ -464,11 +473,22 @@ export default function AIAssistant() {
                           )}
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-semibold text-gray-800 leading-tight line-clamp-2">{p.name}</p>
-                            <p className="text-emerald-600 font-bold text-sm mt-0.5">₹{p.price?.toLocaleString()}</p>
-                            {p.category && <p className="text-xs text-gray-400 mt-0.5">{p.category}</p>}
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                                <p className="text-emerald-600 font-bold text-sm">₹{p.price?.toLocaleString()}</p>
+                                {p.discount && <span className="text-[10px] bg-emerald-50 text-emerald-600 px-1 rounded">-{p.discount}%</span>}
+                            </div>
+                            {p.category && <p className="text-[10px] text-gray-400 mt-0.5 uppercase tracking-tighter">{p.category}</p>}
                           </div>
                         </div>
                       ))}
+                      {msg.products.length > (visibleProducts[i] || 3) && (
+                        <button 
+                          onClick={() => toggleShowMore(i)}
+                          className="w-full py-1.5 text-[11px] font-bold text-emerald-600 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors border border-emerald-100 mt-1"
+                        >
+                          Show more (+{Math.min(3, msg.products.length - (visibleProducts[i] || 3))})
+                        </button>
+                      )}
                     </div>
                   )}
 

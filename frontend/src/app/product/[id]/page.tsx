@@ -85,14 +85,14 @@ function ProductContent() {
                         {images.map((img: string, i: number) => (
                             <div
                                 key={i}
-                                className={`w-16 h-16 border rounded p-1 cursor-pointer hover:border-blue-500 relative ${selectedImage === img ? 'border-blue-500' : ''}`}
+                                className={`w-16 h-16 border rounded p-1 cursor-pointer hover:border-blue-500 relative bg-white ${selectedImage === img ? 'border-blue-500' : ''}`}
                                 onMouseEnter={() => setSelectedImage(img)}
                             >
                                 <Image src={img} alt="Thumbnail" fill className="object-contain" />
                             </div>
                         ))}
                     </div>
-                    <div className="flex-1 relative border rounded-2xl p-4 h-[495px] overflow-hidden">
+                    <div className="flex-1 relative border rounded-2xl p-4 h-[495px] overflow-hidden bg-white">
                         <Image src={selectedImage || images[0]} alt="Product" fill className="object-contain" priority />
 
                         {/* Wishlist Button - Hidden in Preview */}

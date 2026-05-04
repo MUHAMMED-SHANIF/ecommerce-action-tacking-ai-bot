@@ -192,29 +192,18 @@ function CheckoutContent() {
             <div className="flex flex-col lg:flex-row gap-6">
                 {/* Left Side */}
                 <div className="flex-1">
-                    {/* Step 1: Login */}
-                    <div className="bg-white shadow-sm mb-4 p-4 border-b border-gray-100 flex justify-between items-center">
-                        <div className="flex items-center gap-3">
-                            <span className="bg-gray-200 text-gray-500 px-2 text-[12px] font-bold">1</span>
-                            <div className="text-[14px]">
-                                <span className="text-gray-500 uppercase font-medium">Login</span>
-                                <div className="font-semibold">{user.email}</div>
-                            </div>
-                        </div>
-                        <button className="text-[#2874f0] text-[14px] font-medium border border-gray-200 px-4 py-1">CHANGE</button>
-                    </div>
 
                     {/* Step 2: Address */}
-                    <div className="bg-white shadow-sm mb-4">
-                        <div className="bg-[#2874f0] p-4 text-white font-medium text-[14px] uppercase flex items-center justify-between">
+                    <div className="bg-white shadow-sm mb-4 border border-slate-100 rounded-lg overflow-hidden">
+                        <div className="bg-[#0B3D2E] p-4 text-white font-medium text-[14px] uppercase flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <span className="bg-white text-[#2874f0] px-2 text-[12px] font-bold">2</span>
+                                <span className="bg-[#F59E0B] text-black px-2 text-[12px] font-bold rounded-sm">1</span>
                                 Delivery Address
                             </div>
                             {!showAddressForm && (
                                 <button
                                     onClick={() => setShowAddressForm(true)}
-                                    className="text-white text-[12px] font-medium border border-white px-3 py-1 rounded hover:bg-blue-600"
+                                    className="text-white text-[12px] font-medium border border-white/30 px-3 py-1 rounded hover:bg-white/10 transition-colors"
                                 >
                                     Change / Add
                                 </button>
@@ -222,44 +211,48 @@ function CheckoutContent() {
                         </div>
                         <div className="p-6">
                             {showAddressForm ? (
-                                <div className="bg-gray-50 p-4 border border-gray-200 rounded">
-                                    <h3 className="font-medium text-sm mb-3">Add New Address</h3>
-                                    <div className="grid grid-cols-2 gap-3 mb-3">
-                                        <input placeholder="Name" className="p-2 border rounded text-sm w-full" value={newAddress.name} onChange={e => setNewAddress({ ...newAddress, name: e.target.value })} />
-                                        <input placeholder="Mobile" className="p-2 border rounded text-sm w-full" value={newAddress.mobile} onChange={e => setNewAddress({ ...newAddress, mobile: e.target.value })} />
-                                        <input placeholder="Pincode" className="p-2 border rounded text-sm w-full" value={newAddress.pincode} onChange={e => setNewAddress({ ...newAddress, pincode: e.target.value })} />
-                                        <input placeholder="City" className="p-2 border rounded text-sm w-full" value={newAddress.city} onChange={e => setNewAddress({ ...newAddress, city: e.target.value })} />
-                                        <input placeholder="Address (Area and Street)" className="col-span-2 p-2 border rounded text-sm w-full" value={newAddress.addressLine} onChange={e => setNewAddress({ ...newAddress, addressLine: e.target.value })} />
-                                        <input placeholder="State" className="p-2 border rounded text-sm w-full" value={newAddress.state} onChange={e => setNewAddress({ ...newAddress, state: e.target.value })} />
+                                <div className="bg-slate-50 p-6 border border-slate-200 rounded-xl">
+                                    <h3 className="font-bold text-slate-800 text-sm mb-4 uppercase tracking-tight">Add New Address</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                        <input placeholder="Name" className="p-3 border border-slate-200 rounded-lg text-sm w-full focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent outline-none" value={newAddress.name} onChange={e => setNewAddress({ ...newAddress, name: e.target.value })} />
+                                        <input placeholder="Mobile" className="p-3 border border-slate-200 rounded-lg text-sm w-full focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent outline-none" value={newAddress.mobile} onChange={e => setNewAddress({ ...newAddress, mobile: e.target.value })} />
+                                        <input placeholder="Pincode" className="p-3 border border-slate-200 rounded-lg text-sm w-full focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent outline-none" value={newAddress.pincode} onChange={e => setNewAddress({ ...newAddress, pincode: e.target.value })} />
+                                        <input placeholder="City" className="p-3 border border-slate-200 rounded-lg text-sm w-full focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent outline-none" value={newAddress.city} onChange={e => setNewAddress({ ...newAddress, city: e.target.value })} />
+                                        <input placeholder="Address (Area and Street)" className="md:col-span-2 p-3 border border-slate-200 rounded-lg text-sm w-full focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent outline-none" value={newAddress.addressLine} onChange={e => setNewAddress({ ...newAddress, addressLine: e.target.value })} />
+                                        <input placeholder="State" className="p-3 border border-slate-200 rounded-lg text-sm w-full focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent outline-none" value={newAddress.state} onChange={e => setNewAddress({ ...newAddress, state: e.target.value })} />
                                     </div>
-                                    <div className="flex gap-2">
-                                        <button onClick={handleAddAddress} className="bg-[#F59E0B] text-white px-4 py-1.5 text-sm font-medium uppercase rounded-sm shadow-sm">Save Address</button>
-                                        <button onClick={() => setShowAddressForm(false)} className="text-[#2874f0] text-sm font-medium uppercase px-2 py-1.5">Cancel</button>
+                                    <div className="flex gap-3">
+                                        <button onClick={handleAddAddress} className="bg-[#0B3D2E] text-white px-6 py-2.5 text-sm font-bold uppercase rounded-lg shadow-md hover:bg-[#145A3A] transition-colors">Save Address</button>
+                                        <button onClick={() => setShowAddressForm(false)} className="text-slate-500 hover:text-slate-800 text-sm font-bold uppercase px-4 py-2.5 transition-colors">Cancel</button>
                                     </div>
                                 </div>
                             ) : (
                                 <div>
                                     {addresses.length > 0 ? (
-                                        <div className="flex flex-col gap-3">
+                                        <div className="flex flex-col gap-4">
                                             {addresses.map((addr, idx) => (
-                                                <div key={idx} className={`p-4 border rounded cursor-pointer flex gap-3 items-start ${selectedAddressIndex === idx ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`} onClick={() => setSelectedAddressIndex(idx)}>
-                                                    <input type="radio" checked={selectedAddressIndex === idx} readOnly className="mt-1" />
+                                                <div key={idx} className={`p-5 border-2 rounded-xl cursor-pointer flex gap-4 items-start transition-all ${selectedAddressIndex === idx ? 'border-[#F59E0B] bg-amber-50 shadow-sm' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`} onClick={() => setSelectedAddressIndex(idx)}>
+                                                    <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 mt-1 flex items-center justify-center ${selectedAddressIndex === idx ? 'border-[#F59E0B]' : 'border-slate-300'}`}>
+                                                        {selectedAddressIndex === idx && <div className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]" />}
+                                                    </div>
                                                     <div className="text-[14px]">
-                                                        <span className="font-semibold mr-2">{addr.name}</span>
-                                                        <span className="bg-gray-200 text-gray-500 text-[10px] px-1.5 py-0.5 rounded mr-2">HOME</span>
-                                                        <span className="font-bold mr-2">{addr.mobile}</span>
-                                                        <p className="text-gray-600 mt-1">{addr.addressLine}, {addr.city}, {addr.state} - <span className="font-bold">{addr.pincode}</span></p>
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <span className="font-bold text-slate-900">{addr.name}</span>
+                                                            <span className="bg-slate-200 text-slate-600 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-tight">HOME</span>
+                                                            <span className="font-bold text-slate-700 ml-1">{addr.mobile}</span>
+                                                        </div>
+                                                        <p className="text-slate-600 leading-relaxed">{addr.addressLine}, {addr.city}, {addr.state} - <span className="font-bold text-slate-800">{addr.pincode}</span></p>
                                                     </div>
                                                 </div>
                                             ))}
                                             <div className="mt-2 text-right">
-                                                <span className="text-sm text-gray-500">Selected Address will be used for delivery.</span>
+                                                <span className="text-xs text-slate-400 italic">Selected Address will be used for delivery.</span>
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="text-center py-4">
-                                            <p className="text-sm text-gray-500 mb-4">No address saved. Please add one to continue.</p>
-                                            <button onClick={() => setShowAddressForm(true)} className="bg-[#F59E0B] text-white font-bold px-8 py-3 text-[14px] uppercase rounded-[2px] shadow">
+                                        <div className="text-center py-8">
+                                            <p className="text-sm text-slate-500 mb-6">No address saved. Please add one to continue.</p>
+                                            <button onClick={() => setShowAddressForm(true)} className="bg-[#F59E0B] text-black font-black px-10 py-4 text-[15px] uppercase rounded-lg shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5">
                                                 Add Delivery Address
                                             </button>
                                         </div>
@@ -270,40 +263,40 @@ function CheckoutContent() {
                     </div>
 
                     {/* Step 3: Order Summary (Quantity edits here) */}
-                    <div className="bg-white shadow-sm mb-4">
-                        <div className="bg-[#2874f0] p-4 text-white font-medium text-[14px] uppercase flex items-center gap-3">
-                            <span className="bg-white text-[#2874f0] px-2 text-[12px] font-bold">3</span>
+                    <div className="bg-white shadow-sm mb-4 border border-slate-100 rounded-lg overflow-hidden">
+                        <div className="bg-[#0B3D2E] p-4 text-white font-medium text-[14px] uppercase flex items-center gap-3">
+                            <span className="bg-[#F59E0B] text-black px-2 text-[12px] font-bold rounded-sm">2</span>
                             Order Summary
                         </div>
                         <div className="p-0">
                             {orderItems.map((item) => (
-                                <div key={item.id} className="p-6 border-b border-gray-100 flex gap-6 relative">
-                                    <div className="w-24 h-24 relative flex-shrink-0">
+                                <div key={item.id} className="p-6 border-b border-slate-100 flex gap-6 relative last:border-0 hover:bg-slate-50 transition-colors">
+                                    <div className="w-28 h-28 relative flex-shrink-0 bg-white rounded-lg border border-slate-100 p-2">
                                         <Image src={item.image} alt={item.title} fill className="object-contain" />
                                     </div>
-                                    <div className="flex-1">
-                                        <h3 className="text-[15px] text-gray-800 font-medium line-clamp-2 mb-1">
-                                            {item.title}
-                                        </h3>
-
-                                        <div className="flex items-baseline gap-3 mb-4">
-                                            <span className="text-[14px] text-gray-500 line-through">₹{(item.originalPrice * item.qty).toLocaleString()}</span>
-                                            <span className="text-[18px] font-semibold text-black">₹{(item.price * item.qty).toLocaleString()}</span>
-                                            <span className="text-[14px] text-[#0B3D2E] font-medium">{item.discount}% Off</span>
+                                    <div className="flex-1 flex flex-col justify-between">
+                                        <div>
+                                            <h3 className="text-[16px] text-slate-800 font-bold line-clamp-2 mb-2 leading-snug">
+                                                {item.title}
+                                            </h3>
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <span className="text-[14px] text-slate-400 line-through">₹{(item.originalPrice * item.qty).toLocaleString()}</span>
+                                                <span className="text-[20px] font-black text-slate-900">₹{(item.price * item.qty).toLocaleString()}</span>
+                                                <span className="text-[13px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">{item.discount}% Off</span>
+                                            </div>
                                         </div>
 
                                         <div className="flex items-center gap-6">
-                                            <div className="flex items-center gap-2">
-                                                <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50 text-xl font-medium leading-none" disabled={item.qty <= 1}>−</button>
-                                                <div className="w-12 text-center border border-gray-300 py-1 text-[14px] font-semibold">{item.qty}</div>
-                                                <button onClick={() => updateQuantity(item.id, 1)} className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50 text-xl font-medium leading-none">+</button>
+                                            <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-full">
+                                                <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center hover:bg-slate-50 text-xl font-bold leading-none text-slate-600 transition-colors" disabled={item.qty <= 1}>−</button>
+                                                <div className="w-10 text-center text-[15px] font-black text-slate-800">{item.qty}</div>
+                                                <button onClick={() => updateQuantity(item.id, 1)} className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center hover:bg-slate-50 text-xl font-bold leading-none text-slate-600 transition-colors">+</button>
                                             </div>
-                                            {/* 'Save for later' removed here entirely */}
                                         </div>
                                     </div>
-                                    <div className="text-[12px] text-gray-600 self-start text-right">
+                                    <div className="text-[12px] text-slate-500 self-start text-right hidden sm:block">
                                         Delivery by {item.deliveryDate || 'Sat Oct 28'}<br />
-                                        <span className="text-[#0B3D2E]">Free Subtotal</span> <span className="line-through text-gray-400">₹40</span>
+                                        <span className="text-emerald-600 font-bold">Free Shipping</span>
                                     </div>
                                 </div>
                             ))}
@@ -311,14 +304,37 @@ function CheckoutContent() {
                     </div>
 
                     {/* Step 4: Payment */}
-                    <div className="bg-white shadow-sm mb-4">
-                        <div className="bg-gray-200 p-4 text-gray-500 font-medium text-[14px] uppercase flex items-center gap-3">
-                            <span className="bg-white text-gray-500 px-2 text-[12px] font-bold">4</span>
+                    <div className="bg-white shadow-sm mb-4 border border-slate-100 rounded-lg overflow-hidden">
+                        <div className="bg-slate-100 p-4 text-slate-600 font-bold text-[14px] uppercase flex items-center gap-3">
+                            <span className="bg-white text-slate-400 px-2 text-[12px] font-bold rounded-sm border border-slate-200">3</span>
                             Payment Options
                         </div>
-                        <div className="p-6">
+                        <div className="p-8">
                             {/* COD Option */}
-                            <div className="flex items-start gap-3 mb-4 p-3 bg-blue-50 border border-blue-100 rounded">
+                            <div className="flex items-start gap-4 mb-6 p-5 bg-amber-50 border-2 border-[#F59E0B] rounded-xl shadow-sm">
+                                <div className="w-5 h-5 rounded-full border-2 border-[#F59E0B] flex items-center justify-center mt-1">
+                                    <div className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]" />
+                                </div>
+                                <label htmlFor="cod" className="cursor-pointer flex-1">
+                                    <div className="font-black text-slate-900 text-lg">Cash on Delivery</div>
+                                    <div className="text-[13px] text-slate-500">Pay securely with cash at the time of delivery.</div>
+                                </label>
+                            </div>
+
+                            {/* Online Payment (Disabled) */}
+                            <div className="flex items-start gap-4 mb-10 p-5 opacity-40 grayscale border-2 border-dashed border-slate-200 rounded-xl">
+                                <div className="w-5 h-5 rounded-full border-2 border-slate-300 mt-1" />
+                                <label className="flex-1">
+                                    <div className="font-bold text-slate-800">Online Payment</div>
+                                    <div className="text-[12px] text-red-500 font-bold uppercase tracking-tighter">Coming Soon</div>
+                                </label>
+                            </div>
+
+                            <button onClick={handlePlaceOrder} className="w-full sm:w-auto bg-[#F59E0B] text-black font-black px-16 py-4 text-[18px] uppercase rounded-xl shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 active:scale-95">
+                                Confirm Order
+                            </button>
+                        </div>
+                    </div>
                                 <input type="radio" name="payment" id="cod" defaultChecked className="mt-1" />
                                 <label htmlFor="cod" className="cursor-pointer flex-1">
                                     <div className="font-medium text-gray-800">Cash on Delivery</div>

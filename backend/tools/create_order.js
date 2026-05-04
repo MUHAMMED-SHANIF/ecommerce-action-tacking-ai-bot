@@ -3,7 +3,8 @@ module.exports = {
     description: 'Create a new order / place an order for a product. Requires confirmation before executing. Use when user wants to buy or order a product.',
     parameters: {
         product_name: 'string - name of the product to order',
-        quantity: 'number? - quantity to order (defaults to 1)'
+        quantity: 'number? - quantity to order (defaults to 1)',
+        address_name: 'string? - label of saved address to deliver to, e.g. "home", "office". If not provided, uses the first saved address.'
     },
     requiresConfirmation: true,
     confirmationMessage: (params) => `Would you like me to place an order for "${params.product_name}" (Qty: ${params.quantity || 1})? This will use your saved address.`,
@@ -29,13 +30,25 @@ module.exports = {
             return { text: `Sorry, only ${product.stock_quantity} unit(s) of ${product.name} are available. I can order ${product.stock_quantity} for you instead.` };
         }
 
-        // Get user's saved address
-        const { data: { user: authUser } } = await supabase.auth.getUser();
+        // Get user's saved addresses
+        const { data: { user: authUser } } = await supabase.auth.admin.getUserById(user.id);
         const addresses = authUser?.user_metadata?.addresses || [];
-        const defaultAddress = addresses[0] || null;
+
+        let defaultAddress = null;
+        if (params.address_name) {
+            const labelLower = params.address_name.toLowerCase();
+            defaultAddress = addresses.find(a => (a.label || '').toLowerCase() === labelLower) || null;
+            if (!defaultAddress) {
+                return {
+                    text: `I couldn't find a saved address labelled **"${params.address_name}"**. Would you like me to create one? Just say "add my ${params.address_name} address" and tell me the details!`
+                };
+            }
+        } else {
+            defaultAddress = addresses[0] || null;
+        }
 
         if (!defaultAddress) {
-            return { text: `To place an order, you need a saved delivery address. Please add one in your Profile → Addresses first.` };
+            return { text: `You don't have any saved delivery addresses yet. Ask me to **"add my home address"** and I'll save it for you!` };
         }
 
         const totalPrice = product.price * quantity;

@@ -125,6 +125,33 @@ router.post('/message', requireAuth, async (req, res) => {
                 responseData = toolResult.data;
             }
 
+        } else if (aiResult.type === 'multi_step') {
+            replyText = aiResult.text || "I'm starting that for you...";
+            const steps = aiResult.steps || [];
+            let allMessages = [replyText];
+            let combinedData = {};
+
+            for (const step of steps) {
+                const tool = require('../tools').getTool(step.tool);
+                if (tool && tool.requiresConfirmation) {
+                    // Stop execution and ask for confirmation for this step
+                    pendingConfirmation = {
+                        action: step.tool,
+                        params: step.params || {}
+                    };
+                    allMessages.push(tool.confirmationMessage ? tool.confirmationMessage(step.params) : `Are you sure you want to ${step.tool.replace(/_/g, ' ')}?`);
+                    break; 
+                } else {
+                    const toolResult = await handleToolCall(step.tool, step.params || {}, user, token, aiResult);
+                    allMessages.push(toolResult.message);
+                    if (toolResult.data) {
+                        combinedData = { ...combinedData, ...toolResult.data };
+                    }
+                }
+            }
+            replyText = allMessages.join('\n\n');
+            responseData = combinedData;
+
         } else if (aiResult.type === 'confirmation_request') {
             replyText = aiResult.question || `Are you sure you want to ${aiResult.action}?`;
             pendingConfirmation = {

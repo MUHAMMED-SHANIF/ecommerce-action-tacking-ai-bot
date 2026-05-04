@@ -101,12 +101,16 @@ Type B — Tool call (action needed, BUT NOT FOR CONFIRMATION TOOLS):
 Type C — Confirmation needed (STRICTLY REQUIRED for cancel_order, create_order, update_address, etc):
 {"type": "confirmation_request", "action": "tool_name_here", "params": {"param_key": "value"}, "question": "Are you sure you want to buy [Item] for [Price]?"}
 
+Type D — Multi-step plan (when multiple actions are needed in sequence):
+{"type": "multi_step", "steps": [{"tool": "tool1", "params": {...}}, {"tool": "tool2", "params": {...}}], "text": "I'll help you with that. First I'll [step1], then [step2]."}
+
 IMPORTANT RULES:
+- If a user wants to order something to a specific address (e.g. "order iphone to my office address"), first check if the address exists. If not, use multi_step to first call add_address and then create_order.
 - NEVER use type "tool_call" for cancel_order, create_order, or update_address unless the user has explicitly said "yes" to your previous confirmation_request.
 - If the user says "yes", "confirm", "go ahead" immediately after a Type C confirmation request: use type "tool_call" to execute it.
 - If the user says "no", "cancel": use type "reply" to acknowledge cancellation.
 - Keep "text" and "question" fields friendly, concise, and natural.
-- Currency is Indian Rupees (₹)`;
+- Currency is Indian Rupees (₹) (INR)`;
 
         const ollamaBaseUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
         const response = await fetch(`${ollamaBaseUrl}/api/generate`, {

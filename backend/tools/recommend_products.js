@@ -7,18 +7,21 @@ module.exports = {
     },
     requiresConfirmation: false,
     execute: async ({ params, user, supabase }) => {
-        const category = params.category || params.type || params.query || params.product;
+        const categorySearch = params.category || params.type || params.query || params.product || "";
         const budget = params.budget || params.max_price;
 
-        // Find category by name
+        // 1. Try to find a matching category first
         let categoryId = null;
-        if (category) {
+        if (categorySearch) {
             const { data: catData } = await supabase
                 .from('categories')
-                .select('id, name')
-                .ilike('name', `%${category}%`)
+                .select('id')
+                .ilike('name', `%${categorySearch}%`)
                 .maybeSingle();
-            if (catData) categoryId = catData.id;
+            
+            if (catData) {
+                categoryId = catData.id;
+            }
         }
 
         let dbQuery = supabase
@@ -29,25 +32,30 @@ module.exports = {
             .order('created_at', { ascending: false });
 
         if (categoryId) {
+            // Strict category filtering if we found a match
             dbQuery = dbQuery.eq('category_id', categoryId);
-        } else if (category) {
-            // Category was provided but no exact category matched. Try searching by name/description.
-            dbQuery = dbQuery.or(`name.ilike.%${category}%,description.ilike.%${category}%`);
+        } else if (categorySearch) {
+            // Keyword search across multiple fields if no exact category match
+            const cleanSearch = categorySearch.trim();
+            dbQuery = dbQuery.or(`name.ilike.%${cleanSearch}%,description.ilike.%${cleanSearch}%,categories.name.ilike.%${cleanSearch}%`);
         }
 
         if (budget) {
             dbQuery = dbQuery.lte('price', budget);
         }
 
-        // Apply a realistic limit
-        dbQuery = dbQuery.limit(5);
+        // Fetch total count for pagination info
+        const { count: totalCount } = await dbQuery.select('*', { count: 'exact', head: true });
 
-        const { data, error } = await dbQuery;
+        // Apply a realistic limit
+        dbQuery = dbQuery.limit(20);
+
+        const { data, error } = await dbQuery.select('id, name, price, description, image_url, brand, stock_quantity, categories(name), metadata');
         if (error) throw error;
 
         if (!data || data.length === 0) {
             return {
-                text: `I don't have ${category ? `"${category}" products` : 'products'} ${budget ? `under ₹${budget}` : ''} right now. Try browsing our full catalog!`,
+                text: `I don't have ${categorySearch ? `"${categorySearch}" products` : 'products'} ${budget ? `under ₹${budget}` : ''} right now. Try browsing our full catalog!`,
                 products: []
             };
         }
@@ -60,15 +68,18 @@ module.exports = {
             category: p.categories?.name || 'General',
             brand: p.brand || p.metadata?.brand || '',
             stock: p.stock_quantity,
-            description: p.description?.substring(0, 100)
+            description: p.description?.substring(0, 100),
+            originalPrice: p.metadata?.originalPrice,
+            discount: p.metadata?.discount
         }));
 
         const budgetText = budget ? ` under ₹${budget.toLocaleString()}` : '';
         return {
-            text: `Here are my top recommendations for ${category || 'you'}${budgetText}:`,
+            text: `I found ${totalCount || products.length} products for you${budgetText}. Here are the top matches:`,
             products,
-            category: category || null,
-            query: category || null,
+            totalCount: totalCount || products.length,
+            category: categorySearch || null,
+            query: categorySearch || null,
             max_price: budget || null
         };
     }
