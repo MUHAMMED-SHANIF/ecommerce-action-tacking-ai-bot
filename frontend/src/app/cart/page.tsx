@@ -84,7 +84,7 @@ export default function CartPage() {
                     {/* Address Section */}
                     <div className="bg-white shadow-sm mb-4 p-4 border rounded-sm">
                         <div className="flex justify-between items-center mb-2">
-                            <h3 className="text-gray-500 font-medium text-[16px]">Deliver to:</h3>
+                            <h3 className="text-slate-500 font-bold text-[12px] uppercase tracking-wider">DELIVER TO:</h3>
                             {!showAddressForm && (
                                 <button
                                     onClick={() => setShowAddressForm(true)}
@@ -199,29 +199,29 @@ export default function CartPage() {
 
                 {/* Right Section: Price Details */}
                 <div className="lg:w-[360px] h-fit sticky top-20">
-                    <div className="bg-white shadow-sm min-h-[300px]">
+                    <div className="bg-white shadow-sm min-h-[300px] rounded-sm border border-slate-100">
                         <div className="p-4 border-b border-gray-100">
-                            <h3 className="text-[16px] font-medium text-gray-500 uppercase">Price Details</h3>
+                            <h3 className="text-[14px] font-bold text-slate-500 uppercase tracking-wider">PRICE DETAILS</h3>
                         </div>
                         <div className="p-4 flex flex-col gap-4 text-[15px]">
                             <div className="flex justify-between">
-                                <span>Price ({cartItems.length} items)</span>
-                                <span>₹{totalOriginal.toLocaleString()}</span>
+                                <span className="font-medium text-slate-600">PRICE ({cartItems.length} ITEMS)</span>
+                                <span className="text-slate-800">₹{(totalOriginal || 0).toLocaleString()}</span>
                             </div>
                             <div className="flex justify-between text-[#0B3D2E]">
-                                <span>Discount</span>
-                                <span>− ₹{totalDiscount.toLocaleString()}</span>
+                                <span className="font-medium">DISCOUNT</span>
+                                <span>− ₹{(totalDiscount || 0).toLocaleString()}</span>
                             </div>
                             <div className="flex justify-between text-[#0B3D2E]">
-                                <span>Delivery Charges</span>
-                                <span>Free</span>
+                                <span className="font-medium">DELIVERY CHARGES</span>
+                                <span className="font-bold">FREE</span>
                             </div>
 
                             <div className="border-t border-dashed border-gray-300 my-2"></div>
 
-                            <div className="flex justify-between font-semibold text-[18px]">
-                                <span>Total Amount</span>
-                                <span>₹{totalAmount.toLocaleString()}</span>
+                            <div className="flex justify-between font-bold text-[18px] text-slate-900">
+                                <span className="uppercase">Total Amount</span>
+                                <span>₹{(totalAmount || 0).toLocaleString()}</span>
                             </div>
 
                             <div className="border-t border-dashed border-gray-300 my-2"></div>

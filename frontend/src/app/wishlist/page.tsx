@@ -39,28 +39,35 @@ export default function WishlistPage() {
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-[1248px] font-sans">
-            <h2 className="text-[22px] font-medium mb-6">My Wishlist ({items.length})</h2>
-            <div className="bg-white shadow-sm rounded-[2px] overflow-hidden">
+            <h2 className="text-[14px] font-bold uppercase tracking-widest text-[#0B3D2E] mb-8 flex items-center gap-3">
+                <span className="w-8 h-[2px] bg-[#F59E0B]"></span>
+                MY WISHLIST ({items.length})
+            </h2>
+            <div className="bg-white shadow-sm rounded-xl overflow-hidden border border-slate-100">
                 {items.map((item) => (
                     <div key={item.id} className="relative group">
-                        <Link href={`/product/${item.id}`} className="block p-6 border-b border-gray-100 flex gap-6 hover:bg-gray-50 transition-colors">
-                            <div className="relative w-28 h-28 shrink-0">
+                        <Link href={`/product/${item.id}`} className="block p-6 border-b border-gray-100 flex gap-6 hover:bg-slate-50 transition-colors">
+                            <div className="relative w-28 h-28 shrink-0 bg-white p-2 rounded-lg border border-slate-50">
                                 <img src={item.image} alt={item.title} className="w-full h-full object-contain" />
                             </div>
                             <div className="flex-1">
-                                <h3 className="text-[16px] font-medium text-gray-800 mb-2 truncate max-w-2xl">{item.title}</h3>
+                                <h3 className="text-[16px] font-medium text-slate-800 mb-2 truncate max-w-2xl">{item.title}</h3>
 
                                 <div className="flex items-center gap-3 mb-2">
-                                    <span className="bg-[#0B3D2E] text-white text-[12px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
-                                        4.5 <span className="text-[10px]">★</span>
+                                    <span className="bg-[#0B3D2E] text-white text-[12px] font-bold px-2 py-0.5 rounded flex items-center gap-1">
+                                        {item.rating || '4.5'} <span className="text-[10px]">★</span>
                                     </span>
-                                    <span className="text-gray-500 text-xs">(1,234)</span>
+                                    <span className="text-slate-400 text-xs">({item.numReviews || '1,234'})</span>
                                 </div>
 
                                 <div className="flex items-center gap-3">
-                                    <span className="text-[18px] font-semibold text-black">₹{item.price.toLocaleString()}</span>
-                                    <span className="text-[14px] text-gray-500 line-through">₹{item.originalPrice.toLocaleString()}</span>
-                                    <span className="text-[14px] text-[#0B3D2E] font-bold">{item.discount}% off</span>
+                                    <span className="text-[18px] font-bold text-slate-900">₹{(item.price || 0).toLocaleString()}</span>
+                                    {item.originalPrice && Number(item.originalPrice) > item.price && (
+                                        <>
+                                            <span className="text-[14px] text-slate-400 line-through">₹{Number(item.originalPrice).toLocaleString()}</span>
+                                            <span className="text-[14px] text-[#0B3D2E] font-bold uppercase">{item.discount || 0}% OFF</span>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         </Link>
