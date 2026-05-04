@@ -109,14 +109,15 @@ export default function ProductCard({ id, title, image, price, originalPrice, di
                 )}
                 <h3 className="text-[14px] font-medium text-gray-800 truncate mb-2" title={title}>{title}</h3>
 
-                <div className="flex items-center justify-center gap-2 flex-wrap">
-                    <span className="text-[16px] font-semibold text-black">₹{safePrice.toLocaleString()}</span>
+                {safeDiscount > 0 && (
+                    <p className="text-[13px] text-[#1b5e20] font-bold mb-1">{safeDiscount}% OFF</p>
+                )}
+
+                <div className="flex items-baseline justify-center gap-2">
                     {safeOriginalPrice > 0 && safeOriginalPrice !== safePrice && (
                         <span className="text-[12px] text-gray-400 line-through">₹{safeOriginalPrice.toLocaleString()}</span>
                     )}
-                    {safeDiscount > 0 && (
-                        <span className="text-[12px] text-[#1b5e20] font-bold">{safeDiscount}% off</span>
-                    )}
+                    <span className="text-[17px] font-bold text-black">₹{safePrice.toLocaleString()}</span>
                 </div>
 
                 {offer && (
