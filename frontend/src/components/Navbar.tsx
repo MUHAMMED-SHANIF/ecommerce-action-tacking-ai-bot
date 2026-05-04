@@ -1,19 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { Search, ShoppingCart, ChevronDown, User, Store, LogOut, Heart, MoreVertical, MessageSquare, Settings, Moon, Sun } from "lucide-react";
+import { Search, ShoppingCart, ChevronDown, User, Store, LogOut, Heart, MoreVertical, MessageSquare, Settings } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useRouter, usePathname } from "next/navigation";
-import { useTheme } from "@/context/ThemeContext";
 
 export default function Navbar() {
     const [searchTerm, setSearchTerm] = useState("");
     const { user, logout } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
-    const { isDark, toggleTheme } = useTheme();
 
     // Use useEffect to handle visibility to avoid hydration mismatch
     const [isVisible, setIsVisible] = useState(false);
@@ -150,15 +148,6 @@ export default function Navbar() {
                         <Link href="/chatbot" className="flex items-center gap-2 hover:text-yellow-200 transition-colors" title="AI Chatbot">
                             <MessageSquare className="w-5 h-5" />
                         </Link>
-
-                        {/* Dark Mode Toggle */}
-                        <button
-                            onClick={toggleTheme}
-                            className="p-2 rounded-full hover:bg-white/10 transition-colors" 
-                            title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
-                        >
-                            {isDark ? <Sun className="w-5 h-5 text-yellow-300" /> : <Moon className="w-5 h-5" />}
-                        </button>
 
                         {/* Three Dots Menu for Settings */}
                         <div className="relative group cursor-pointer">

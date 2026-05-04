@@ -3,19 +3,6 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
-  --card-bg: #ffffff;
-  --card-border: #e5e7eb;
-  --muted: #f1f2f4;
-  --muted-text: #6b7280;
-}
-
-.dark {
-  --background: #0f172a;
-  --foreground: #e2e8f0;
-  --card-bg: #1e293b;
-  --card-border: #334155;
-  --muted: #1e293b;
-  --muted-text: #94a3b8;
 }
 
 @theme inline {
@@ -25,56 +12,10 @@
   --font-mono: var(--font-geist-mono);
 }
 
+
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
-  transition: background-color 0.3s ease, color 0.3s ease;
-}
-
-/* Dark mode overrides for common elements */
-.dark .bg-white {
-  background-color: var(--card-bg) !important;
-}
-
-.dark .bg-\[\#f1f2f4\] {
-  background-color: var(--background) !important;
-}
-
-.dark .text-gray-800,
-.dark .text-slate-800,
-.dark .text-black {
-  color: var(--foreground) !important;
-}
-
-.dark .text-gray-500,
-.dark .text-slate-500,
-.dark .text-gray-600,
-.dark .text-slate-600,
-.dark .text-gray-400 {
-  color: var(--muted-text) !important;
-}
-
-.dark .border-gray-200,
-.dark .border-gray-100,
-.dark .border-slate-100 {
-  border-color: var(--card-border) !important;
-}
-
-.dark .shadow-sm,
-.dark .shadow-md {
-  --tw-shadow-color: rgba(0, 0, 0, 0.3);
-}
-
-.dark input,
-.dark textarea,
-.dark select {
-  background-color: #1e293b;
-  color: #e2e8f0;
-  border-color: #475569;
-}
-
-.dark input::placeholder,
-.dark textarea::placeholder {
-  color: #64748b;
 }

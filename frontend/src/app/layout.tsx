@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import { WishlistProvider } from "@/context/WishlistContext";
-import { ThemeProvider } from "@/context/ThemeContext";
 import AIAssistant from "@/components/AIAssistant";
 
 import { ToastProvider } from "@/context/ToastContext";
@@ -26,19 +24,17 @@ export default function RootLayout({
         className={`antialiased`}
       >
         <AuthProvider>
-          <ThemeProvider>
-            <ToastProvider>
-              <CartProvider>
-                <WishlistProvider>
-                  <Navbar />
-                  <main className="min-h-screen bg-[#f1f2f4] pb-10">
-                    {children}
-                  </main>
-                  <AIAssistant />
-                </WishlistProvider>
-              </CartProvider>
-            </ToastProvider>
-          </ThemeProvider>
+          <ToastProvider>
+            <CartProvider>
+              <WishlistProvider>
+                <Navbar />
+                <main className="min-h-screen bg-[#f1f2f4] pb-10">
+                  {children}
+                </main>
+                <AIAssistant />
+              </WishlistProvider>
+            </CartProvider>
+          </ToastProvider>
         </AuthProvider>
       </body>
     </html>

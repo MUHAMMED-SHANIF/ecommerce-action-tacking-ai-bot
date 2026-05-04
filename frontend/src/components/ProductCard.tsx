@@ -14,16 +14,21 @@ interface ProductCardProps {
     originalPrice: number;
     discount: number;
     offer?: string;
+    brand?: string;
 }
 
-export default function ProductCard({ id, title, image, price, originalPrice, discount, offer }: ProductCardProps) {
+export default function ProductCard({ id, title, image, price, originalPrice, discount, offer, brand }: ProductCardProps) {
     const { user } = useAuth();
     const router = useRouter();
     const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
 
     const safePrice = typeof price === 'number' ? price : 0;
-    const safeOriginalPrice = typeof originalPrice === 'number' ? originalPrice : 0;
     const safeDiscount = typeof discount === 'number' ? discount : 0;
+    // Compute originalPrice from price & discount if not provided
+    let safeOriginalPrice = typeof originalPrice === 'number' && originalPrice > 0 ? originalPrice : 0;
+    if (safeOriginalPrice === 0 && safeDiscount > 0 && safePrice > 0) {
+        safeOriginalPrice = Math.round(safePrice / (1 - safeDiscount / 100));
+    }
 
     // Strict Image Validation
     let displayImage = "https://placehold.co/400x400/png?text=No+Image";
@@ -99,6 +104,9 @@ export default function ProductCard({ id, title, image, price, originalPrice, di
             </div>
 
             <div className="text-center mt-3">
+                {brand && (
+                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1">{brand}</p>
+                )}
                 <h3 className="text-[14px] font-medium text-gray-800 truncate mb-2" title={title}>{title}</h3>
 
                 <div className="flex items-center justify-center gap-2 flex-wrap">

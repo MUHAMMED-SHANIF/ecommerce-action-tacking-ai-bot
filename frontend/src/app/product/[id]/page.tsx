@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Star, ShoppingCart, Zap, Tag, Heart, ShieldCheck } from "lucide-react";
+import { ShoppingCart, Zap, Tag, Heart, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
@@ -92,7 +92,7 @@ function ProductContent() {
                             </div>
                         ))}
                     </div>
-                    <div className="flex-1 relative border rounded-sm p-4 h-[450px]">
+                    <div className="flex-1 relative border rounded-sm p-4 h-[495px]">
                         <Image src={selectedImage || images[0]} alt="Product" fill className="object-contain" priority />
 
                         {/* Wishlist Button - Hidden in Preview */}
@@ -123,18 +123,9 @@ function ProductContent() {
 
                     <h1 className="text-[18px] font-normal text-gray-900 mb-2">{product.title}</h1>
 
-                    <div className="flex items-center gap-4 mb-4">
-                        <span className="bg-[#388e3c] text-white text-[12px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
-                            {product.rating} <Star className="w-3 h-3 fill-white" />
-                        </span>
-                        <span className="text-gray-500 text-[13px] font-medium">{product.reviews?.toLocaleString()} Ratings & Reviews</span>
-                        {product.isTrustedSeller && (
-                            <span className="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-sm flex items-center gap-1 shadow-sm">
-                                <ShieldCheck className="w-4 h-4" />
-                                Trusted Seller
-                            </span>
-                        )}
-                    </div>
+                    {product.brand && (
+                        <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wider mb-4">{product.brand}</p>
+                    )}
 
                     {/* Price Section */}
                     <div className="mb-4">
