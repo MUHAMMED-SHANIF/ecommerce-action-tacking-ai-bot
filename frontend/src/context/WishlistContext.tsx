@@ -44,7 +44,14 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
                 try {
                     const res = await fetch(`${API_URL}/wishlist/${user.id}`);
                     const data = await res.json();
-                    setItems(Array.isArray(data) ? data : []);
+                    // Normalize: server may return full objects or plain ID strings
+                    const normalized = (Array.isArray(data) ? data : []).map((entry: any) => {
+                        if (typeof entry === 'string' || typeof entry === 'number') {
+                            return { id: String(entry), title: '', price: 0, originalPrice: 0, discount: 0, image: '' };
+                        }
+                        return { ...entry, id: String(entry.id || entry.product_id || '') };
+                    }).filter(e => e.id);
+                    setItems(normalized);
                 } catch (err) {
                     console.error("Failed to sync wishlist", err);
                 }
@@ -85,9 +92,9 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    const removeFromWishlist = async (itemId: number | string) => {
-        if (!user?.id) return;
-        const idStr = itemId.toString();
+    const removeFromWishlist = async (itemId: number | string | undefined | null) => {
+        if (!user?.id || itemId === undefined || itemId === null) return;
+        const idStr = String(itemId);
 
         setItems(prev => prev.filter(i => i.id !== idStr));
 
@@ -100,8 +107,9 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    const isInWishlist = (itemId: number | string) => {
-        return items.some(i => i.id === itemId.toString());
+    const isInWishlist = (itemId: number | string | undefined | null) => {
+        if (itemId === undefined || itemId === null) return false;
+        return items.some(i => i.id === String(itemId));
     };
 
     return (

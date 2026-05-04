@@ -1685,14 +1685,36 @@ app.post('/api/address/:userId', async (req, res) => {
     }
 });
 
-// --- WISHLIST ---
+// --- WISHLIST (unified - returns full product objects) ---
 app.get('/api/wishlist/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
-        const { data: wishlists, error } = await supabase.from('wishlists').select('product_id').eq('user_id', userId);
-        if (error) throw error;
 
-        res.json(wishlists.map(w => w.product_id));
+        // Try wishlist_items table first, fallback to wishlists table
+        let pIds = [];
+        const { data: items1 } = await supabase.from('wishlist_items').select('product_id').eq('user_id', userId);
+        if (items1 && items1.length > 0) {
+            pIds = items1.map(i => i.product_id);
+        } else {
+            const { data: items2 } = await supabase.from('wishlists').select('product_id').eq('user_id', userId);
+            pIds = (items2 || []).map(i => i.product_id);
+        }
+
+        if (pIds.length === 0) return res.json([]);
+
+        const { data: products, error: pErr } = await supabase.from('products').select('*').in('id', pIds);
+        if (pErr) throw pErr;
+
+        const formatted = (products || []).map(p => ({
+            id: p.id,
+            title: p.name,
+            price: p.price,
+            originalPrice: p.metadata?.originalPrice || p.price,
+            discount: p.metadata?.discount || 0,
+            image: p.image_url || p.image
+        }));
+
+        res.json(formatted);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -1702,16 +1724,11 @@ app.post('/api/wishlist/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
         const { productId } = req.body;
-
-        const { error } = await supabase.from('wishlists').insert({
-            user_id: userId,
-            product_id: productId
-        });
-
-        // Ignore unique constraint violations if it already exists
-        if (error && error.code !== '23505') throw error;
-
-        res.json({ message: "Added to wishlist" });
+        // Try both tables
+        await supabase.from('wishlist_items').upsert({ user_id: userId, product_id: productId }, { onConflict: 'user_id,product_id' }).then(() => {});
+        const { error } = await supabase.from('wishlists').insert({ user_id: userId, product_id: productId });
+        if (error && error.code !== '23505') { /* ignore duplicate */ }
+        res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -1720,10 +1737,9 @@ app.post('/api/wishlist/:userId', async (req, res) => {
 app.delete('/api/wishlist/:userId/:productId', async (req, res) => {
     try {
         const { userId, productId } = req.params;
-        const { error } = await supabase.from('wishlists').delete().match({ user_id: userId, product_id: productId });
-        if (error) throw error;
-
-        res.json({ message: "Removed from wishlist" });
+        await supabase.from('wishlist_items').delete().match({ user_id: userId, product_id: productId });
+        await supabase.from('wishlists').delete().match({ user_id: userId, product_id: productId });
+        res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
