@@ -25,16 +25,17 @@ export default function RecentlyVisited() {
                     return;
                 }
 
-                // Fetch details for these IDs
-                // In a real app we might have a bulk fetch API, but for now we'll do parallel requests
-                // or just rely on what we *could* have stored. 
-                // Better to fetch fresh data to get price updates etc.
-                const promises = top10.map((h: any) =>
-                    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/products/${h.id}`).then(r => r.ok ? r.json() : null)
-                );
+                // History items may be plain product ID strings OR objects with .id
+                const promises = top10.map((h: any) => {
+                    const productId = typeof h === 'string' ? h : (h?.id || h?.product_id);
+                    if (!productId) return Promise.resolve(null);
+                    return fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/products/${productId}`)
+                        .then(r => r.ok ? r.json() : null)
+                        .catch(() => null);
+                });
 
                 const results = await Promise.all(promises);
-                const validProducts = results.filter(p => p !== null);
+                const validProducts = results.filter(p => p !== null && p.id);
                 setProducts(validProducts);
             } catch (err) {
                 console.error(err);

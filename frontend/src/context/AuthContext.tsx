@@ -28,6 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const router = useRouter();
+    const intentionalLogout = { current: false };
 
     useEffect(() => {
         const initAuth = async () => {
@@ -45,16 +46,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setUser(currentUser);
                 localStorage.setItem("user", JSON.stringify(currentUser));
             } else {
-                // No valid session — clear any stale localStorage (removes ghost login)
                 setUser(null);
                 localStorage.removeItem("user");
             }
             setIsLoading(false);
 
-            // Listen for auth state changes
             const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
                 if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
-                    // Keep token fresh on every refresh
                     const meta = session.user.user_metadata || {};
                     const currentUser: User = {
                         id: session.user.id,
@@ -67,10 +65,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     setUser(currentUser);
                     localStorage.setItem("user", JSON.stringify(currentUser));
                 } else if (event === 'SIGNED_OUT') {
-                    // Session expired or user logged out — clear state and redirect to login
                     setUser(null);
                     localStorage.removeItem("user");
-                    router.push("/login");
+                    // Only redirect if it was an intentional logout (not a token refresh hiccup)
+                    if (intentionalLogout.current) {
+                        intentionalLogout.current = false;
+                        router.push("/login");
+                    }
                 }
             });
 
@@ -137,6 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const logout = async () => {
+        intentionalLogout.current = true;
         await supabase.auth.signOut();
         setUser(null);
         localStorage.removeItem("user");

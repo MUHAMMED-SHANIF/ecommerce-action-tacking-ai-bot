@@ -58,8 +58,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const loadFromServer = async () => {
             try {
                 const res = await fetch(`${API_URL}/cart/${user.id}`);
-                if (!res.ok) throw new Error("Failed to fetch cart");
-                const data = await res.json();
+                const data = res.ok ? await res.json() : { items: [] };
                 const serverItems: CartItem[] = Array.isArray(data.items) ? data.items : [];
 
                 // Merge any local-only items (added while logged out)
