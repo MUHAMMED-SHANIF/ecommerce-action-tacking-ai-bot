@@ -33,7 +33,7 @@ export default function Navbar() {
     };
 
     return (
-        <nav className="sticky top-0 z-50 bg-[#065f46] text-white shadow-lg">
+        <nav className="sticky top-0 z-50 bg-[#1b5e20] text-white shadow-lg">
             <div className="container mx-auto px-4 max-w-[1248px]">
                 <div className="flex items-center gap-8 h-16">
                     {/* Left: Logo & Home Button */}
@@ -47,7 +47,7 @@ export default function Navbar() {
                         </Link>
 
                         {/* Home Button */}
-                        <Link href="/" className="bg-[#059669] hover:bg-[#047857] p-2 rounded-full transition-colors group" title="Home">
+                        <Link href="/" className="bg-[#059669] hover:bg-[#144216] p-2 rounded-full transition-colors group" title="Home">
                             <Store className="w-5 h-5 text-white group-hover:text-yellow-200" />
                         </Link>
                     </div>
@@ -128,7 +128,7 @@ export default function Navbar() {
                                 </div>
                             ) : (
                                 <Link href="/login">
-                                    <button className="bg-white text-[#065f46] px-8 py-1.5 font-bold rounded-sm hover:bg-gray-100 transition-colors shadow-sm whitespace-nowrap">
+                                    <button className="bg-white text-[#1b5e20] px-8 py-1.5 font-bold rounded-sm hover:bg-gray-100 transition-colors shadow-sm whitespace-nowrap">
                                         Login
                                     </button>
                                 </Link>

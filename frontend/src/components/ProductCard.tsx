@@ -67,10 +67,10 @@ export default function ProductCard({ id, title, image, price, originalPrice, di
     return (
         <div
             onClick={handleCardClick}
-            className={`bg-white p-4 rounded-[24px] transition-all duration-500 cursor-pointer min-w-[200px] border border-transparent hover:border-gray-200 relative group
+            className={`bg-white p-4 rounded-[24px] transition-all duration-500 cursor-pointer min-w-[200px] border border-transparent hover:border-gray-200 relative group shadow-sm
                 ${isAnimating 
                     ? 'z-50 shadow-2xl scale-[1.15] opacity-0 blur-[2px] pointer-events-none' 
-                    : 'hover:shadow-lg hover:-translate-y-1'
+                    : 'hover:shadow-md hover:-translate-y-1'
                 }
             `}
             style={{ 

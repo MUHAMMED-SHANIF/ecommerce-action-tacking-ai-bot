@@ -188,7 +188,7 @@ function ProductContent() {
                                                 window.location.href = "/login";
                                             }
                                         }}
-                                        className="flex-1 bg-[#fb641b] text-white font-medium py-3.5 shadow px-2 uppercase text-[15px] flex items-center justify-center gap-2 hover:shadow-lg transition-shadow"
+                                        className="flex-1 bg-[#cddc39] text-gray-900 font-medium py-3.5 shadow px-2 uppercase text-[15px] flex items-center justify-center gap-2 hover:shadow-lg transition-shadow"
                                     >
                                         <Zap className="w-5 h-5 fill-white" />
                                         Buy Now

@@ -44,7 +44,7 @@ export default function LoginPage() {
         <div className="min-h-screen bg-[#f1f2f4] flex items-center justify-center p-4">
             <div className="bg-white flex rounded shadow-md max-w-[850px] w-full min-h-[528px] overflow-hidden">
                 {/* Left Side (Banner) */}
-                <div className="w-[40%] bg-[#065f46] p-10 flex flex-col justify-between text-white hidden md:flex">
+                <div className="w-[40%] bg-[#1b5e20] p-10 flex flex-col justify-between text-white hidden md:flex">
                     <div>
                         <h2 className="text-[28px] font-medium mb-4">Login</h2>
                         <p className="text-[18px] text-gray-200 leading-7">Get access to your Orders, Wishlist and Recommendations</p>

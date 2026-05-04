@@ -83,7 +83,7 @@ export default function ChangePassword({ user, apiBase }: ChangePasswordProps) {
                 <button
                     onClick={handleChangePassword}
                     disabled={loading}
-                    className="w-full bg-[#065f46] text-white font-bold py-3 rounded-md shadow-md hover:bg-[#047857] transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-70"
+                    className="w-full bg-[#1b5e20] text-white font-bold py-3 rounded-md shadow-md hover:bg-[#144216] transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-70"
                 >
                     <Check className="w-4 h-4" />
                     {loading ? "Updating..." : "Update Password"}

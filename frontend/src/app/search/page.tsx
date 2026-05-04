@@ -67,10 +67,10 @@ export default function SearchPage() {
             : "All Products";
 
     return (
-        <div className="min-h-screen bg-[#f1f3f6]">
+        <div className="min-h-screen bg-[#ffffff]">
 
             {/* Hero Search Bar */}
-            <div className="bg-gradient-to-r from-[#065f46] to-[#047857] text-white">
+            <div className="bg-gradient-to-r from-[#1b5e20] to-[#144216] text-white">
                 <div className="container mx-auto px-4 max-w-[1248px] py-6">
                     <div className="flex items-center gap-2 text-emerald-100/80 text-xs mb-4">
                         <Link href="/" className="hover:text-yellow-200 transition">Home</Link>
@@ -93,7 +93,7 @@ export default function SearchPage() {
                                 </button>
                             )}
                         </div>
-                        <button type="submit" className="bg-yellow-400 text-[#065f46] font-bold px-6 py-3 rounded-xl hover:bg-yellow-300 transition shadow text-sm">
+                        <button type="submit" className="bg-[#cddc39] text-gray-900 font-bold px-6 py-3 rounded-xl hover:bg-[#b7c433] transition shadow text-sm">
                             Search
                         </button>
                     </form>
@@ -144,7 +144,7 @@ export default function SearchPage() {
                         </p>
                         <button
                             onClick={() => router.push("/")}
-                            className="px-6 py-2.5 bg-[#065f46] text-white rounded-full text-sm font-semibold hover:bg-[#047857] transition shadow-sm"
+                            className="px-6 py-2.5 bg-[#1b5e20] text-white rounded-full text-sm font-semibold hover:bg-[#144216] transition shadow-sm"
                         >
                             Go to Homepage
                         </button>

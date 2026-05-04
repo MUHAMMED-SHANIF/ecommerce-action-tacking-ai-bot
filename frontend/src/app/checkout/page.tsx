@@ -233,7 +233,7 @@ function CheckoutContent() {
                                         <input placeholder="State" className="p-2 border rounded text-sm w-full" value={newAddress.state} onChange={e => setNewAddress({ ...newAddress, state: e.target.value })} />
                                     </div>
                                     <div className="flex gap-2">
-                                        <button onClick={handleAddAddress} className="bg-[#fb641b] text-white px-4 py-1.5 text-sm font-medium uppercase rounded-sm shadow-sm">Save Address</button>
+                                        <button onClick={handleAddAddress} className="bg-[#cddc39] text-gray-900 px-4 py-1.5 text-sm font-medium uppercase rounded-sm shadow-sm">Save Address</button>
                                         <button onClick={() => setShowAddressForm(false)} className="text-[#2874f0] text-sm font-medium uppercase px-2 py-1.5">Cancel</button>
                                     </div>
                                 </div>
@@ -259,7 +259,7 @@ function CheckoutContent() {
                                     ) : (
                                         <div className="text-center py-4">
                                             <p className="text-sm text-gray-500 mb-4">No address saved. Please add one to continue.</p>
-                                            <button onClick={() => setShowAddressForm(true)} className="bg-[#fb641b] text-white font-bold px-8 py-3 text-[14px] uppercase rounded-[2px] shadow">
+                                            <button onClick={() => setShowAddressForm(true)} className="bg-[#cddc39] text-gray-900 font-bold px-8 py-3 text-[14px] uppercase rounded-[2px] shadow">
                                                 Add Delivery Address
                                             </button>
                                         </div>
@@ -335,7 +335,7 @@ function CheckoutContent() {
                                 </label>
                             </div>
 
-                            <button onClick={handlePlaceOrder} className="bg-[#fb641b] text-white font-bold px-16 py-3 text-[16px] uppercase rounded-[2px] shadow hover:shadow-lg">
+                            <button onClick={handlePlaceOrder} className="bg-[#cddc39] text-gray-900 font-bold px-16 py-3 text-[16px] uppercase rounded-[2px] shadow hover:shadow-lg">
                                 Confirm Order
                             </button>
                         </div>
