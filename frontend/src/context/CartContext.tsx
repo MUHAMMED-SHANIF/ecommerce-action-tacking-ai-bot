@@ -51,6 +51,36 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
         const initCart = async () => {
             console.log("[Cart Init] Starting initialization for user:", user?.id || "Guest");
+            
+            if (!user) {
+                // If NO user, we handle as Guest or Clear
+                // The user requested that logout should clear everything: "logeed out nothing cant see like thsi"
+                // So if we just logged out (or are guests), we might want to clear.
+                // However, usually Guest Cart is a feature. But user specifically said they want it gone on logout.
+                
+                // Check if we just logged out by checking a flag or just checking if localStorage exists but user doesn't
+                const wasLoggedIn = localStorage.getItem("user_was_logged_in");
+                if (wasLoggedIn === "true" && !user) {
+                    console.log("[Cart Init] User logged out, clearing cart per request.");
+                    setItems([]);
+                    localStorage.removeItem("cart");
+                    localStorage.removeItem("user_was_logged_in");
+                } else {
+                    // Normal Guest path
+                    let localItems: CartItem[] = [];
+                    try {
+                        const stored = localStorage.getItem("cart");
+                        if (stored) localItems = JSON.parse(stored);
+                    } catch (e) {}
+                    setItems(localItems);
+                }
+                setIsInitialized(true);
+                return;
+            }
+
+            // If we are here, we HAVE a user
+            localStorage.setItem("user_was_logged_in", "true");
+
             // 1. Get Guest Cart from LocalStorage
             let localItems: CartItem[] = [];
             try {
@@ -63,47 +93,42 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 console.error("Local cart parse error", e);
             }
 
-            // 2. If User is logged in, sync with server
-            if (user?.id) {
-                try {
-                    console.log("[Cart Init] Fetching server cart for:", user.id);
-                    const res = await fetch(`${API_URL}/cart/${user.id}`);
-                    if (res.ok) {
-                        const data = await res.json();
-                        const serverItems = Array.isArray(data.items) ? data.items : [];
-                        console.log("[Cart Init] Loaded from Server:", serverItems);
+            // 2. Sync with server
+            try {
+                console.log("[Cart Init] Fetching server cart for:", user.id);
+                const res = await fetch(`${API_URL}/cart/${user.id}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const serverItems = Array.isArray(data.items) ? data.items : [];
+                    console.log("[Cart Init] Loaded from Server:", serverItems);
 
-                        // Merge logic: Combine both, avoid duplicates
-                        const merged = [...serverItems];
-                        localItems.forEach(li => {
-                            if (!merged.find(si => String(si.id) === String(li.id))) {
-                                merged.push(li);
-                            }
-                        });
-
-                        console.log("[Cart Init] Merged Cart:", merged);
-                        setItems(merged);
-                        localStorage.setItem("cart", JSON.stringify(merged));
-
-                        // If we had new local items, push the merged state back to server
-                        if (localItems.length > 0) {
-                            console.log("[Cart Init] Pushing merged cart to server...");
-                            await fetch(`${API_URL}/cart/${user.id}`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ items: merged })
-                            });
+                    // Merge logic: Combine both, avoid duplicates
+                    const merged = [...serverItems];
+                    localItems.forEach(li => {
+                        if (!merged.find(si => String(si.id) === String(li.id))) {
+                            merged.push(li);
                         }
-                    } else {
-                        console.warn("[Cart Init] Server fetch failed, using local items");
-                        setItems(localItems);
+                    });
+
+                    console.log("[Cart Init] Merged Cart:", merged);
+                    setItems(merged);
+                    localStorage.setItem("cart", JSON.stringify(merged));
+
+                    // Push merge back to server
+                    if (localItems.length > 0) {
+                        console.log("[Cart Init] Pushing merged cart to server...");
+                        await fetch(`${API_URL}/cart/${user.id}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ items: merged })
+                        });
                     }
-                } catch (err) {
-                    console.error("[Cart Init] Server cart sync error", err);
+                } else {
+                    console.warn("[Cart Init] Server fetch failed");
                     setItems(localItems);
                 }
-            } else {
-                console.log("[Cart Init] Initializing as Guest with items:", localItems);
+            } catch (err) {
+                console.error("[Cart Init] Server sync error", err);
                 setItems(localItems);
             }
             setIsInitialized(true);
