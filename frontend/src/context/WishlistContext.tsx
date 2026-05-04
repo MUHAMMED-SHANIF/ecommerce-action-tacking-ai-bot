@@ -32,11 +32,13 @@ const API_URL = getApiUrl();
 import { useToast } from "./ToastContext";
 
 export function WishlistProvider({ children }: { children: ReactNode }) {
-    const { user } = useAuth();
+    const { user, isLoading: authLoading } = useAuth();
     const { showToast } = useToast();
     const [items, setItems] = useState<WishlistItem[]>([]);
 
     useEffect(() => {
+        if (authLoading) return;
+
         const fetchWishlist = async () => {
             if (user?.id) {
                 try {
@@ -45,7 +47,6 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
                     setItems(Array.isArray(data) ? data : []);
                 } catch (err) {
                     console.error("Failed to sync wishlist", err);
-                    setItems([]);
                 }
             } else {
                 setItems([]); // Clear on logout
@@ -53,7 +54,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
         };
 
         fetchWishlist();
-    }, [user]);
+    }, [user, authLoading]);
 
     const addToWishlist = async (product: any) => {
         if (!user?.id) return;

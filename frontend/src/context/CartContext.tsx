@@ -45,104 +45,82 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const [items, setItems] = useState<CartItem[]>([]);
     const [isInitialized, setIsInitialized] = useState(false);
 
-    // Single initialization effect
+    // Step 1: Initial load from LocalStorage (Sync)
+    useEffect(() => {
+        try {
+            const stored = localStorage.getItem("cart");
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                if (Array.isArray(parsed)) setItems(parsed);
+            }
+        } catch (e) {
+            console.error("Cart pre-init error", e);
+        }
+    }, []);
+
+    // Step 2: Auth Sync (Async)
     useEffect(() => {
         if (authLoading) return;
 
-        const initCart = async () => {
-            console.log("[Cart Init] Starting initialization for user:", user?.id || "Guest");
-            
+        const syncWithServer = async () => {
             if (!user) {
-                // If NO user, we handle as Guest or Clear
-                // The user requested that logout should clear everything: "logeed out nothing cant see like thsi"
-                // So if we just logged out (or are guests), we might want to clear.
-                // However, usually Guest Cart is a feature. But user specifically said they want it gone on logout.
-                
-                // Check if we just logged out by checking a flag or just checking if localStorage exists but user doesn't
+                // If user just logged out, clear cart
                 const wasLoggedIn = localStorage.getItem("user_was_logged_in");
-                if (wasLoggedIn === "true" && !user) {
-                    console.log("[Cart Init] User logged out, clearing cart per request.");
+                if (wasLoggedIn === "true") {
+                    console.log("[Cart] Clearing after logout");
                     setItems([]);
                     localStorage.removeItem("cart");
                     localStorage.removeItem("user_was_logged_in");
-                } else {
-                    // Normal Guest path
-                    let localItems: CartItem[] = [];
-                    try {
-                        const stored = localStorage.getItem("cart");
-                        if (stored) localItems = JSON.parse(stored);
-                    } catch (e) {}
-                    setItems(localItems);
                 }
                 setIsInitialized(true);
                 return;
             }
 
-            // If we are here, we HAVE a user
+            // User is logged in
             localStorage.setItem("user_was_logged_in", "true");
+            console.log("[Cart] Syncing for user:", user.id);
 
-            // 1. Get Guest Cart from LocalStorage
-            let localItems: CartItem[] = [];
             try {
-                const stored = localStorage.getItem("cart");
-                if (stored) {
-                    localItems = JSON.parse(stored);
-                    console.log("[Cart Init] Loaded from LocalStorage:", localItems);
-                }
-            } catch (e) {
-                console.error("Local cart parse error", e);
-            }
-
-            // 2. Sync with server
-            try {
-                console.log("[Cart Init] Fetching server cart for:", user.id);
                 const res = await fetch(`${API_URL}/cart/${user.id}`);
                 if (res.ok) {
                     const data = await res.json();
                     const serverItems = Array.isArray(data.items) ? data.items : [];
-                    console.log("[Cart Init] Loaded from Server:", serverItems);
-
-                    // Merge logic: Combine both, avoid duplicates
+                    
+                    // Merge local items into server items
+                    const currentLocal = JSON.parse(localStorage.getItem("cart") || "[]");
                     const merged = [...serverItems];
-                    localItems.forEach(li => {
+                    
+                    currentLocal.forEach((li: any) => {
                         if (!merged.find(si => String(si.id) === String(li.id))) {
                             merged.push(li);
                         }
                     });
 
-                    console.log("[Cart Init] Merged Cart:", merged);
                     setItems(merged);
                     localStorage.setItem("cart", JSON.stringify(merged));
 
-                    // Push merge back to server
-                    if (localItems.length > 0) {
-                        console.log("[Cart Init] Pushing merged cart to server...");
-                        await fetch(`${API_URL}/cart/${user.id}`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ items: merged })
-                        });
+                    // If we had local items, push merged state to server
+                    if (currentLocal.length > 0) {
+                        await saveToServer(merged);
                     }
-                } else {
-                    console.warn("[Cart Init] Server fetch failed");
-                    setItems(localItems);
                 }
             } catch (err) {
-                console.error("[Cart Init] Server sync error", err);
-                setItems(localItems);
+                console.error("[Cart] Sync error", err);
             }
             setIsInitialized(true);
         };
 
-        initCart();
+        syncWithServer();
     }, [user, authLoading]);
 
-    // Save to LocalStorage whenever items change (after initialization)
-    useEffect(() => {
-        if (isInitialized) {
-            localStorage.setItem("cart", JSON.stringify(items));
+    // Internal helper to keep Local + Server in sync
+    const updateLocalAndServer = (updatedItems: CartItem[]) => {
+        setItems(updatedItems);
+        localStorage.setItem("cart", JSON.stringify(updatedItems));
+        if (user?.id && isInitialized) {
+            saveToServer(updatedItems);
         }
-    }, [items, isInitialized]);
+    };
 
     const saveToServer = async (updatedItems: CartItem[]) => {
         if (!user?.id) return;
@@ -179,15 +157,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
             });
         }
 
-        setItems(updatedItems);
+        updateLocalAndServer(updatedItems);
         showToast(`Added ${product.title || product.name || 'item'} to cart!`);
-        saveToServer(updatedItems);
     };
 
     const removeFromCart = async (itemId: number | string) => {
         const updatedItems = items.filter(i => String(i.id) !== String(itemId));
-        setItems(updatedItems);
-        saveToServer(updatedItems);
+        updateLocalAndServer(updatedItems);
     };
 
     const updateCartItemQty = async (itemId: number | string, delta: number) => {
@@ -197,13 +173,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
             }
             return i;
         });
-        setItems(updatedItems);
-        saveToServer(updatedItems);
+        updateLocalAndServer(updatedItems);
     };
 
     const clearCart = async () => {
-        setItems([]);
-        saveToServer([]);
+        updateLocalAndServer([]);
     };
 
     const totalAmount = items.reduce((acc, item) => acc + (item.price || 0) * (item.qty || 1), 0);
