@@ -50,11 +50,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
         if (authLoading) return;
 
         const initCart = async () => {
+            console.log("[Cart Init] Starting initialization for user:", user?.id || "Guest");
             // 1. Get Guest Cart from LocalStorage
             let localItems: CartItem[] = [];
             try {
                 const stored = localStorage.getItem("cart");
-                if (stored) localItems = JSON.parse(stored);
+                if (stored) {
+                    localItems = JSON.parse(stored);
+                    console.log("[Cart Init] Loaded from LocalStorage:", localItems);
+                }
             } catch (e) {
                 console.error("Local cart parse error", e);
             }
@@ -62,10 +66,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
             // 2. If User is logged in, sync with server
             if (user?.id) {
                 try {
+                    console.log("[Cart Init] Fetching server cart for:", user.id);
                     const res = await fetch(`${API_URL}/cart/${user.id}`);
                     if (res.ok) {
                         const data = await res.json();
                         const serverItems = Array.isArray(data.items) ? data.items : [];
+                        console.log("[Cart Init] Loaded from Server:", serverItems);
 
                         // Merge logic: Combine both, avoid duplicates
                         const merged = [...serverItems];
@@ -75,11 +81,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
                             }
                         });
 
+                        console.log("[Cart Init] Merged Cart:", merged);
                         setItems(merged);
                         localStorage.setItem("cart", JSON.stringify(merged));
 
                         // If we had new local items, push the merged state back to server
                         if (localItems.length > 0) {
+                            console.log("[Cart Init] Pushing merged cart to server...");
                             await fetch(`${API_URL}/cart/${user.id}`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
@@ -87,15 +95,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
                             });
                         }
                     } else {
-                        // Fallback to local if server fetch fails
+                        console.warn("[Cart Init] Server fetch failed, using local items");
                         setItems(localItems);
                     }
                 } catch (err) {
-                    console.error("Server cart sync error", err);
+                    console.error("[Cart Init] Server cart sync error", err);
                     setItems(localItems);
                 }
             } else {
-                // Just use local items for guests
+                console.log("[Cart Init] Initializing as Guest with items:", localItems);
                 setItems(localItems);
             }
             setIsInitialized(true);
@@ -113,14 +121,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     const saveToServer = async (updatedItems: CartItem[]) => {
         if (!user?.id) return;
+        console.log(`[Cart Sync] Saving to server for user ${user.id}:`, updatedItems);
         try {
-            await fetch(`${API_URL}/cart/${user.id}`, {
+            const res = await fetch(`${API_URL}/cart/${user.id}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ items: updatedItems })
             });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                console.error("[Cart Sync] Server rejected update:", err);
+            } else {
+                console.log("[Cart Sync] Successfully saved to DB");
+            }
         } catch (err) {
-            console.error("Failed to sync cart to server", err);
+            console.error("[Cart Sync] Network error sync cart to server", err);
         }
     };
 

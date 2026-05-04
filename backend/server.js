@@ -1262,10 +1262,15 @@ app.get('/api/cart/:userId', async (req, res) => {
 app.post('/api/cart/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
-        const { items } = req.body; // Array of cart items
+        const { items } = req.body;
+        console.log(`[Cart Update] User: ${userId}, Items Count: ${items?.length || 0}`);
 
         // 1. Clear existing
-        await supabase.from('cart_items').delete().eq('user_id', userId);
+        const { error: delErr } = await supabase.from('cart_items').delete().eq('user_id', userId);
+        if (delErr) {
+            console.error("[Cart Update] Delete Error:", delErr);
+            throw delErr;
+        }
 
         // 2. Insert new if any
         if (items && items.length > 0) {
@@ -1273,15 +1278,20 @@ app.post('/api/cart/:userId', async (req, res) => {
                 user_id: userId,
                 product_id: item.id || item.productId,
                 quantity: item.qty || item.quantity || 1,
-                price: item.price,
-                // store other metadata in a JSON column if needed, 
-                // but since we only have basic columns, we'll stick to this.
+                price: item.price
             }));
-            await supabase.from('cart_items').insert(payload);
+            
+            const { error: insErr } = await supabase.from('cart_items').insert(payload);
+            if (insErr) {
+                console.error("[Cart Update] Insert Error:", insErr);
+                throw insErr;
+            }
         }
 
+        console.log(`[Cart Update] Success for ${userId}`);
         res.json({ userId, items: items || [] });
     } catch (error) {
+        console.error("[Cart Update] Final Error:", error.message);
         res.status(500).json({ error: error.message });
     }
 });

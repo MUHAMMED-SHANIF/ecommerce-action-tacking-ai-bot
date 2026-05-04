@@ -31,6 +31,10 @@ function ProductContent() {
     const [selectedImage, setSelectedImage] = useState<string>("");
 
     useEffect(() => {
+        window.scrollTo(0, 0);
+    }, [id]);
+
+    useEffect(() => {
         if (id) {
             setLoading(true);
             fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/products/${id}`)
