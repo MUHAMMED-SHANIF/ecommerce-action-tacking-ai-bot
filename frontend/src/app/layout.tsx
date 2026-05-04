@@ -32,7 +32,6 @@ export default function RootLayout({
                 <main className="min-h-screen bg-[#f1f2f4] pb-10">
                   {children}
                 </main>
-                <Footer />
                 <AIAssistant />
               </WishlistProvider>
             </CartProvider>

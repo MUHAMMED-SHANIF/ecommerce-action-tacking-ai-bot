@@ -98,24 +98,21 @@ export default function ProductCard({ id, title, image, price, originalPrice, di
                 />
             </div>
 
-            <div className="text-center">
-                <h3 className="text-[14px] font-medium text-gray-800 truncate mb-1" title={title}>{title}</h3>
+            <div className="text-center mt-3">
+                <h3 className="text-[14px] font-medium text-gray-800 truncate mb-2" title={title}>{title}</h3>
 
-                <div className="flex items-center justify-center gap-2 mb-1">
-                    <span className="bg-[#388e3c] text-white text-[12px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
-                        4.5 <span className="text-[10px]">★</span>
-                    </span>
-                    <span className="text-gray-500 text-xs">(1,234)</span>
-                </div>
-
-                <div className="flex items-center justify-center gap-2">
+                <div className="flex items-center justify-center gap-2 flex-wrap">
                     <span className="text-[16px] font-semibold text-black">₹{safePrice.toLocaleString()}</span>
-                    <span className="text-[12px] text-gray-500 line-through">₹{safeOriginalPrice.toLocaleString()}</span>
-                    <span className="text-[13px] text-[#388e3c] font-bold">{safeDiscount}% off</span>
+                    {safeOriginalPrice > 0 && safeOriginalPrice !== safePrice && (
+                        <span className="text-[12px] text-gray-400 line-through">₹{safeOriginalPrice.toLocaleString()}</span>
+                    )}
+                    {safeDiscount > 0 && (
+                        <span className="text-[12px] text-[#1b5e20] font-bold">{safeDiscount}% off</span>
+                    )}
                 </div>
 
                 {offer && (
-                    <p className="text-[12px] text-gray-500 mt-1">{offer}</p>
+                    <p className="text-[11px] text-gray-500 mt-1.5">{offer}</p>
                 )}
             </div>
         </div>
