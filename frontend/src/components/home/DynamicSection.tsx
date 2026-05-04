@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+import ProductCard from "@/components/ProductCard";
 
 interface DynamicSectionProps {
     title: string;

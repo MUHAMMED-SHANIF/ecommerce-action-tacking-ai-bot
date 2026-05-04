@@ -85,15 +85,19 @@ function ProductContent() {
                         {images.map((img: string, i: number) => (
                             <div
                                 key={i}
-                                className={`w-16 h-16 border rounded p-1 cursor-pointer hover:border-blue-500 relative bg-white ${selectedImage === img ? 'border-blue-500' : ''}`}
+                                className={`w-16 h-16 border rounded p-1 cursor-pointer hover:border-[#0B3D2E] relative bg-white ${selectedImage === img ? 'border-[#0B3D2E] border-2 shadow-sm' : 'border-gray-200'}`}
                                 onMouseEnter={() => setSelectedImage(img)}
                             >
-                                <Image src={img} alt="Thumbnail" fill className="object-contain" />
+                                <img src={img.startsWith('/') ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}${img}` : img} 
+                                     alt="Thumbnail" 
+                                     className="w-full h-full object-contain" />
                             </div>
                         ))}
                     </div>
-                    <div className="flex-1 relative border rounded-2xl p-4 h-[495px] overflow-hidden bg-white">
-                        <Image src={selectedImage || images[0]} alt="Product" fill className="object-contain" priority />
+                    <div className="flex-1 relative border border-gray-200 rounded-2xl p-4 h-[495px] overflow-hidden bg-white shadow-sm flex items-center justify-center">
+                        <img src={(selectedImage || images[0]).startsWith('/') ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}${selectedImage || images[0]}` : (selectedImage || images[0])} 
+                             alt="Product" 
+                             className="max-w-full max-h-full object-contain" />
 
                         {/* Wishlist Button - Hidden in Preview */}
                         {!isPreview && (

@@ -32,12 +32,14 @@ export default function ProductCard({ id, title, image, price, originalPrice, di
 
     // Strict Image Validation
     let displayImage = "https://placehold.co/400x400/png?text=No+Image";
+    const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 
     if (image && typeof image === 'string' && image.trim().length > 0) {
         const trimmed = image.trim();
-        // Check for common valid patterns
-        if (trimmed.startsWith('/') || trimmed.startsWith('http') || trimmed.startsWith('data:')) {
+        if (trimmed.startsWith('http') || trimmed.startsWith('data:')) {
             displayImage = trimmed;
+        } else if (trimmed.startsWith('/')) {
+            displayImage = `${API}${trimmed}`;
         }
     }
 
