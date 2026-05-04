@@ -228,11 +228,11 @@ export default function Home() {
           sec && sec.id ? <DynamicSection key={sec.id} title={sec.title || 'Untitled'} category={sec.category || ''} /> : null
         ))}
 
-        {/* Fallback / Default Section if needed ? User said "adjust what type of items need to show... currently we are showing best electronics here we need to show firstly recently visited..."
-            I will keep the default product grid at the bottom as "All Products" or "Just For You" generic mix if desired, but user focused on replacing/adjusting.
-            I'll keep the existing grid as a generic "Browse All" for now to ensure page isn't empty if no history.
-        */}
-        <h2 className="text-xl font-bold mb-4">More to Explore</h2>
+        {/* Fallback / Default Section if needed */}
+        <h2 className="text-[14px] font-bold uppercase tracking-widest text-[#0B3D2E] mb-6 flex items-center gap-3 mt-12">
+            <span className="w-8 h-[2px] bg-[#F59E0B]"></span>
+            EXPLORE MORE
+        </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {products.map((product) => (
             <ProductCard key={product.id} {...product} />

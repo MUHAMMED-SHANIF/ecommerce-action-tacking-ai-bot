@@ -224,9 +224,9 @@ function ProductContent() {
                         </div>
                     )}
 
-                    <div className="mt-8">
-                        <h3 className="text-lg font-semibold mb-2">Description</h3>
-                        <p className="text-gray-700 leading-relaxed whitespace-pre-line">{product.description}</p>
+                    <div className="mt-8 border-t pt-6">
+                        <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3">DESCRIPTION</h3>
+                        <p className="text-gray-700 leading-relaxed whitespace-pre-line text-[15px]">{product.description}</p>
                     </div>
 
                 </div>
@@ -235,7 +235,10 @@ function ProductContent() {
             {/* Similar Products - Hidden in Preview */}
             {similarProducts.length > 0 && !isPreview && (
                 <div className="mt-12 border-t pt-8">
-                    <h2 className="text-[20px] font-semibold mb-6">Similar Products</h2>
+                    <h2 className="text-[14px] font-bold uppercase tracking-widest text-[#0B3D2E] mb-8 flex items-center gap-3">
+                        <span className="w-8 h-[2px] bg-[#F59E0B]"></span>
+                        SIMILAR PRODUCTS
+                    </h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                         {similarProducts.map((p) => (
                             <ProductCard key={p.id} {...p} />

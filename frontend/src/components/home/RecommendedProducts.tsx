@@ -70,7 +70,7 @@ export default function RecommendedProducts() {
                     href={`/search?category=${encodeURIComponent(categoryName)}`}
                     className="flex items-center gap-1 bg-[#0B3D2E] text-white px-4 py-1.5 rounded-full text-xs font-bold hover:bg-[#145A3A] transition-all shadow-sm"
                 >
-                    View All
+                    VIEW ALL
                     <ChevronRight className="w-4 h-4" />
                 </Link>
             </div>

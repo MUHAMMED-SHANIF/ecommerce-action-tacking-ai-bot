@@ -138,7 +138,7 @@ export default function Navbar() {
                         {/* Wishlist */}
                         <Link href="/wishlist" className="flex items-center gap-2 hover:text-[#FFB020] transition-colors">
                             <Heart className="w-5 h-5" />
-                            <span>Wishlist</span>
+                            <span className="font-bold uppercase text-[13px]">Wishlist</span>
                         </Link>
 
                         {/* Cart */}
@@ -189,7 +189,7 @@ function CartLink() {
                     </span>
                 )}
             </div>
-            <span>Cart</span>
+            <span className="font-bold uppercase text-[13px]">Cart</span>
         </Link>
     );
 }
