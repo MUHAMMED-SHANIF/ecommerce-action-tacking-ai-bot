@@ -67,10 +67,10 @@ export default function ProductCard({ id, title, image, price, originalPrice, di
     return (
         <div
             onClick={handleCardClick}
-            className={`bg-white/60 backdrop-blur-md p-3.5 rounded-[24px] transition-all duration-500 cursor-pointer border border-white/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] relative group text-left flex flex-col h-full
+            className={`bg-white p-4 rounded-[24px] transition-all duration-500 cursor-pointer min-w-[200px] border border-transparent hover:border-gray-200 relative group
                 ${isAnimating 
                     ? 'z-50 shadow-2xl scale-[1.15] opacity-0 blur-[2px] pointer-events-none' 
-                    : 'hover:-translate-y-1'
+                    : 'hover:shadow-lg hover:-translate-y-1'
                 }
             `}
             style={{ 
@@ -78,60 +78,45 @@ export default function ProductCard({ id, title, image, price, originalPrice, di
                 transformStyle: 'preserve-3d'
             }}
         >
-            {/* Image Section */}
-            <div className={`relative h-48 w-full mb-4 rounded-[18px] bg-[#f4f5f7] p-3 transition-colors duration-500 flex flex-col justify-between items-center group-hover:bg-[#ebedf0]`}>
-                
-                {/* Top Badges */}
-                <div className="w-full flex justify-between items-start z-10">
-                    <span className="bg-white/80 backdrop-blur-sm text-gray-600 text-[11px] font-medium px-3 py-1.5 rounded-full shadow-sm">
-                        {offer || "Best Seller"}
-                    </span>
-                    <button 
-                        onClick={handleWishlistClick} 
-                        className="bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-sm hover:scale-110 transition-transform"
-                    >
-                        <Heart className={`w-4 h-4 ${isInList ? 'text-red-500 fill-red-500' : 'text-gray-400'}`} />
-                    </button>
-                </div>
-
-                {/* Image */}
-                <div className="w-full flex-1 relative my-2 flex items-center justify-center">
-                    <img 
-                        src={displayImage} 
-                        alt={title} 
-                        className={`max-w-full max-h-full object-contain drop-shadow-md ${isAnimating ? 'scale-[0.85]' : 'group-hover:scale-110 transition-transform duration-500'}`} 
-                    />
-                </div>
-
-                {/* Dots */}
-                <div className="flex gap-1.5 justify-center mb-1">
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#059669]"></div>
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#d1d5db]"></div>
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#d1d5db]"></div>
-                </div>
+            <div 
+                className={`relative h-40 w-full mb-2 transition-transform duration-500
+                    ${isAnimating ? 'scale-[0.85] -translate-z-10' : 'group-hover:scale-105'}
+                `}
+            >
+                {/* Usage of standard img tag to allow external URLs without next.config.js changes */}
+                <img src={displayImage} alt={title} className="w-full h-full object-contain" />
             </div>
 
-            {/* Content Section */}
-            <div className="px-1 flex flex-col flex-1 justify-between">
-                <div>
-                    <p className="text-[#059669] text-[11px] font-medium mb-1">Premium</p>
-                    <h3 className="text-[15px] font-bold text-gray-800 line-clamp-2 leading-snug mb-1" title={title}>{title}</h3>
-                    
-                    <div className="flex items-center gap-2 mb-2">
-                         <span className="text-[15px] text-gray-600 font-medium">₹{safePrice.toLocaleString()}</span>
-                         {safeDiscount > 0 && <span className="text-[11px] text-gray-400 line-through">₹{safeOriginalPrice.toLocaleString()}</span>}
-                    </div>
+
+            {/* Like Button - Always Visible */}
+            <div
+                className="absolute top-3 right-3 z-10"
+                onClick={handleWishlistClick}
+            >
+                <Heart
+                    className={`w-5 h-5 transition-colors ${isInList ? 'text-red-500 fill-red-500' : 'text-gray-400 hover:text-red-500'}`}
+                />
+            </div>
+
+            <div className="text-center">
+                <h3 className="text-[14px] font-medium text-gray-800 truncate mb-1" title={title}>{title}</h3>
+
+                <div className="flex items-center justify-center gap-2 mb-1">
+                    <span className="bg-[#388e3c] text-white text-[12px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
+                        4.5 <span className="text-[10px]">★</span>
+                    </span>
+                    <span className="text-gray-500 text-xs">(1,234)</span>
                 </div>
 
-                <button 
-                    onClick={(e) => { 
-                        e.stopPropagation(); 
-                        router.push(`/product/${id}`); 
-                    }}
-                    className="w-full bg-[#262626] text-white py-2.5 rounded-full mt-3 text-[13px] font-medium hover:bg-black transition-colors"
-                >
-                    Buy Now
-                </button>
+                <div className="flex items-center justify-center gap-2">
+                    <span className="text-[16px] font-semibold text-black">₹{safePrice.toLocaleString()}</span>
+                    <span className="text-[12px] text-gray-500 line-through">₹{safeOriginalPrice.toLocaleString()}</span>
+                    <span className="text-[13px] text-[#388e3c] font-bold">{safeDiscount}% off</span>
+                </div>
+
+                {offer && (
+                    <p className="text-[12px] text-gray-500 mt-1">{offer}</p>
+                )}
             </div>
         </div>
     );
