@@ -213,7 +213,7 @@ export default function AdminSuppliers() {
                                     </td>
                                     <td className="p-4 text-right">
                                         <button
-                                            onClick={() => router.push(`/admin/products?supplier=${encodeURIComponent(s.name)}`)}
+                                            onClick={() => router.push(`/admin/products?sellerId=${s.id}`)}
                                             className="text-gray-600 hover:text-black mr-3"
                                             title="View Products"
                                         >

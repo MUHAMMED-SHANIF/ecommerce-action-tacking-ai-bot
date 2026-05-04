@@ -48,13 +48,19 @@ export default function AdminProducts() {
 
     useEffect(() => {
         const lower = searchTerm.toLowerCase();
-        setFilteredProducts(products.filter(p =>
-            p.title.toLowerCase().includes(lower) ||
-            p.category?.toLowerCase().includes(lower) ||
-            (p.supplier && p.supplier.toLowerCase().includes(lower)) ||
-            (p.tags && p.tags.some(tag => tag.toLowerCase().includes(lower)))
-        ));
-    }, [searchTerm, products]);
+        const sellerIdParam = searchParams.get('sellerId');
+        
+        setFilteredProducts(products.filter(p => {
+            // If sellerId param is present, strictly filter by it first
+            if (sellerIdParam && p.sellerId !== sellerIdParam) return false;
+
+            // Otherwise apply standard search
+            return p.title.toLowerCase().includes(lower) ||
+                p.category?.toLowerCase().includes(lower) ||
+                (p.supplier && p.supplier.toLowerCase().includes(lower)) ||
+                (p.tags && p.tags.some(tag => tag.toLowerCase().includes(lower)));
+        }));
+    }, [searchTerm, products, searchParams]);
 
     // Poll for updates every 5 seconds
     useEffect(() => {
