@@ -16,7 +16,23 @@ export default function DynamicSection({ title, category }: DynamicSectionProps)
     useEffect(() => {
         const fetchProds = async () => {
             try {
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/products?category=${encodeURIComponent(category)}`);
+                let url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/products?category=${encodeURIComponent(category)}`;
+                
+                if (category === 'SPECIAL:RECENTLY_VISITED') {
+                    url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/products/recently-visited`;
+                } else if (category === 'SPECIAL:MOST_SELLING') {
+                    url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/products/most-selling`;
+                }
+
+                const headers: any = {};
+                const userData = localStorage.getItem('user');
+                if (userData) {
+                    const user = JSON.parse(userData);
+                    if (user.token) headers['Authorization'] = `Bearer ${user.token}`;
+                    if (user.id) headers['x-user-id'] = user.id;
+                }
+
+                const res = await fetch(url, { headers });
                 if (res.ok) {
                     const data = await res.json();
                     setProducts(data.slice(0, 5)); // Strictly limit to one row (5 items)
@@ -30,12 +46,19 @@ export default function DynamicSection({ title, category }: DynamicSectionProps)
 
     if (products.length === 0) return null;
 
+    let href = `/search?category=${encodeURIComponent(category)}`;
+    if (category === 'SPECIAL:RECENTLY_VISITED') {
+        href = `/search?type=recently-visited`;
+    } else if (category === 'SPECIAL:MOST_SELLING') {
+        href = `/search?type=most-selling`;
+    }
+
     return (
         <div className="mb-10">
             <div className="flex items-center justify-between mb-4">
                 <h2 className="text-[20px] font-bold text-gray-800 uppercase tracking-tight">{title}</h2>
                 <Link 
-                    href={`/search?category=${encodeURIComponent(category)}`}
+                    href={href}
                     className="flex items-center gap-1 bg-[#0B3D2E] text-white px-4 py-1.5 rounded-full text-xs font-bold hover:bg-[#145A3A] transition-all shadow-sm"
                 >
                     View All

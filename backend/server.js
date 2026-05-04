@@ -840,6 +840,96 @@ app.get('/api/home-layout', async (req, res) => {
     }
 });
 
+// --- TRENDING & HISTORY ---
+app.post('/api/products/:id/visit', async (req, res) => {
+    try {
+        const { id } = req.params;
+        let userId = req.headers['x-user-id'];
+        const authHeader = req.headers.authorization;
+        if (authHeader) {
+            const token = authHeader.split(' ')[1];
+            const { data: { user } } = await supabase.auth.getUser(token);
+            if (user) userId = user.id;
+        }
+
+        if (!userId) return res.status(200).json({ success: true, message: "Guest visit skipped" });
+
+        // Fetch user metadata
+        const { data: user } = await supabase.auth.admin.getUserById(userId);
+        if (!user || !user.user) throw new Error("User not found");
+        
+        let history = user.user.user_metadata?.recent_visits || [];
+        
+        // Remove if exists, add to front, limit to 15
+        history = history.filter(pid => pid !== id);
+        history.unshift(id);
+        history = history.slice(0, 15);
+
+        await supabase.auth.admin.updateUserById(userId, { user_metadata: { ...user.user.user_metadata, recent_visits: history } });
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Visit tracking error:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/products/recently-visited', async (req, res) => {
+    try {
+        let userId = req.headers['x-user-id'];
+        const authHeader = req.headers.authorization;
+        if (authHeader) {
+            const token = authHeader.split(' ')[1];
+            const { data: { user } } = await supabase.auth.getUser(token);
+            if (user) userId = user.id;
+        }
+
+        if (!userId) return res.json([]);
+
+        const { data: user } = await supabase.auth.admin.getUserById(userId);
+        if (!user || !user.user) return res.json([]);
+        
+        const history = user.user.user_metadata?.recent_visits || [];
+        if (history.length === 0) return res.json([]);
+
+        const { data: products } = await supabase.from('products').select('*, categories(name)').in('id', history);
+        if (!products) return res.json([]);
+
+        // Sort by history order
+        const sorted = history.map(id => products.find(p => p.id === id)).filter(Boolean);
+        res.json(sorted);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/products/most-selling', async (req, res) => {
+    try {
+        // Top selling products based on order_items
+        const { data, error } = await supabase
+            .from('order_items')
+            .select('product_id, quantity')
+            .not('seller_status', 'eq', 'rejected');
+        
+        if (error) throw error;
+
+        const sales = {};
+        (data || []).forEach(item => {
+            sales[item.product_id] = (sales[item.product_id] || 0) + item.quantity;
+        });
+
+        const sortedIds = Object.keys(sales).sort((a, b) => sales[b] - sales[a]).slice(0, 15);
+        if (sortedIds.length === 0) return res.json([]);
+
+        const { data: products } = await supabase.from('products').select('*, categories(name)').in('id', sortedIds);
+        if (!products) return res.json([]);
+
+        const sorted = sortedIds.map(id => products.find(p => p.id === id)).filter(Boolean);
+        res.json(sorted);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // --- PUBLIC: PRODUCTS ---
 app.get('/api/products', async (req, res) => {
     try {

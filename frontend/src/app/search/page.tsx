@@ -13,6 +13,8 @@ export default function SearchPage() {
     const categoryParam = searchParams.get("category") || "";
     const maxPriceParam = searchParams.get("maxPrice") || "";
 
+    const type = searchParams.get("type") || "";
+
     const [products, setProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchInput, setSearchInput] = useState(query);
@@ -25,13 +27,28 @@ export default function SearchPage() {
             setLoading(true);
             try {
                 let url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/products`;
-                const params = new URLSearchParams();
-                if (query) params.set("search", query);
-                if (categoryParam) params.set("category", categoryParam);
-                if (maxPriceParam) params.set("max_price", maxPriceParam);
-                if (params.toString()) url += "?" + params.toString();
+                
+                if (type === 'recently-visited') {
+                    url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/products/recently-visited`;
+                } else if (type === 'most-selling') {
+                    url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/products/most-selling`;
+                } else {
+                    const params = new URLSearchParams();
+                    if (query) params.set("search", query);
+                    if (categoryParam) params.set("category", categoryParam);
+                    if (maxPriceParam) params.set("max_price", maxPriceParam);
+                    if (params.toString()) url += "?" + params.toString();
+                }
 
-                const res = await fetch(url, { cache: "no-store" });
+                const headers: any = {};
+                const userData = localStorage.getItem('user');
+                if (userData) {
+                    const user = JSON.parse(userData);
+                    if (user.token) headers['Authorization'] = `Bearer ${user.token}`;
+                    if (user.id) headers['x-user-id'] = user.id;
+                }
+
+                const res = await fetch(url, { headers, cache: "no-store" });
                 if (res.ok) {
                     const data = await res.json();
                     setProducts(Array.isArray(data) ? data : []);
@@ -44,7 +61,7 @@ export default function SearchPage() {
             }
         };
         fetchProducts();
-    }, [query, categoryParam]);
+    }, [query, categoryParam, type]);
 
     const sorted = useMemo(() => {
         const list = [...products];
@@ -62,9 +79,13 @@ export default function SearchPage() {
 
     const title = query
         ? `Results for "${query}"`
-        : categoryParam
-            ? categoryParam
-            : "All Products";
+        : type === 'recently-visited'
+            ? "Recently Visited"
+            : type === 'most-selling'
+                ? "Most Selling Items"
+                : categoryParam
+                    ? categoryParam
+                    : "All Products";
 
     return (
         <div className="min-h-screen bg-[#F5EFE6]">

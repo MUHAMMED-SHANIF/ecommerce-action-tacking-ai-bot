@@ -194,9 +194,15 @@ export default function AdjustHomePage() {
                                     className="w-full p-2 border rounded"
                                 >
                                     <option value="">Select Category</option>
-                                    {categories.map(c => (
-                                        <option key={c.id} value={c.name}>{c.name}</option>
-                                    ))}
+                                    <optgroup label="Special Sections">
+                                        <option value="SPECIAL:RECENTLY_VISITED">Recently Visited</option>
+                                        <option value="SPECIAL:MOST_SELLING">Most Selling Items</option>
+                                    </optgroup>
+                                    <optgroup label="Categories">
+                                        {categories.map(c => (
+                                            <option key={c.id} value={c.name}>{c.name}</option>
+                                        ))}
+                                    </optgroup>
                                 </select>
                             </div>
                             <div className="flex justify-end">

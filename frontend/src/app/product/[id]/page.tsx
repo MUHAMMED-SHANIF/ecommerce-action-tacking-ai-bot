@@ -60,6 +60,20 @@ function ProductContent() {
                         }
                     }
                     setLoading(false);
+
+                    // Track visit
+                    const userData = localStorage.getItem('user');
+                    if (userData) {
+                        const user = JSON.parse(userData);
+                        const headers: any = { 'Content-Type': 'application/json' };
+                        if (user.token) headers['Authorization'] = `Bearer ${user.token}`;
+                        if (user.id) headers['x-user-id'] = user.id;
+
+                        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/products/${id}/visit`, {
+                            method: 'POST',
+                            headers
+                        }).catch(e => console.error("Visit tracking failed", e));
+                    }
                 })
                 .catch(err => {
                     console.error(err);
