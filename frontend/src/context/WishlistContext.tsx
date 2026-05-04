@@ -66,7 +66,28 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
                     })
                     .filter(e => e.id);
 
-                setItems(normalized);
+                // Re-fetch product details for any ghost items (missing image or title)
+                const enriched = await Promise.all(normalized.map(async (item) => {
+                    if (!item.image || !item.title) {
+                        try {
+                            const r = await fetch(`${API_URL}/products/${item.id}`);
+                            if (r.ok) {
+                                const p = await r.json();
+                                return {
+                                    id: item.id,
+                                    title: p.title || p.name || item.title,
+                                    price: p.price || item.price,
+                                    originalPrice: p.originalPrice || p.price || item.originalPrice,
+                                    discount: p.discount || item.discount,
+                                    image: p.image || p.image_url || item.image
+                                };
+                            }
+                        } catch { /* keep existing */ }
+                    }
+                    return item;
+                }));
+
+                setItems(enriched.filter(e => e.id));
             } catch (err) {
                 console.error("[Wishlist] Load error:", err);
                 setItems([]);

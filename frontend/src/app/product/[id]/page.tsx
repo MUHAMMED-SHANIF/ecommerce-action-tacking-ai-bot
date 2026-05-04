@@ -65,7 +65,14 @@ function ProductContent() {
                     }
                     setLoading(false);
 
-                    // Track visit
+                    // Track visit in localStorage (works for guests too)
+                    try {
+                        const existing: string[] = JSON.parse(localStorage.getItem('recent_visits') || '[]');
+                        const updated = [id, ...existing.filter((pid: string) => pid !== id)].slice(0, 15);
+                        localStorage.setItem('recent_visits', JSON.stringify(updated));
+                    } catch (e) { /* ignore */ }
+
+                    // Also track on server (for logged-in users)
                     const userData = localStorage.getItem('user');
                     if (userData) {
                         const user = JSON.parse(userData);
