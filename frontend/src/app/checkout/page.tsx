@@ -93,6 +93,17 @@ function CheckoutContent() {
 
     const handleAddAddress = async () => {
         if (!user) return;
+        if (!newAddress.name || !newAddress.mobile || !newAddress.pincode || !newAddress.city || !newAddress.addressLine || !newAddress.state) {
+            alert("Please fill all fields");
+            return;
+        }
+
+        // Phone number validation
+        if (!/^\d+$/.test(newAddress.mobile)) {
+            alert("Phone number must contain only digits.");
+            return;
+        }
+
         const updatedList = [...addresses, newAddress];
 
         try {
@@ -119,13 +130,12 @@ function CheckoutContent() {
             return;
         }
 
-        const outOfStockItems = orderItems.filter(item => item.countInStock <= 0);
-        if (outOfStockItems.length > 0) {
-            alert(`The following item(s) are out of stock: ${outOfStockItems.map(i => i.title).join(', ')}. Please remove them to place your order.`);
+        const selectedAddress = addresses[selectedAddressIndex];
+
+        if (!selectedAddress.mobile || !/^\d+$/.test(selectedAddress.mobile)) {
+            alert("A valid numeric phone number is required in your delivery address to place an order.");
             return;
         }
-
-        const selectedAddress = addresses[selectedAddressIndex];
 
         const orderData = {
             user: { id: user.id, name: user.name, email: user.email },
@@ -215,7 +225,10 @@ function CheckoutContent() {
                                     <h3 className="font-bold text-slate-800 text-sm mb-4 uppercase tracking-tight">Add New Address</h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                         <input placeholder="Name" className="p-3 border border-slate-200 rounded-lg text-sm w-full focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent outline-none" value={newAddress.name} onChange={e => setNewAddress({ ...newAddress, name: e.target.value })} />
-                                        <input placeholder="Mobile" className="p-3 border border-slate-200 rounded-lg text-sm w-full focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent outline-none" value={newAddress.mobile} onChange={e => setNewAddress({ ...newAddress, mobile: e.target.value })} />
+                                        <input placeholder="Mobile" type="tel" className="p-3 border border-slate-200 rounded-lg text-sm w-full focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent outline-none" value={newAddress.mobile} onChange={e => {
+                                            const val = e.target.value.replace(/\D/g, '');
+                                            setNewAddress({ ...newAddress, mobile: val });
+                                        }} />
                                         <input placeholder="Pincode" className="p-3 border border-slate-200 rounded-lg text-sm w-full focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent outline-none" value={newAddress.pincode} onChange={e => setNewAddress({ ...newAddress, pincode: e.target.value })} />
                                         <input placeholder="City" className="p-3 border border-slate-200 rounded-lg text-sm w-full focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent outline-none" value={newAddress.city} onChange={e => setNewAddress({ ...newAddress, city: e.target.value })} />
                                         <input placeholder="Address (Area and Street)" className="md:col-span-2 p-3 border border-slate-200 rounded-lg text-sm w-full focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent outline-none" value={newAddress.addressLine} onChange={e => setNewAddress({ ...newAddress, addressLine: e.target.value })} />
