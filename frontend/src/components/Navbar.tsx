@@ -145,9 +145,13 @@ export default function Navbar() {
                         <CartLink />
 
                         {/* Chatbot Icon */}
-                        <Link href="/chatbot" className="flex items-center gap-2 hover:text-[#FFB020] transition-colors" title="AI Chatbot">
+                        <button 
+                            onClick={() => window.dispatchEvent(new Event('toggle-ai-chat'))}
+                            className="flex items-center gap-2 hover:text-[#FFB020] transition-colors" 
+                            title="AI Chatbot"
+                        >
                             <MessageSquare className="w-5 h-5" />
-                        </Link>
+                        </button>
 
                         {/* Three Dots Menu for Settings */}
                         <div className="relative group cursor-pointer">

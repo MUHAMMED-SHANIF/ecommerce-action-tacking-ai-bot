@@ -85,6 +85,12 @@ export default function AIAssistant() {
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    const handleToggle = () => setIsOpen(true);
+    window.addEventListener('toggle-ai-chat', handleToggle);
+    return () => window.removeEventListener('toggle-ai-chat', handleToggle);
+  }, []);
+
 
   const loadHistory = async () => {
     try {
