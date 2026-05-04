@@ -52,10 +52,10 @@ export default function RecentlyVisited() {
     // Let's interpret that as a section saying that.
 
     return (
-        <div className="mb-8">
-            <h2 className="text-xl font-bold mb-4">Recently Visited</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                {products.map(p => (
+        <div className="mb-10">
+            <h2 className="text-[20px] font-bold text-gray-800 mb-4 uppercase tracking-tight">Recently Visited</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {products.slice(0, 5).map(p => (
                     <ProductCard key={p.id} {...p} />
                 ))}
             </div>
