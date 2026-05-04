@@ -68,6 +68,33 @@ const writeJSON = async (file, data) => {
     }
 };
 
+const formatProduct = (p) => {
+    if (!p) return null;
+    return {
+        id: p.id,
+        title: p.name,
+        price: p.price,
+        category: p.categories?.name,
+        categoryId: p.category_id,
+        description: p.description,
+        image: p.image_url,
+        images: p.metadata?.images || [p.image_url],
+        brand: p.brand || p.metadata?.brand,
+        tags: p.tags || p.metadata?.tags || [],
+        rating: p.metadata?.rating || 0,
+        numReviews: p.metadata?.numReviews || 0,
+        countInStock: p.stock_quantity,
+        supplier: p.metadata?.supplier,
+        sellerId: p.metadata?.sellerId,
+        supplierId: p.metadata?.supplierId,
+        originalPrice: p.metadata?.originalPrice || p.price,
+        discount: p.metadata?.discount || 0,
+        isApproved: p.metadata?.isApproved,
+        status: p.metadata?.status,
+        createdAt: p.created_at
+    };
+};
+
 // --- Helper Functions ---
 const isAdmin = async (req, res, next) => {
     // We expect a valid auth token to verify user role securely, but legacy frontend might still use x-user-id temporarily
@@ -968,8 +995,11 @@ app.get('/api/products/recently-visited', async (req, res) => {
         const { data: products } = await supabase.from('products').select('*, categories(name)').in('id', history);
         if (!products) return res.json([]);
 
-        // Sort by history order
-        const sorted = history.map(id => products.find(p => p.id === id)).filter(Boolean);
+        // Sort by history order and format
+        const sorted = history.map(id => {
+            const p = products.find(prod => prod.id === id);
+            return formatProduct(p);
+        }).filter(Boolean);
         res.json(sorted);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -997,7 +1027,10 @@ app.get('/api/products/most-selling', async (req, res) => {
         const { data: products } = await supabase.from('products').select('*, categories(name)').in('id', sortedIds);
         if (!products) return res.json([]);
 
-        const sorted = sortedIds.map(id => products.find(p => p.id === id)).filter(Boolean);
+        const sorted = sortedIds.map(id => {
+            const p = products.find(prod => prod.id === id);
+            return formatProduct(p);
+        }).filter(Boolean);
         res.json(sorted);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1063,29 +1096,7 @@ app.get('/api/products', async (req, res) => {
         if (error) throw error;
 
         // Map to legacy format expected by frontend
-        const formattedProducts = products.map(p => ({
-            id: p.id,
-            title: p.name,
-            price: p.price,
-            category: p.categories?.name,
-            categoryId: p.category_id,
-            description: p.description,
-            image: p.image_url,
-            images: p.metadata?.images || [p.image_url],
-            brand: p.brand || p.metadata?.brand,
-            tags: p.tags || p.metadata?.tags || [],
-            rating: p.metadata?.rating || 0,
-            numReviews: p.metadata?.numReviews || 0,
-            countInStock: p.stock_quantity,
-            supplier: p.metadata?.supplier,
-            sellerId: p.metadata?.sellerId,
-            supplierId: p.metadata?.supplierId,
-            originalPrice: p.metadata?.originalPrice,
-            discount: p.metadata?.discount,
-            isApproved: p.metadata?.isApproved,
-            status: p.metadata?.status,
-            createdAt: p.created_at
-        }));
+        const formattedProducts = products.map(formatProduct);
 
         res.json(formattedProducts);
     } catch (error) {
@@ -1103,27 +1114,7 @@ app.get('/api/products/:id', async (req, res) => {
         const isTrustedSeller = false;
 
         const product = {
-            id: p.id,
-            title: p.name,
-            price: p.price,
-            category: p.categories?.name,
-            categoryId: p.category_id,
-            description: p.description,
-            image: p.image_url,
-            images: p.metadata?.images || [p.image_url],
-            brand: p.brand || p.metadata?.brand,
-            tags: p.tags || p.metadata?.tags || [],
-            rating: p.metadata?.rating || 0,
-            numReviews: p.metadata?.numReviews || 0,
-            countInStock: p.stock_quantity,
-            supplier: p.metadata?.supplier,
-            sellerId: p.metadata?.sellerId,
-            supplierId: p.metadata?.supplierId,
-            originalPrice: p.metadata?.originalPrice,
-            discount: p.metadata?.discount,
-            isApproved: p.metadata?.isApproved,
-            status: p.metadata?.status,
-            createdAt: p.created_at,
+            ...formatProduct(p),
             isTrustedSeller
         };
 
