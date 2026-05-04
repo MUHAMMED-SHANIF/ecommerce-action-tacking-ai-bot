@@ -10,9 +10,21 @@ module.exports = {
     },
     requiresConfirmation: false,
     execute: async ({ params, user, supabase }) => {
-        const query = params.query || params.keyword || params.search || params.name;
-        const category = params.category || params.type;
-        const max_price = params.max_price || params.budget;
+        let query = params.query || params.keyword || params.search || params.name || "";
+        const categoryParam = params.category || params.type;
+        let max_price = params.max_price || params.budget;
+
+        // --- 1. PREPROCESSING & FILTER EXTRACTION ---
+        let processedSearch = query.toLowerCase().trim();
+        const underMatch = processedSearch.match(/(?:under|below|less than|within)\s*(\d+)/i);
+        if (underMatch && !max_price) {
+            max_price = parseFloat(underMatch[1]);
+            processedSearch = processedSearch.replace(underMatch[0], "").trim();
+        }
+        
+        const stopWords = ['a', 'an', 'the', 'and', 'or', 'but', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'with', 'in', 'of'];
+        const tokens = processedSearch.split(/\s+/).filter(t => t.length > 1 && !stopWords.includes(t));
+        const finalKeywordSearch = tokens.join(" ");
 
         let dbQuery = supabase
             .from('products')
@@ -21,38 +33,14 @@ module.exports = {
                 categories!inner(id, name)
             `)
             .eq('metadata->>status', 'approved')
-            .neq('metadata->>isPaused', 'true')
-            .limit(10);
-
-        if (query) {
-            // First, try to find matching categories
-            const { data: matchingCats } = await supabase
-                .from('categories')
-                .select('id')
-                .ilike('name', `%${query}%`);
-            
-            const catIds = matchingCats ? matchingCats.map(c => c.id) : [];
-            
-            // Build the OR string
-            let orString = `name.ilike.%${query}%,description.ilike.%${query}%`;
-            if (catIds.length > 0) {
-                // if we found matching categories, include products that belong to them
-                orString += `,category_id.in.(${catIds.join(',')})`;
-            }
-            
-            dbQuery = dbQuery.or(orString);
-        }
+            .neq('metadata->>isPaused', 'true');
 
         if (max_price) {
             dbQuery = dbQuery.lte('price', max_price);
         }
 
-        if (category) {
-            const { data: catData } = await supabase
-                .from('categories')
-                .select('id')
-                .ilike('name', `%${category}%`)
-                .maybeSingle();
+        if (categoryParam) {
+            const { data: catData } = await supabase.from('categories').select('id').ilike('name', `%${categoryParam}%`).maybeSingle();
             if (catData) {
                 dbQuery = dbQuery.eq('category_id', catData.id);
             }
@@ -60,15 +48,42 @@ module.exports = {
 
         const { data, error } = await dbQuery;
         if (error) throw error;
-        if (!data || data.length === 0) {
+
+        let filtered = data || [];
+
+        // --- 2. ADVANCED RANKING ---
+        if (finalKeywordSearch) {
+            const searchTokens = finalKeywordSearch.split(/\s+/);
+            filtered = filtered.map(p => {
+                const title = (p.name || "").toLowerCase();
+                const desc = (p.description || "").toLowerCase();
+                const brand = (p.brand || p.metadata?.brand || "").toLowerCase();
+                const catName = (p.categories?.name || "").toLowerCase();
+                
+                let score = 0;
+                searchTokens.forEach(token => {
+                    if (title.includes(token)) score += 50;
+                    if (brand.includes(token)) score += 40;
+                    if (catName.includes(token)) score += 30;
+                    if (desc.includes(token)) score += 5;
+                });
+                if (title.includes(finalKeywordSearch)) score += 100;
+                
+                return { ...p, _score: score };
+            })
+            .filter(p => p._score > 0)
+            .sort((a, b) => b._score - a._score);
+        }
+
+        if (!filtered || filtered.length === 0) {
             return {
-                text: `I couldn't find any products matching "${query || category || 'your search'}". Try a different keyword or browse our categories.`,
+                text: `I couldn't find any products matching "${query || categoryParam || 'your search'}". Try a different keyword or browse our categories.`,
                 products: [],
-                query: query || category || null
+                query: query || categoryParam || null
             };
         }
 
-        const products = data.map(p => ({
+        const products = filtered.slice(0, 10).map(p => ({
             id: p.id,
             name: p.name,
             price: p.price,
@@ -83,7 +98,7 @@ module.exports = {
             text: `I found ${products.length} product${products.length > 1 ? 's' : ''} for you:`,
             products,
             query: query || null,
-            category: category || null,
+            category: categoryParam || null,
             max_price: max_price || null
         };
     }

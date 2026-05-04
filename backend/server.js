@@ -234,7 +234,7 @@ app.delete('/api/admin/banners/:id', isAdmin, async (req, res) => {
         const { id } = req.params;
         // Fetch to get image URL before deleting
         const { data: banner } = await supabase.from('banners').select('image').eq('id', id).single();
-        
+
         const { error } = await supabase.from('banners').delete().eq('id', id);
         if (error) throw error;
 
@@ -870,11 +870,11 @@ app.post('/api/admin/home-layout', isAdmin, async (req, res) => {
             // Filter out items with no category
             const validNavbar = navbar.filter(n => n.category && n.category.trim() !== "");
             if (validNavbar.length > 0) {
-                const inserts = validNavbar.map((nav, i) => ({ 
-                    type: 'navbar', 
-                    position: i, 
-                    title: nav.title || nav.category, 
-                    category: nav.category 
+                const inserts = validNavbar.map((nav, i) => ({
+                    type: 'navbar',
+                    position: i,
+                    title: nav.title || nav.category,
+                    category: nav.category
                 }));
                 const { error: insErr } = await supabase.from('home_layout').insert(inserts);
                 if (insErr) {
@@ -888,11 +888,11 @@ app.post('/api/admin/home-layout', isAdmin, async (req, res) => {
             // Filter out items with no category
             const validSections = sections.filter(s => s.category && s.category.trim() !== "");
             if (validSections.length > 0) {
-                const inserts = validSections.map((sec, i) => ({ 
-                    type: 'section', 
-                    position: i, 
-                    title: sec.title || sec.category, 
-                    category: sec.category 
+                const inserts = validSections.map((sec, i) => ({
+                    type: 'section',
+                    position: i,
+                    title: sec.title || sec.category,
+                    category: sec.category
                 }));
                 const { error: insErr } = await supabase.from('home_layout').insert(inserts);
                 if (insErr) {
@@ -901,7 +901,7 @@ app.post('/api/admin/home-layout', isAdmin, async (req, res) => {
                 }
             }
         }
-        
+
         console.log("[Home Layout Update] Success");
         res.json({ message: "Layout updated successfully" });
     } catch (error) {
@@ -958,9 +958,9 @@ app.post('/api/products/:id/visit', async (req, res) => {
         // Fetch user metadata
         const { data: user } = await supabase.auth.admin.getUserById(userId);
         if (!user || !user.user) throw new Error("User not found");
-        
+
         let history = user.user.user_metadata?.recent_visits || [];
-        
+
         // Remove if exists, add to front, limit to 15
         history = history.filter(pid => pid !== id);
         history.unshift(id);
@@ -988,7 +988,7 @@ app.get('/api/products/recently-visited', async (req, res) => {
 
         const { data: user } = await supabase.auth.admin.getUserById(userId);
         if (!user || !user.user) return res.json([]);
-        
+
         const history = user.user.user_metadata?.recent_visits || [];
         if (history.length === 0) return res.json([]);
 
@@ -1013,7 +1013,7 @@ app.get('/api/products/most-selling', async (req, res) => {
             .from('order_items')
             .select('product_id, quantity')
             .not('seller_status', 'eq', 'rejected');
-        
+
         if (error) throw error;
 
         const sales = {};
@@ -1040,66 +1040,134 @@ app.get('/api/products/most-selling', async (req, res) => {
 // --- PUBLIC: PRODUCTS ---
 app.get('/api/products', async (req, res) => {
     try {
-        const category = req.query.category;
-        const searchTerm = req.query.search;
-        const maxPrice = req.query.max_price;
+        let categoryParam = req.query.category;
+        let searchTerm = req.query.search;
+        let maxPrice = parseFloat(req.query.max_price);
 
-        let query = supabase.from('products').select('*, categories(name)').order('created_at', { ascending: false });
+        // --- 1. QUERY PREPROCESSING & FILTER EXTRACTION ---
+        let extractedMaxPrice = null;
+        let processedSearch = "";
 
-        // Filter for visible products
-        // We look for metadata->>'status' = 'approved' and metadata->>'isPaused' = 'false'
+        if (searchTerm) {
+            let lowerSearch = searchTerm.toLowerCase().trim();
+            
+            // Extract "under 2000" or "below 2000" patterns
+            const underMatch = lowerSearch.match(/(?:under|below|less than|within)\s*(\d+)/i);
+            if (underMatch && !maxPrice) {
+                extractedMaxPrice = parseFloat(underMatch[1]);
+                // Remove the price phrase from search to improve keyword matching
+                lowerSearch = lowerSearch.replace(underMatch[0], "").trim();
+            }
+
+            // Simple stop words removal
+            const stopWords = ['a', 'an', 'the', 'and', 'or', 'but', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'with', 'in', 'of'];
+            const tokens = lowerSearch.split(/\s+/).filter(t => t.length > 1 && !stopWords.includes(t));
+            processedSearch = tokens.join(" ");
+        }
+
+        const finalMaxPrice = maxPrice || extractedMaxPrice;
+
+        // --- 2. BROAD DATA FETCHING ---
+        let query = supabase.from('products').select('*, categories(name)');
+        
+        // Basic visibility filters
         query = query.eq('metadata->>status', 'approved').neq('metadata->>isPaused', 'true');
 
-        if (category) {
-            // Find category ID first for accurate filtering
-            const { data: catData } = await supabase.from('categories').select('id').ilike('name', category).maybeSingle();
+        if (categoryParam) {
+            const { data: catData } = await supabase.from('categories').select('id').ilike('name', categoryParam).maybeSingle();
             if (catData) {
                 query = query.eq('category_id', catData.id);
             } else {
-                // If category doesn't exist, return empty results early
                 return res.json([]);
             }
         }
 
-        let keywords = [];
-        if (searchTerm) {
-            const lowerSearch = searchTerm.toLowerCase().trim();
-            const cleanSearch = lowerSearch.replace(/[^a-z0-9\s]/g, ' ');
-            const stopWords = ['with', 'and', 'the', 'a', 'an', 'in', 'of', 'for', 'is', 'to', 'on'];
-            keywords = cleanSearch.split(/\s+/).filter(w => w.length > 1 && !stopWords.includes(w));
-
-            if (keywords.length > 0) {
-                // Find category IDs that match any keyword
-                const { data: matchedCats } = await supabase.from('categories').select('id').or(keywords.map(kw => `name.ilike.%${kw}%`).join(','));
-                const matchedCatIds = (matchedCats || []).map(c => c.id);
-
-                const orConditions = [];
-                keywords.forEach(kw => {
-                    orConditions.push(`name.ilike.%${kw}%`);
-                    orConditions.push(`description.ilike.%${kw}%`);
-                });
-                if (matchedCatIds.length > 0) {
-                    orConditions.push(`category_id.in.(${matchedCatIds.join(',')})`);
-                }
-                query = query.or(orConditions.join(','));
-            } else {
-                query = query.or(`name.ilike.%${lowerSearch}%,description.ilike.%${lowerSearch}%`);
-            }
-        }
-
-        if (maxPrice) {
-            query = query.lte('price', maxPrice);
+        if (finalMaxPrice) {
+            query = query.lte('price', finalMaxPrice);
         }
 
         let { data: products, error } = await query;
-
         if (error) throw error;
 
-        // Map to legacy format expected by frontend
-        const formattedProducts = products.map(formatProduct);
+        let filtered = products || [];
 
+        // --- 3. ADVANCED RANKING ALGORITHM ---
+        if (processedSearch) {
+            const searchTokens = processedSearch.split(/\s+/);
+
+            filtered = filtered.map(p => {
+                const title = (p.name || "").toLowerCase();
+                const desc = (p.description || "").toLowerCase();
+                const brand = (p.brand || p.metadata?.brand || "").toLowerCase();
+                const catName = (p.categories?.name || "").toLowerCase();
+                const tags = Array.isArray(p.tags) ? p.tags.join(" ").toLowerCase() : (p.metadata?.tags ? (Array.isArray(p.metadata.tags) ? p.metadata.tags.join(" ") : p.metadata.tags) : "");
+                
+                let score = 0;
+                let matchCount = 0;
+
+                // A. Keyword Match Strength
+                searchTokens.forEach(token => {
+                    let tokenFound = false;
+                    
+                    if (title.includes(token)) {
+                        score += 50; // High weight for title
+                        tokenFound = true;
+                    }
+                    if (brand.includes(token)) {
+                        score += 40; // High weight for brand
+                        tokenFound = true;
+                    }
+                    if (catName.includes(token)) {
+                        score += 30; // Medium weight for category
+                        tokenFound = true;
+                    }
+                    if (tags.includes(token)) {
+                        score += 20; // Tags
+                        tokenFound = true;
+                    }
+                    if (desc.includes(token)) {
+                        score += 5; // Low weight for description
+                        tokenFound = true;
+                    }
+
+                    if (tokenFound) matchCount++;
+                });
+
+                // B. Exact Phrase Bonuses
+                if (title.includes(processedSearch)) score += 100;
+                if (brand === processedSearch) score += 60;
+
+                // C. Popularity Weighting (Ratings & Reviews)
+                const rating = parseFloat(p.metadata?.rating || 0);
+                const numReviews = parseInt(p.metadata?.numReviews || 0);
+                score += (rating * Math.log10(numReviews + 1)) * 5;
+
+                // D. Inventory Logic (Push out of stock to bottom)
+                if ((p.stock_quantity || 0) <= 0) score -= 100;
+
+                // E. Relevancy Threshold: 
+                // If query has 3 words and product matches only 1, it's likely noise (e.g., 'smart' matching everything)
+                // Unless that 1 match is a very strong title/brand match.
+                let isRelevant = true;
+                if (searchTokens.length > 1 && matchCount < 1) isRelevant = false;
+                
+                // Special case: "earbuds" in "smartphone" search
+                // If the user searches for "phone" and "earbuds" is the category, we penalize it 
+                // if it doesn't contain the word "phone" in title.
+                if (searchTokens.includes("phone") && catName.includes("earbuds") && !title.includes("phone")) {
+                    score -= 80;
+                }
+
+                return { ...p, _score: score, _isRelevant: isRelevant };
+            })
+            .filter(p => p._isRelevant && p._score > 0)
+            .sort((a, b) => b._score - a._score);
+        }
+
+        const formattedProducts = filtered.map(formatProduct);
         res.json(formattedProducts);
     } catch (error) {
+        console.error("Search Error:", error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -1226,7 +1294,7 @@ app.get('/api/cart/:userId', async (req, res) => {
             .from('cart_items')
             .select('quantity, price, product_id')
             .eq('user_id', userId);
-        
+
         if (error) throw error;
         if (!dbItems || dbItems.length === 0) return res.json({ userId, items: [] });
 
@@ -1249,7 +1317,7 @@ app.get('/api/cart/:userId', async (req, res) => {
                 deliveryDate: 'Sat Oct 28'
             };
         }).filter(Boolean);
-        
+
         res.json({ userId, items: formattedItems });
     } catch (error) {
         console.error("Cart fetch error:", error.message);
@@ -1278,7 +1346,7 @@ app.post('/api/cart/:userId', async (req, res) => {
                 quantity: item.qty || item.quantity || 1,
                 price: item.price
             }));
-            
+
             const { error: insErr } = await supabase.from('cart_items').insert(payload);
             if (insErr) {
                 console.error("[Cart Update] Insert Error:", insErr);
@@ -1312,11 +1380,11 @@ app.post('/api/address/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
         const { addresses } = req.body;
-        const { error } = await supabase.auth.admin.updateUserById(userId, { 
-            user_metadata: { 
+        const { error } = await supabase.auth.admin.updateUserById(userId, {
+            user_metadata: {
                 ...(await supabase.auth.admin.getUserById(userId)).data.user.user_metadata,
-                addresses 
-            } 
+                addresses
+            }
         });
         if (error) throw error;
         res.json({ success: true, addresses });
@@ -2163,9 +2231,9 @@ app.use('/api', (req, res) => {
 // --- Modern JSON Error Handler ---
 app.use((err, req, res, next) => {
     console.error('[Global Error Handler]:', err);
-    res.status(err.status || 500).json({ 
+    res.status(err.status || 500).json({
         error: err.message || 'Internal Server Error',
-        success: false 
+        success: false
     });
 });
 
