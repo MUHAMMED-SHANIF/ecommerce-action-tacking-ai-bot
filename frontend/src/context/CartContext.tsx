@@ -40,73 +40,75 @@ const API_URL = getApiUrl();
 import { useToast } from "./ToastContext";
 
 export function CartProvider({ children }: { children: ReactNode }) {
-    const { user } = useAuth();
+    const { user, isLoading: authLoading } = useAuth();
     const { showToast } = useToast();
     const [items, setItems] = useState<CartItem[]>([]);
     const [isInitialized, setIsInitialized] = useState(false);
 
-    // 1. Initial Load from LocalStorage (Guest Cart)
+    // Single initialization effect
     useEffect(() => {
-        const localCart = localStorage.getItem("cart");
-        if (localCart) {
+        if (authLoading) return;
+
+        const initCart = async () => {
+            // 1. Get Guest Cart from LocalStorage
+            let localItems: CartItem[] = [];
             try {
-                setItems(JSON.parse(localCart));
+                const stored = localStorage.getItem("cart");
+                if (stored) localItems = JSON.parse(stored);
             } catch (e) {
-                console.error("Failed to parse local cart", e);
+                console.error("Local cart parse error", e);
             }
-        }
-        setIsInitialized(true);
-    }, []);
 
-    // 2. Sync/Merge with Server when user logs in
-    useEffect(() => {
-        if (!isInitialized) return;
-
-        if (user?.id) {
-            const syncCart = async () => {
+            // 2. If User is logged in, sync with server
+            if (user?.id) {
                 try {
-                    // Fetch server cart
                     const res = await fetch(`${API_URL}/cart/${user.id}`);
-                    const data = await res.json();
-                    const serverItems = Array.isArray(data.items) ? data.items : [];
+                    if (res.ok) {
+                        const data = await res.json();
+                        const serverItems = Array.isArray(data.items) ? data.items : [];
 
-                    // Merge guest items into server items
-                    // We prioritize server items but add any unique local items
-                    const mergedItems = [...serverItems];
-                    items.forEach(localItem => {
-                        const existing = mergedItems.find(si => String(si.id) === String(localItem.id));
-                        if (!existing) {
-                            mergedItems.push(localItem);
-                        } else {
-                            // If it exists in both, maybe take the higher quantity?
-                            existing.qty = Math.max(existing.qty || 1, localItem.qty || 1);
+                        // Merge logic: Combine both, avoid duplicates
+                        const merged = [...serverItems];
+                        localItems.forEach(li => {
+                            if (!merged.find(si => String(si.id) === String(li.id))) {
+                                merged.push(li);
+                            }
+                        });
+
+                        setItems(merged);
+                        localStorage.setItem("cart", JSON.stringify(merged));
+
+                        // If we had new local items, push the merged state back to server
+                        if (localItems.length > 0) {
+                            await fetch(`${API_URL}/cart/${user.id}`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ items: merged })
+                            });
                         }
-                    });
-
-                    setItems(mergedItems);
-                    localStorage.setItem("cart", JSON.stringify(mergedItems));
-
-                    // Upload merged cart back to server to keep it in sync
-                    await fetch(`${API_URL}/cart/${user.id}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ items: mergedItems })
-                    });
+                    } else {
+                        // Fallback to local if server fetch fails
+                        setItems(localItems);
+                    }
                 } catch (err) {
-                    console.error("Sync error", err);
+                    console.error("Server cart sync error", err);
+                    setItems(localItems);
                 }
-            };
-            syncCart();
-        } else {
-            // If user logs out, we keep the items in state/localStorage (becomes guest cart again)
-            // Or we could clear it if preferred, but usually keeping it is better for UX.
-        }
-    }, [user, isInitialized]);
+            } else {
+                // Just use local items for guests
+                setItems(localItems);
+            }
+            setIsInitialized(true);
+        };
 
-    // 3. Save to LocalStorage whenever items change
+        initCart();
+    }, [user, authLoading]);
+
+    // Save to LocalStorage whenever items change (after initialization)
     useEffect(() => {
-        if (!isInitialized) return;
-        localStorage.setItem("cart", JSON.stringify(items));
+        if (isInitialized) {
+            localStorage.setItem("cart", JSON.stringify(items));
+        }
     }, [items, isInitialized]);
 
     const saveToServer = async (updatedItems: CartItem[]) => {
