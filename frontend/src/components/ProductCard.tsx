@@ -22,10 +22,10 @@ export default function ProductCard({ id, title, image, price, originalPrice, di
     const router = useRouter();
     const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
 
-    const safePrice = typeof price === 'number' ? price : 0;
-    const safeDiscount = typeof discount === 'number' ? discount : 0;
+    const safePrice = Number(price) || 0;
+    const safeDiscount = Number(discount) || 0;
     // Compute originalPrice from price & discount if not provided
-    let safeOriginalPrice = typeof originalPrice === 'number' && originalPrice > 0 ? originalPrice : 0;
+    let safeOriginalPrice = Number(originalPrice) || 0;
     if (safeOriginalPrice === 0 && safeDiscount > 0 && safePrice > 0) {
         safeOriginalPrice = Math.round(safePrice / (1 - safeDiscount / 100));
     }
@@ -84,7 +84,7 @@ export default function ProductCard({ id, title, image, price, originalPrice, di
             }}
         >
             <div 
-                className={`relative h-40 w-full mb-2 transition-transform duration-500
+                className={`relative h-44 w-full mb-2 transition-transform duration-500
                     ${isAnimating ? 'scale-[0.85] -translate-z-10' : 'group-hover:scale-105'}
                 `}
             >
