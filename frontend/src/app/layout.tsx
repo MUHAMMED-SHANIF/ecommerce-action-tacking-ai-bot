@@ -5,6 +5,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import AIAssistant from "@/components/AIAssistant";
+import ScrollToTop from "@/components/ScrollToTop";
 
 import { ToastProvider } from "@/context/ToastContext";
 
@@ -28,6 +29,7 @@ export default function RootLayout({
             <CartProvider>
               <WishlistProvider>
                 <Navbar />
+                <ScrollToTop />
                 <main className="min-h-screen bg-[#F5EFE6] pb-10">
                   {children}
                 </main>
