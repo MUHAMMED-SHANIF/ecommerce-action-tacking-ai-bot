@@ -11,6 +11,7 @@ interface Address {
     state: string;
     zip: string;
     country: string;
+    phone?: string;
     isDefault?: boolean;
 }
 
@@ -211,6 +212,16 @@ export default function AddressBook({ user, apiBase }: AddressBookProps) {
                                         className="w-full p-3 border border-slate-300 rounded-lg text-sm text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
                                     />
                                 </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">Phone Number</label>
+                                <input
+                                    type="tel"
+                                    value={newAddress.phone || ""}
+                                    onChange={(e) => setNewAddress(prev => ({ ...prev, phone: e.target.value }))}
+                                    className="w-full p-3 border border-slate-300 rounded-lg text-sm text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
+                                    placeholder="e.g. 9876543210"
+                                />
                             </div>
                         </div>
 

@@ -131,14 +131,25 @@ function CheckoutContent() {
         }
 
         const selectedAddress = addresses[selectedAddressIndex];
+        const userPhone = user?.phone || "";
+        const addressPhone = selectedAddress.mobile || selectedAddress.phone || "";
 
-        if (!selectedAddress.mobile || !/^\d+$/.test(selectedAddress.mobile)) {
-            alert("A valid numeric phone number is required in your delivery address to place an order.");
+        // 1. Stock Validation
+        for (const item of orderItems) {
+            if (item.qty > (item.countInStock || 0)) {
+                alert(`Sorry, "${item.title || item.name}" has only ${item.countInStock} units in stock. Please reduce your quantity.`);
+                return;
+            }
+        }
+
+        // 2. Phone Validation (Must have at least one)
+        if (!userPhone && !addressPhone) {
+            alert("A valid phone number is required to place an order. Please add one to your address or profile.");
             return;
         }
 
         const orderData = {
-            user: { id: user.id, name: user.name, email: user.email },
+            user: { id: user.id, name: user.name, email: user.email, phone: userPhone },
             orderItems: orderItems,
             shippingAddress: {
                 address: selectedAddress.addressLine,

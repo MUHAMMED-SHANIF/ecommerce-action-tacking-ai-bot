@@ -1314,6 +1314,7 @@ app.get('/api/cart/:userId', async (req, res) => {
                 discount: p.metadata?.discount || 0,
                 image: p.image_url || p.image,
                 qty: item.quantity || 1,
+                countInStock: p.stock_quantity,
                 deliveryDate: 'Sat Oct 28'
             };
         }).filter(Boolean);
@@ -1732,7 +1733,18 @@ app.delete('/api/wishlist/:userId/:productId', async (req, res) => {
 app.post('/api/orders', async (req, res) => {
     try {
         const { orderItems, shippingAddress, paymentMethod, itemsPrice, taxPrice, shippingPrice, totalPrice, user } = req.body;
-        const phone = user?.phone || "";
+        
+        // 1. Stock Validation
+        for (const item of orderItems) {
+            const { data: pData } = await supabase.from('products').select('name, stock_quantity').eq('id', item.id).single();
+            if (!pData) throw new Error(`Product ${item.id} not found`);
+            if (pData.stock_quantity < (item.qty || 1)) {
+                throw new Error(`Insufficient stock for "${pData.name}". Available: ${pData.stock_quantity}, Requested: ${item.qty || 1}`);
+            }
+        }
+
+        // 2. Phone Extraction (Priority: Address Mobile > User Profile Phone)
+        const phone = shippingAddress?.mobile || user?.phone || "";
 
         // Start transaction/batch logic.
         for (const item of orderItems) {
