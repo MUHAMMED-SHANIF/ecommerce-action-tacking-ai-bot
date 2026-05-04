@@ -30,7 +30,14 @@ export default function AddressBook({ user, apiBase }: AddressBookProps) {
             fetch(`${apiBase}/address/${user.id}`)
                 .then(res => res.json())
                 .then(data => {
-                    if (Array.isArray(data)) setAddresses(data);
+                    if (Array.isArray(data)) {
+                        // Ensure all addresses have an ID for safe deletion
+                        const sanitized = data.map((addr, idx) => ({
+                            ...addr,
+                            id: addr.id || `addr-${idx}-${Date.now()}`
+                        }));
+                        setAddresses(sanitized);
+                    }
                 })
                 .catch(err => console.error("Failed to fetch addresses", err));
         }
@@ -41,7 +48,7 @@ export default function AddressBook({ user, apiBase }: AddressBookProps) {
         if (editingAddress) {
             updatedAddresses = addresses.map(addr => addr.id === editingAddress.id ? { ...addr, ...newAddress } as Address : addr);
         } else {
-            const id = Math.random().toString(36).substr(2, 9);
+            const id = `addr-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
             updatedAddresses.push({ ...newAddress, id } as Address);
         }
 
@@ -63,6 +70,7 @@ export default function AddressBook({ user, apiBase }: AddressBookProps) {
     };
 
     const handleDeleteAddress = async (id: string) => {
+        if (!id) return; // Guard against undefined ID
         if (confirm("Are you sure you want to delete this address?")) {
             const updatedAddresses = addresses.filter(addr => addr.id !== id);
             setAddresses(updatedAddresses);

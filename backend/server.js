@@ -1308,6 +1308,23 @@ app.get('/api/address/:userId', async (req, res) => {
     }
 });
 
+app.post('/api/address/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { addresses } = req.body;
+        const { error } = await supabase.auth.admin.updateUserById(userId, { 
+            user_metadata: { 
+                ...(await supabase.auth.admin.getUserById(userId)).data.user.user_metadata,
+                addresses 
+            } 
+        });
+        if (error) throw error;
+        res.json({ success: true, addresses });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // --- WISHLIST ---
 app.get('/api/wishlist/:userId', async (req, res) => {
     try {
