@@ -37,7 +37,7 @@ export default function SellerDashboard() {
     }, []);
 
     const medal = (rank: number) =>
-        rank === 1 ? 'bg-yellow-400 text-white' :
+        rank === 1 ? 'bg-[#F59E0B] text-white' :
             rank === 2 ? 'bg-gray-300 text-gray-700' :
                 rank === 3 ? 'bg-amber-600 text-white' : 'bg-slate-100 text-slate-500';
 

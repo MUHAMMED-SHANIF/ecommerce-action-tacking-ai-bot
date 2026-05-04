@@ -64,10 +64,10 @@ export default function CartPage() {
         return (
             <div className="container mx-auto px-4 py-20 bg-white max-w-[1248px] text-center shadow-sm mt-4">
                 <img src="/empty_cart.png" alt="Empty Cart" className="w-64 mx-auto mb-6" />
-                <h2 className="text-[24px] font-bold mb-2 text-[#1b5e20]">Your cart is empty!</h2>
+                <h2 className="text-[24px] font-bold mb-2 text-[#0B3D2E]">Your cart is empty!</h2>
                 <p className="text-[14px] text-slate-500 mb-8 font-medium">Add items to it now.</p>
                 <Link href="/">
-                    <button className="bg-[#1b5e20] text-white px-16 py-3.5 font-bold shadow-md hover:shadow-lg text-[15px] hover:bg-[#144216] transition-all rounded-sm uppercase tracking-wide">
+                    <button className="bg-[#0B3D2E] text-white px-16 py-3.5 font-bold shadow-md hover:shadow-lg text-[15px] hover:bg-[#145A3A] transition-all rounded-sm uppercase tracking-wide">
                         Shop Now
                     </button>
                 </Link>
@@ -107,7 +107,7 @@ export default function CartPage() {
                                     <input placeholder="State" className="p-2 border rounded text-sm" value={newAddress.state} onChange={e => setNewAddress({ ...newAddress, state: e.target.value })} />
                                 </div>
                                 <div className="flex gap-2">
-                                    <button onClick={handleAddAddress} className="bg-[#cddc39] text-gray-900 px-4 py-1.5 text-sm font-medium uppercase rounded-sm shadow-sm">Save Address</button>
+                                    <button onClick={handleAddAddress} className="bg-[#F59E0B] text-white px-4 py-1.5 text-sm font-medium uppercase rounded-sm shadow-sm">Save Address</button>
                                     <button onClick={() => setShowAddressForm(false)} className="text-[#2874f0] text-sm font-medium uppercase px-2 py-1.5">Cancel</button>
                                 </div>
                             </div>
@@ -154,7 +154,7 @@ export default function CartPage() {
                                     <div className="flex items-baseline gap-3 mb-4">
                                         <span className="text-[14px] text-gray-500 line-through">₹{(item.originalPrice || item.price || 0).toLocaleString()}</span>
                                         <span className="text-[18px] font-semibold text-black">₹{(item.price || 0).toLocaleString()}</span>
-                                        <span className="text-[14px] text-[#388e3c] font-medium">{item.discount || 0}% Off</span>
+                                        <span className="text-[14px] text-[#0B3D2E] font-medium">{item.discount || 0}% Off</span>
                                     </div>
 
                                     <div className="flex items-center gap-8">
@@ -179,17 +179,17 @@ export default function CartPage() {
                                     </div>
                                 </div>
                                 <div className="text-[12px] text-gray-600">
-                                    Delivery by {item.deliveryDate || 'Sat Oct 28'} | <span className="text-[#388e3c] border-l border-gray-300 pl-1 ml-1">Free</span> <span className="line-through text-gray-400">₹40</span>
+                                    Delivery by {item.deliveryDate || 'Sat Oct 28'} | <span className="text-[#0B3D2E] border-l border-gray-300 pl-1 ml-1">Free</span> <span className="line-through text-gray-400">₹40</span>
                                 </div>
                             </div>
                         ))}
 
                         <div className="p-4 flex justify-end sticky bottom-0 bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
                             <Link href="/checkout">
-                                <button className="bg-[#cddc39] text-gray-900 font-medium px-16 py-3 text-[16px] shadow-md uppercase tracking-wide hover:shadow-lg transition-shadow rounded-sm warning-button">
+                                <button className="bg-[#F59E0B] text-white font-medium px-16 py-3 text-[16px] shadow-md uppercase tracking-wide hover:shadow-lg transition-shadow rounded-sm warning-button">
                                     Place Order
                                 </button>
-                                {/* Note: I used the requested yellow color #cddc39 which is the standard Flipkart 'Place Order' Orange-Yellow. 
+                                {/* Note: I used the requested yellow color #F59E0B which is the standard Flipkart 'Place Order' Orange-Yellow. 
                                     The user asked for 'yellow that used early'. I assume this is the orange-yellow accent. 
                                     If they meant pure yellow, I could use #eab308 */}
                             </Link>
@@ -208,11 +208,11 @@ export default function CartPage() {
                                 <span>Price ({cartItems.length} items)</span>
                                 <span>₹{totalOriginal.toLocaleString()}</span>
                             </div>
-                            <div className="flex justify-between text-[#388e3c]">
+                            <div className="flex justify-between text-[#0B3D2E]">
                                 <span>Discount</span>
                                 <span>− ₹{totalDiscount.toLocaleString()}</span>
                             </div>
-                            <div className="flex justify-between text-[#388e3c]">
+                            <div className="flex justify-between text-[#0B3D2E]">
                                 <span>Delivery Charges</span>
                                 <span>Free</span>
                             </div>
@@ -226,7 +226,7 @@ export default function CartPage() {
 
                             <div className="border-t border-dashed border-gray-300 my-2"></div>
 
-                            <p className="text-[#388e3c] font-medium text-[14px] text-center">
+                            <p className="text-[#0B3D2E] font-medium text-[14px] text-center">
                                 You will save ₹{totalDiscount.toLocaleString()} on this order
                             </p>
                         </div>

@@ -70,15 +70,15 @@ export default function CategoryBar() {
             <div className="container mx-auto px-4 max-w-[960px] overflow-x-auto no-scrollbar">
                 <div className="flex justify-between min-w-[300px] md:min-w-0">
                     {categories.map((cat, idx) => (
-                        <Link href={`/category/${encodeURIComponent(cat.name)}`} key={idx} className="flex flex-col items-center gap-1 group cursor-pointer hover:text-[#22c55e] min-w-[64px]">
-                            <div className="relative w-12 h-12 rounded-full overflow-hidden bg-gray-50 border border-gray-100 group-hover:border-[#22c55e] transition-colors">
+                        <Link href={`/category/${encodeURIComponent(cat.name)}`} key={idx} className="flex flex-col items-center gap-1 group cursor-pointer hover:text-[#F59E0B] min-w-[64px]">
+                            <div className="relative w-12 h-12 rounded-full overflow-hidden bg-gray-50 border border-gray-100 group-hover:border-[#F59E0B] transition-colors">
                                 <img
                                     src={cat.img}
                                     alt={cat.name}
                                     className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
                                 />
                             </div>
-                            <span className="text-[12px] font-medium text-gray-800 group-hover:text-[#22c55e] text-center w-full truncate px-1">
+                            <span className="text-[12px] font-medium text-gray-800 group-hover:text-[#F59E0B] text-center w-full truncate px-1">
                                 {cat.name}
                             </span>
                         </Link>

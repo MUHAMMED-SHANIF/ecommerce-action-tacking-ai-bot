@@ -23,7 +23,7 @@ export default function WishlistPage() {
 
     if (items.length === 0) {
         return (
-            <div className="min-h-screen bg-[#f1f2f4] flex items-center justify-center">
+            <div className="min-h-screen bg-[#F5EFE6] flex items-center justify-center">
                 <div className="bg-white p-10 rounded shadow-sm text-center">
                     <h2 className="text-xl font-medium mb-4">My Wishlist</h2>
                     <p className="text-gray-500 mb-6">You haven't added any items to your wishlist yet!</p>
@@ -51,7 +51,7 @@ export default function WishlistPage() {
                                 <h3 className="text-[16px] font-medium text-gray-800 mb-2 truncate max-w-2xl">{item.title}</h3>
 
                                 <div className="flex items-center gap-3 mb-2">
-                                    <span className="bg-[#388e3c] text-white text-[12px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
+                                    <span className="bg-[#0B3D2E] text-white text-[12px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
                                         4.5 <span className="text-[10px]">★</span>
                                     </span>
                                     <span className="text-gray-500 text-xs">(1,234)</span>
@@ -60,7 +60,7 @@ export default function WishlistPage() {
                                 <div className="flex items-center gap-3">
                                     <span className="text-[18px] font-semibold text-black">₹{item.price.toLocaleString()}</span>
                                     <span className="text-[14px] text-gray-500 line-through">₹{item.originalPrice.toLocaleString()}</span>
-                                    <span className="text-[14px] text-[#388e3c] font-bold">{item.discount}% off</span>
+                                    <span className="text-[14px] text-[#0B3D2E] font-bold">{item.discount}% off</span>
                                 </div>
                             </div>
                         </Link>

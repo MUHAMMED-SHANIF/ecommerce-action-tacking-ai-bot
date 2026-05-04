@@ -142,7 +142,7 @@ function ProductContent() {
                                 </span>
                             )}
                             {(product.discount > 0 || (product.originalPrice && Number(product.originalPrice) > product.price)) && (
-                                <span className="text-[16px] text-[#388e3c] font-medium">
+                                <span className="text-[16px] text-[#0B3D2E] font-medium">
                                     {product.discount > 0
                                         ? product.discount
                                         : Math.round(((Number(product.originalPrice) - product.price) / Number(product.originalPrice)) * 100)
@@ -166,7 +166,7 @@ function ProductContent() {
                                                 window.location.href = "/login";
                                             }
                                         }}
-                                        className="flex-1 bg-[#ff9f00] text-white font-medium py-3.5 shadow px-2 uppercase text-[15px] flex items-center justify-center gap-2 hover:shadow-lg transition-shadow rounded-lg"
+                                        className="flex-1 bg-[#F59E0B] text-white font-medium py-3.5 shadow px-2 uppercase text-[15px] flex items-center justify-center gap-2 hover:shadow-lg transition-shadow rounded-lg"
                                     >
                                         <ShoppingCart className="w-5 h-5 fill-white" />
                                         Add to Cart
@@ -179,7 +179,7 @@ function ProductContent() {
                                                 window.location.href = "/login";
                                             }
                                         }}
-                                        className="flex-1 bg-[#cddc39] text-gray-900 font-medium py-3.5 shadow px-2 uppercase text-[15px] flex items-center justify-center gap-2 hover:shadow-lg transition-shadow rounded-lg"
+                                        className="flex-1 bg-[#F59E0B] text-white font-medium py-3.5 shadow px-2 uppercase text-[15px] flex items-center justify-center gap-2 hover:shadow-lg transition-shadow rounded-lg"
                                     >
                                         <Zap className="w-5 h-5 fill-white" />
                                         Buy Now

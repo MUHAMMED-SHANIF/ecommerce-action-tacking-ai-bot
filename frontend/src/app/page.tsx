@@ -125,13 +125,13 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#f1f2f4]">
+    <div className="flex flex-col min-h-screen bg-[#F5EFE6]">
       {/* Category Bar Section */}
       <CategoryBar />
 
       {/* Banner Section - Center Mode Carousel */}
       {banners.length > 0 ? (
-        <div className="w-full bg-[#f1f2f4] overflow-hidden mb-6 mt-4">
+        <div className="w-full bg-[#F5EFE6] overflow-hidden mb-6 mt-4">
           <div className="relative w-full h-[160px] sm:h-[220px] md:h-[280px] lg:h-[340px] flex justify-center items-center">
             {bannerConfig.showCarousel ? (
               <>

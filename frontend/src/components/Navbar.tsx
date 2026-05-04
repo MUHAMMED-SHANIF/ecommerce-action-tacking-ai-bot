@@ -33,7 +33,7 @@ export default function Navbar() {
     };
 
     return (
-        <nav className="sticky top-0 z-50 bg-[#1b5e20] text-white shadow-lg">
+        <nav className="sticky top-0 z-50 bg-[#0B3D2E] text-white shadow-lg">
             <div className="container mx-auto px-4 max-w-[1248px]">
                 <div className="flex items-center gap-8 h-16">
                     {/* Left: Logo & Home Button */}
@@ -42,13 +42,13 @@ export default function Navbar() {
                         <Link href="/" className="flex flex-col items-start gap-0.5 group">
                             <div className="flex items-baseline">
                                 <span className="text-[22px] font-bold italic tracking-wide text-white">EMart</span>
-                                <span className="text-[22px] font-bold italic tracking-wide text-yellow-300">Hub</span>
+                                <span className="text-[22px] font-bold italic tracking-wide text-[#F59E0B]">Hub</span>
                             </div>
                         </Link>
 
                         {/* Home Button */}
-                        <Link href="/" className="bg-[#059669] hover:bg-[#144216] p-2 rounded-full transition-colors group" title="Home">
-                            <Store className="w-5 h-5 text-white group-hover:text-yellow-200" />
+                        <Link href="/" className="bg-[#145A3A] hover:bg-[#145A3A] p-2 rounded-full transition-colors group" title="Home">
+                            <Store className="w-5 h-5 text-white group-hover:text-[#FFB020]" />
                         </Link>
                     </div>
 
@@ -83,7 +83,7 @@ export default function Navbar() {
                         {/* Login/User Button */}
                         <div className="relative group">
                             {user ? (
-                                <div className="flex items-center gap-2 cursor-pointer py-2 hover:text-yellow-200 transition-colors">
+                                <div className="flex items-center gap-2 cursor-pointer py-2 hover:text-[#FFB020] transition-colors">
                                     <div className="flex items-center gap-2 group">
                                         <User className="w-5 h-5" />
                                         <span className="font-semibold max-w-[100px] truncate">
@@ -128,7 +128,7 @@ export default function Navbar() {
                                 </div>
                             ) : (
                                 <Link href="/login">
-                                    <button className="bg-white text-[#1b5e20] px-8 py-1.5 font-bold rounded-sm hover:bg-gray-100 transition-colors shadow-sm whitespace-nowrap">
+                                    <button className="bg-white text-[#0B3D2E] px-8 py-1.5 font-bold rounded-sm hover:bg-gray-100 transition-colors shadow-sm whitespace-nowrap">
                                         Login
                                     </button>
                                 </Link>
@@ -136,7 +136,7 @@ export default function Navbar() {
                         </div>
 
                         {/* Wishlist */}
-                        <Link href="/wishlist" className="flex items-center gap-2 hover:text-yellow-200 transition-colors">
+                        <Link href="/wishlist" className="flex items-center gap-2 hover:text-[#FFB020] transition-colors">
                             <Heart className="w-5 h-5" />
                             <span>Wishlist</span>
                         </Link>
@@ -145,13 +145,13 @@ export default function Navbar() {
                         <CartLink />
 
                         {/* Chatbot Icon */}
-                        <Link href="/chatbot" className="flex items-center gap-2 hover:text-yellow-200 transition-colors" title="AI Chatbot">
+                        <Link href="/chatbot" className="flex items-center gap-2 hover:text-[#FFB020] transition-colors" title="AI Chatbot">
                             <MessageSquare className="w-5 h-5" />
                         </Link>
 
                         {/* Three Dots Menu for Settings */}
                         <div className="relative group cursor-pointer">
-                            <MoreVertical className="w-5 h-5 hover:text-yellow-200 transition-colors" />
+                            <MoreVertical className="w-5 h-5 hover:text-[#FFB020] transition-colors" />
                             <div className="hidden group-hover:block absolute top-[100%] right-0 pt-2 z-50">
                                 <div className="bg-white text-slate-800 shadow-xl rounded-md overflow-hidden min-w-[200px] border border-slate-100 ring-1 ring-black/5">
                                     <Link href="/seller/register" className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 w-full text-left transition-colors text-slate-600 hover:text-emerald-700 border-b border-slate-50">
@@ -176,11 +176,11 @@ export default function Navbar() {
 function CartLink() {
     const { items } = useCart();
     return (
-        <Link href="/cart" className="flex items-center gap-2 hover:text-yellow-200 transition-colors">
+        <Link href="/cart" className="flex items-center gap-2 hover:text-[#FFB020] transition-colors">
             <div className="relative">
                 <ShoppingCart className="w-5 h-5" />
                 {items.length > 0 && (
-                    <span className="absolute -top-2 -right-2 bg-yellow-400 text-black text-[10px] font-bold px-1.5 rounded-full border border-white">
+                    <span className="absolute -top-2 -right-2 bg-[#F59E0B] text-black text-[10px] font-bold px-1.5 rounded-full border border-white">
                         {items.length}
                     </span>
                 )}

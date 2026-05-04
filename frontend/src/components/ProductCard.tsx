@@ -110,7 +110,7 @@ export default function ProductCard({ id, title, image, price, originalPrice, di
                 <h3 className="text-[15px] font-medium text-gray-800 truncate mb-2" title={title}>{title}</h3>
 
                 {safeDiscount > 0 && (
-                    <p className="text-[14px] text-[#1b5e20] font-bold mb-1">{safeDiscount}% OFF</p>
+                    <p className="text-[14px] text-[#0B3D2E] font-bold mb-1">{safeDiscount}% OFF</p>
                 )}
 
                 <div className="flex items-baseline justify-center gap-2">

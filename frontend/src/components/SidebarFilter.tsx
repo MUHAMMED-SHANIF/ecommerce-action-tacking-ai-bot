@@ -27,7 +27,7 @@ export default function SidebarFilter() {
             <div className="p-4 border-b border-gray-100">
                 <div className="text-[13px] font-medium uppercase mb-4">Price</div>
                 <div className="h-6 bg-gray-200 relative mb-4">
-                    <div className="absolute left-0 top-0 h-full bg-[#22c55e]" style={{ width: '60%' }}></div>
+                    <div className="absolute left-0 top-0 h-full bg-[#F59E0B]" style={{ width: '60%' }}></div>
                     <div className="absolute right-0 top-0 h-6 w-6 bg-white border shadow rounded-full -mt-0 cursor-pointer" style={{ left: '60%' }}></div>
                 </div>
                 <div className="flex justify-between text-[14px]">

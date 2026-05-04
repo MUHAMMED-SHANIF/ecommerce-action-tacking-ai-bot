@@ -61,7 +61,7 @@ export default function PersonalDetails({ user, onSave }: PersonalDetailsProps) 
                 <button
                     onClick={handleSave}
                     disabled={loading}
-                    className="w-full bg-[#1b5e20] text-white font-bold py-3 rounded-md shadow-md hover:bg-[#144216] transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-70"
+                    className="w-full bg-[#0B3D2E] text-white font-bold py-3 rounded-md shadow-md hover:bg-[#145A3A] transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-70"
                 >
                     <Check className="w-4 h-4" />
                     {loading ? "Saving..." : "Save Changes"}

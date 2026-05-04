@@ -28,7 +28,7 @@ export default function RootLayout({
             <CartProvider>
               <WishlistProvider>
                 <Navbar />
-                <main className="min-h-screen bg-[#f1f2f4] pb-10">
+                <main className="min-h-screen bg-[#F5EFE6] pb-10">
                   {children}
                 </main>
                 <AIAssistant />

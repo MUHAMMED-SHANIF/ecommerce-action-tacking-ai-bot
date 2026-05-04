@@ -123,7 +123,7 @@ export default function AdminOrdersPage() {
                         {analytics.topProducts.slice(0, 5).map((p: any) => (
                             <div key={p.id} className="flex items-center justify-between border-b pb-2 last:border-0">
                                 <div className="flex items-center gap-2">
-                                    <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${p.rank === 1 ? 'bg-yellow-400 text-white' : p.rank === 2 ? 'bg-gray-300 text-gray-700' : p.rank === 3 ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-500'}`}>{p.rank}</span>
+                                    <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${p.rank === 1 ? 'bg-[#F59E0B] text-white' : p.rank === 2 ? 'bg-gray-300 text-gray-700' : p.rank === 3 ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-500'}`}>{p.rank}</span>
                                     <div>
                                         <div className="text-sm font-medium text-gray-800 line-clamp-1">{p.name}</div>
                                         <div className="text-xs text-gray-400">{p.category}</div>
@@ -145,7 +145,7 @@ export default function AdminOrdersPage() {
                         {analytics.topSellers.slice(0, 5).map((s: any) => (
                             <div key={s.id} className="flex items-center justify-between border-b pb-2 last:border-0">
                                 <div className="flex items-center gap-2">
-                                    <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${s.rank === 1 ? 'bg-yellow-400 text-white' : s.rank === 2 ? 'bg-gray-300 text-gray-700' : s.rank === 3 ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-500'}`}>{s.rank}</span>
+                                    <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${s.rank === 1 ? 'bg-[#F59E0B] text-white' : s.rank === 2 ? 'bg-gray-300 text-gray-700' : s.rank === 3 ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-500'}`}>{s.rank}</span>
                                     <div>
                                         <div className="text-sm font-medium text-gray-800 line-clamp-1">{s.name}</div>
                                         <div className="text-xs text-gray-400">{s.totalProducts} products</div>
@@ -167,7 +167,7 @@ export default function AdminOrdersPage() {
                         {analytics.topCategories.slice(0, 5).map((c: any) => (
                             <div key={c.id} className="flex items-center justify-between border-b pb-2 last:border-0">
                                 <div className="flex items-center gap-2">
-                                    <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${c.rank === 1 ? 'bg-yellow-400 text-white' : c.rank === 2 ? 'bg-gray-300 text-gray-700' : c.rank === 3 ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-500'}`}>{c.rank}</span>
+                                    <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${c.rank === 1 ? 'bg-[#F59E0B] text-white' : c.rank === 2 ? 'bg-gray-300 text-gray-700' : c.rank === 3 ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-500'}`}>{c.rank}</span>
                                     <div>
                                         <div className="text-sm font-medium text-gray-800">{c.name}</div>
                                         <div className="text-xs text-gray-400">{c.totalQty} units sold</div>
@@ -279,7 +279,7 @@ export default function AdminOrdersPage() {
                                 {filteredResults.map((p: any) => (
                                     <tr key={p.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => { setSelectedItem(p); setSelectedType('product'); }}>
                                         <td className="p-3">
-                                            <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${p.rank === 1 ? 'bg-yellow-400 text-white' : p.rank === 2 ? 'bg-gray-300 text-gray-600' : p.rank === 3 ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-500'}`}>{p.rank}</span>
+                                            <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${p.rank === 1 ? 'bg-[#F59E0B] text-white' : p.rank === 2 ? 'bg-gray-300 text-gray-600' : p.rank === 3 ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-500'}`}>{p.rank}</span>
                                         </td>
                                         <td className="p-3 font-medium text-gray-800">{p.name}</td>
                                         <td className="p-3 text-gray-500">{p.category}</td>
@@ -313,7 +313,7 @@ export default function AdminOrdersPage() {
                                 {filteredResults.map((s: any) => (
                                     <tr key={s.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => { setSelectedItem(s); setSelectedType('seller'); }}>
                                         <td className="p-3">
-                                            <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${s.rank === 1 ? 'bg-yellow-400 text-white' : s.rank === 2 ? 'bg-gray-300 text-gray-600' : s.rank === 3 ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-500'}`}>{s.rank}</span>
+                                            <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${s.rank === 1 ? 'bg-[#F59E0B] text-white' : s.rank === 2 ? 'bg-gray-300 text-gray-600' : s.rank === 3 ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-500'}`}>{s.rank}</span>
                                         </td>
                                         <td className="p-3">
                                             <div className="font-medium text-gray-800">{s.name}</div>
@@ -348,7 +348,7 @@ export default function AdminOrdersPage() {
                                 {filteredResults.map((c: any) => (
                                     <tr key={c.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => { setSelectedItem(c); setSelectedType('category'); }}>
                                         <td className="p-3">
-                                            <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${c.rank === 1 ? 'bg-yellow-400 text-white' : c.rank === 2 ? 'bg-gray-300 text-gray-600' : c.rank === 3 ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-500'}`}>{c.rank}</span>
+                                            <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${c.rank === 1 ? 'bg-[#F59E0B] text-white' : c.rank === 2 ? 'bg-gray-300 text-gray-600' : c.rank === 3 ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-500'}`}>{c.rank}</span>
                                         </td>
                                         <td className="p-3 font-medium text-gray-800">{c.name}</td>
                                         <td className="p-3 text-gray-500 text-xs">{c.products?.join(', ')}</td>

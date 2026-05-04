@@ -24,7 +24,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         <ToastContext.Provider value={{ showToast }}>
             {children}
             {visible && (
-                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-[#1b5e20] text-white px-6 py-3 rounded-full shadow-2xl z-[9999] text-sm font-semibold transition-all duration-300 animate-in slide-in-from-bottom-5">
+                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-[#0B3D2E] text-white px-6 py-3 rounded-full shadow-2xl z-[9999] text-sm font-semibold transition-all duration-300 animate-in slide-in-from-bottom-5">
                     {message}
                 </div>
             )}

@@ -47,10 +47,10 @@ export default function CategoryPage() {
     return (
         <div className="min-h-screen bg-[#ffffff]">
             {/* Hero banner bar */}
-            <div className="bg-gradient-to-r from-[#1b5e20] to-[#144216] text-white shadow-sm">
+            <div className="bg-gradient-to-r from-[#0B3D2E] to-[#145A3A] text-white shadow-sm">
                 <div className="container mx-auto px-4 max-w-[1248px] py-6">
                     <div className="flex items-center gap-2 text-emerald-100/80 text-xs mb-2">
-                        <Link href="/" className="hover:text-yellow-200 transition">Home</Link>
+                        <Link href="/" className="hover:text-[#FFB020] transition">Home</Link>
                         <ChevronRight className="w-3 h-3" />
                         <span>Categories</span>
                         <ChevronRight className="w-3 h-3" />
@@ -100,7 +100,7 @@ export default function CategoryPage() {
                         <p className="text-gray-400 text-sm mb-6">There are no products in this category yet.</p>
                         <button
                             onClick={() => router.push('/')}
-                            className="px-6 py-2.5 bg-[#1b5e20] text-white rounded-full text-sm font-semibold hover:bg-[#144216] transition shadow-sm"
+                            className="px-6 py-2.5 bg-[#0B3D2E] text-white rounded-full text-sm font-semibold hover:bg-[#145A3A] transition shadow-sm"
                         >
                             Browse Homepage
                         </button>

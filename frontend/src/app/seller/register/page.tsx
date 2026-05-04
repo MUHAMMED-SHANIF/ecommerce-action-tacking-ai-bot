@@ -128,7 +128,7 @@ export default function SellerRegister() {
                 <div className="hidden md:flex flex-col justify-center p-12 w-1/2 bg-gradient-to-br from-violet-600 to-indigo-700 text-white relative">
                     <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
                     <div className="relative z-10">
-                        <Store className="w-16 h-16 mb-6 text-yellow-300" />
+                        <Store className="w-16 h-16 mb-6 text-[#F59E0B]" />
                         <h2 className="text-4xl font-bold mb-6">Welcome to EMart Hub Seller Program</h2>
                         <p className="text-lg text-indigo-100 mb-8 leading-relaxed">
                             Join our vibrant community of sellers. Expand your reach, manage your products efficiently, and grow your business with our powerful tools.

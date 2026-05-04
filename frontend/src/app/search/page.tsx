@@ -70,10 +70,10 @@ export default function SearchPage() {
         <div className="min-h-screen bg-[#ffffff]">
 
             {/* Hero Search Bar */}
-            <div className="bg-gradient-to-r from-[#1b5e20] to-[#144216] text-white">
+            <div className="bg-gradient-to-r from-[#0B3D2E] to-[#145A3A] text-white">
                 <div className="container mx-auto px-4 max-w-[1248px] py-6">
                     <div className="flex items-center gap-2 text-emerald-100/80 text-xs mb-4">
-                        <Link href="/" className="hover:text-yellow-200 transition">Home</Link>
+                        <Link href="/" className="hover:text-[#FFB020] transition">Home</Link>
                         <ChevronRight className="w-3 h-3" />
                         <span className="text-white font-semibold truncate">{title}</span>
                     </div>
@@ -85,7 +85,7 @@ export default function SearchPage() {
                                 value={searchInput}
                                 onChange={e => setSearchInput(e.target.value)}
                                 placeholder="Search for products, brands and more…"
-                                className="w-full pl-12 pr-10 py-3 rounded-xl text-sm text-gray-800 bg-white shadow focus:outline-none focus:ring-2 focus:ring-[#059669]"
+                                className="w-full pl-12 pr-10 py-3 rounded-xl text-sm text-gray-800 bg-white shadow focus:outline-none focus:ring-2 focus:ring-[#145A3A]"
                             />
                             {searchInput && (
                                 <button type="button" onClick={() => setSearchInput('')} className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -93,7 +93,7 @@ export default function SearchPage() {
                                 </button>
                             )}
                         </div>
-                        <button type="submit" className="bg-[#cddc39] text-gray-900 font-bold px-6 py-3 rounded-xl hover:bg-[#b7c433] transition shadow text-sm">
+                        <button type="submit" className="bg-[#F59E0B] text-white font-bold px-6 py-3 rounded-xl hover:bg-[#FFB020] transition shadow text-sm">
                             Search
                         </button>
                     </form>
@@ -116,7 +116,7 @@ export default function SearchPage() {
                         <select
                             value={sortBy}
                             onChange={e => setSortBy(e.target.value as any)}
-                            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#059669] cursor-pointer"
+                            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#145A3A] cursor-pointer"
                         >
                             <option value="popular">Popularity</option>
                             <option value="price_asc">Price — Low to High</option>
@@ -144,7 +144,7 @@ export default function SearchPage() {
                         </p>
                         <button
                             onClick={() => router.push("/")}
-                            className="px-6 py-2.5 bg-[#1b5e20] text-white rounded-full text-sm font-semibold hover:bg-[#144216] transition shadow-sm"
+                            className="px-6 py-2.5 bg-[#0B3D2E] text-white rounded-full text-sm font-semibold hover:bg-[#145A3A] transition shadow-sm"
                         >
                             Go to Homepage
                         </button>

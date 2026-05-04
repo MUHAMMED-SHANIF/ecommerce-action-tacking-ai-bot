@@ -172,9 +172,9 @@ function CheckoutContent() {
 
     if (orderPlaced) {
         return (
-            <div className="min-h-screen bg-[#f1f2f4] flex flex-col items-center justify-center p-4">
+            <div className="min-h-screen bg-[#F5EFE6] flex flex-col items-center justify-center p-4">
                 <div className="bg-white p-10 rounded shadow-md text-center max-w-md w-full">
-                    <div className="w-16 h-16 bg-[#22c55e] rounded-full flex items-center justify-center mx-auto mb-4">
+                    <div className="w-16 h-16 bg-[#F59E0B] rounded-full flex items-center justify-center mx-auto mb-4">
                         <ShieldCheck className="w-8 h-8 text-white" />
                     </div>
                     <h2 className="text-[24px] font-semibold text-gray-800 mb-2">Order Placed Successfully!</h2>
@@ -233,7 +233,7 @@ function CheckoutContent() {
                                         <input placeholder="State" className="p-2 border rounded text-sm w-full" value={newAddress.state} onChange={e => setNewAddress({ ...newAddress, state: e.target.value })} />
                                     </div>
                                     <div className="flex gap-2">
-                                        <button onClick={handleAddAddress} className="bg-[#cddc39] text-gray-900 px-4 py-1.5 text-sm font-medium uppercase rounded-sm shadow-sm">Save Address</button>
+                                        <button onClick={handleAddAddress} className="bg-[#F59E0B] text-white px-4 py-1.5 text-sm font-medium uppercase rounded-sm shadow-sm">Save Address</button>
                                         <button onClick={() => setShowAddressForm(false)} className="text-[#2874f0] text-sm font-medium uppercase px-2 py-1.5">Cancel</button>
                                     </div>
                                 </div>
@@ -259,7 +259,7 @@ function CheckoutContent() {
                                     ) : (
                                         <div className="text-center py-4">
                                             <p className="text-sm text-gray-500 mb-4">No address saved. Please add one to continue.</p>
-                                            <button onClick={() => setShowAddressForm(true)} className="bg-[#cddc39] text-gray-900 font-bold px-8 py-3 text-[14px] uppercase rounded-[2px] shadow">
+                                            <button onClick={() => setShowAddressForm(true)} className="bg-[#F59E0B] text-white font-bold px-8 py-3 text-[14px] uppercase rounded-[2px] shadow">
                                                 Add Delivery Address
                                             </button>
                                         </div>
@@ -289,7 +289,7 @@ function CheckoutContent() {
                                         <div className="flex items-baseline gap-3 mb-4">
                                             <span className="text-[14px] text-gray-500 line-through">₹{(item.originalPrice * item.qty).toLocaleString()}</span>
                                             <span className="text-[18px] font-semibold text-black">₹{(item.price * item.qty).toLocaleString()}</span>
-                                            <span className="text-[14px] text-[#388e3c] font-medium">{item.discount}% Off</span>
+                                            <span className="text-[14px] text-[#0B3D2E] font-medium">{item.discount}% Off</span>
                                         </div>
 
                                         <div className="flex items-center gap-6">
@@ -303,7 +303,7 @@ function CheckoutContent() {
                                     </div>
                                     <div className="text-[12px] text-gray-600 self-start text-right">
                                         Delivery by {item.deliveryDate || 'Sat Oct 28'}<br />
-                                        <span className="text-[#388e3c]">Free Subtotal</span> <span className="line-through text-gray-400">₹40</span>
+                                        <span className="text-[#0B3D2E]">Free Subtotal</span> <span className="line-through text-gray-400">₹40</span>
                                     </div>
                                 </div>
                             ))}
@@ -335,7 +335,7 @@ function CheckoutContent() {
                                 </label>
                             </div>
 
-                            <button onClick={handlePlaceOrder} className="bg-[#cddc39] text-gray-900 font-bold px-16 py-3 text-[16px] uppercase rounded-[2px] shadow hover:shadow-lg">
+                            <button onClick={handlePlaceOrder} className="bg-[#F59E0B] text-white font-bold px-16 py-3 text-[16px] uppercase rounded-[2px] shadow hover:shadow-lg">
                                 Confirm Order
                             </button>
                         </div>
@@ -354,11 +354,11 @@ function CheckoutContent() {
                                 <span>Price ({orderItems.length} items)</span>
                                 <span>₹{(calculatedTotal + calculatedDiscount).toLocaleString()}</span>
                             </div>
-                            <div className="flex justify-between text-[#388e3c]">
+                            <div className="flex justify-between text-[#0B3D2E]">
                                 <span>Discount</span>
                                 <span>− ₹{calculatedDiscount.toLocaleString()}</span>
                             </div>
-                            <div className="flex justify-between text-[#388e3c]">
+                            <div className="flex justify-between text-[#0B3D2E]">
                                 <span>Delivery Charges</span>
                                 <span>Free</span>
                             </div>
