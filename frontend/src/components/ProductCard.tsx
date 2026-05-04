@@ -105,19 +105,19 @@ export default function ProductCard({ id, title, image, price, originalPrice, di
 
             <div className="text-center mt-3">
                 {brand && (
-                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1">{brand}</p>
+                    <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-wider mb-1">{brand}</p>
                 )}
-                <h3 className="text-[14px] font-medium text-gray-800 truncate mb-2" title={title}>{title}</h3>
+                <h3 className="text-[15px] font-medium text-gray-800 truncate mb-2" title={title}>{title}</h3>
 
                 {safeDiscount > 0 && (
-                    <p className="text-[13px] text-[#1b5e20] font-bold mb-1">{safeDiscount}% OFF</p>
+                    <p className="text-[14px] text-[#1b5e20] font-bold mb-1">{safeDiscount}% OFF</p>
                 )}
 
                 <div className="flex items-baseline justify-center gap-2">
                     {safeOriginalPrice > 0 && safeOriginalPrice !== safePrice && (
-                        <span className="text-[12px] text-gray-400 line-through">₹{safeOriginalPrice.toLocaleString()}</span>
+                        <span className="text-[13px] text-gray-400 line-through">₹{safeOriginalPrice.toLocaleString()}</span>
                     )}
-                    <span className="text-[17px] font-bold text-black">₹{safePrice.toLocaleString()}</span>
+                    <span className="text-[18px] font-bold text-black">₹{safePrice.toLocaleString()}</span>
                 </div>
 
                 {offer && (
