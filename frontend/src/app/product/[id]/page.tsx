@@ -76,7 +76,7 @@ function ProductContent() {
     const images = Array.isArray(product.images) && product.images.length > 0 ? product.images : [product.image];
 
     return (
-        <div className="w-full px-1 py-4 bg-white mt-2">
+        <div className="w-full px-1 py-4 bg-[#F5EFE6] mt-2">
             <div className="flex flex-col md:flex-row gap-8">
 
                 {/* Left: Images */}

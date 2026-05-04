@@ -45,7 +45,7 @@ export default function CategoryPage() {
     }, [products, sortBy]);
 
     return (
-        <div className="min-h-screen bg-[#ffffff]">
+        <div className="min-h-screen bg-[#F5EFE6]">
             {/* Hero banner bar */}
             <div className="bg-gradient-to-r from-[#0B3D2E] to-[#145A3A] text-white shadow-sm">
                 <div className="container mx-auto px-4 max-w-[1248px] py-6">

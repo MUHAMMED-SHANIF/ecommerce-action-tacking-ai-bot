@@ -67,7 +67,7 @@ export default function SearchPage() {
             : "All Products";
 
     return (
-        <div className="min-h-screen bg-[#ffffff]">
+        <div className="min-h-screen bg-[#F5EFE6]">
 
             {/* Hero Search Bar */}
             <div className="bg-gradient-to-r from-[#0B3D2E] to-[#145A3A] text-white">

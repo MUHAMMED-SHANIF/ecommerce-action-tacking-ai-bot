@@ -298,7 +298,7 @@ export default function ChatbotPage() {
   if (!user || user.role !== "user") return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-[#F5EFE6] flex">
 
       {/* Left Sidebar */}
       <aside className="hidden md:flex w-64 bg-white border-r border-gray-100 flex-col">
