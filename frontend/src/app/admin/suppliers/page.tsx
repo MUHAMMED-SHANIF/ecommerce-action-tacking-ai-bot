@@ -18,8 +18,8 @@ interface Supplier {
 interface Product {
     id: string;
     supplier?: string;
+    sellerId?: string;
 }
-
 export default function AdminSuppliers() {
     const { user } = useAuth();
     const router = useRouter();
@@ -131,8 +131,8 @@ export default function AdminSuppliers() {
         (s.email || "").toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const getProductCount = (supplierName: string) => {
-        return products.filter(p => p.supplier === supplierName).length;
+    const getProductCount = (supplierId: string) => {
+        return products.filter(p => p.sellerId === supplierId).length;
     };
 
     const formatDate = (dateString?: string) => {
@@ -208,7 +208,7 @@ export default function AdminSuppliers() {
                                     </td>
                                     <td className="p-4 text-center">
                                         <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">
-                                            {getProductCount(s.name)}
+                                            {getProductCount(s.id)}
                                         </span>
                                     </td>
                                     <td className="p-4 text-right">
