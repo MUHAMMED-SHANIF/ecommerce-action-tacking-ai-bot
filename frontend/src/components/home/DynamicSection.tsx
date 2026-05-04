@@ -35,7 +35,19 @@ export default function DynamicSection({ title, category }: DynamicSectionProps)
                 const res = await fetch(url, { headers });
                 if (res.ok) {
                     const data = await res.json();
-                    setProducts(data.slice(0, 5)); // Strictly limit to one row (5 items)
+                    // Normalize: handle both raw Supabase rows and pre-formatted objects
+                    const normalized = (Array.isArray(data) ? data : []).map((p: any) => ({
+                        id: p.id,
+                        title: p.title || p.name || '',
+                        image: p.image || p.image_url || (p.metadata?.images && p.metadata.images[0]) || '',
+                        price: p.price || 0,
+                        originalPrice: p.originalPrice || p.metadata?.originalPrice || p.price || 0,
+                        discount: p.discount || p.metadata?.discount || 0,
+                        brand: p.brand || p.metadata?.brand || '',
+                        category: p.category || p.categories?.name || '',
+                        countInStock: p.countInStock || p.stock_quantity || 0,
+                    }));
+                    setProducts(normalized.slice(0, 5));
                 }
             } catch (err) {
                 console.error(err);

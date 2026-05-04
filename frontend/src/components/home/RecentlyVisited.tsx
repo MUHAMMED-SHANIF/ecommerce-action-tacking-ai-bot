@@ -35,7 +35,17 @@ export default function RecentlyVisited() {
                 });
 
                 const results = await Promise.all(promises);
-                const validProducts = results.filter(p => p !== null && p.id);
+                const validProducts = results
+                    .filter(p => p !== null && p.id)
+                    .map((p: any) => ({
+                        id: p.id,
+                        title: p.title || p.name || '',
+                        image: p.image || p.image_url || (p.metadata?.images && p.metadata.images[0]) || '',
+                        price: p.price || 0,
+                        originalPrice: p.originalPrice || p.metadata?.originalPrice || p.price || 0,
+                        discount: p.discount || p.metadata?.discount || 0,
+                        brand: p.brand || p.metadata?.brand || '',
+                    }));
                 setProducts(validProducts);
             } catch (err) {
                 console.error(err);
