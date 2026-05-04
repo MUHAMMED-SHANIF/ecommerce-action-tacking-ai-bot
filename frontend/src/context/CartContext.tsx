@@ -1,10 +1,11 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
 import { useAuth } from "./AuthContext";
+import { useToast } from "./ToastContext";
 
 interface CartItem {
-    id: number | string;
+    id: string;
     title: string;
     price: number;
     originalPrice: number;
@@ -28,117 +29,96 @@ interface CartContextType {
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
-const getApiUrl = () => {
-  if (typeof window !== "undefined") {
-    return `${process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}`}/api`;
-  }
-  return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api`;
-};
-const API_URL = getApiUrl();
 
-
-import { useToast } from "./ToastContext";
+const API_URL = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api`;
 
 export function CartProvider({ children }: { children: ReactNode }) {
     const { user, isLoading: authLoading } = useAuth();
     const { showToast } = useToast();
     const [items, setItems] = useState<CartItem[]>([]);
-    const [isInitialized, setIsInitialized] = useState(false);
+    const userRef = useRef<any>(null);
 
-    // Step 1: Initial load from LocalStorage (Sync)
+    // Keep ref in sync with user for use inside async callbacks
     useEffect(() => {
-        try {
-            const stored = localStorage.getItem("cart");
-            if (stored) {
-                const parsed = JSON.parse(stored);
-                if (Array.isArray(parsed)) setItems(parsed);
-            }
-        } catch (e) {
-            console.error("Cart pre-init error", e);
-        }
-    }, []);
+        userRef.current = user;
+    }, [user]);
 
-    // Step 2: Auth Sync (Async)
+    // On auth change: load from server (or clear on logout)
     useEffect(() => {
         if (authLoading) return;
 
-        const syncWithServer = async () => {
-            if (!user) {
-                // If user just logged out, clear cart
-                const wasLoggedIn = localStorage.getItem("user_was_logged_in");
-                if (wasLoggedIn === "true") {
-                    console.log("[Cart] Clearing after logout");
-                    setItems([]);
-                    localStorage.removeItem("cart");
-                    localStorage.removeItem("user_was_logged_in");
-                }
-                setIsInitialized(true);
-                return;
-            }
+        if (!user?.id) {
+            // Logged out — clear everything
+            setItems([]);
+            localStorage.removeItem("cart");
+            return;
+        }
 
-            // User is logged in
-            localStorage.setItem("user_was_logged_in", "true");
-            console.log("[Cart] Syncing for user:", user.id);
-
+        // Logged in — fetch from DB
+        const loadFromServer = async () => {
             try {
                 const res = await fetch(`${API_URL}/cart/${user.id}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    const serverItems = Array.isArray(data.items) ? data.items : [];
-                    
-                    // Merge local items into server items
-                    const currentLocal = JSON.parse(localStorage.getItem("cart") || "[]");
-                    const merged = [...serverItems];
-                    
-                    currentLocal.forEach((li: any) => {
-                        if (!merged.find(si => String(si.id) === String(li.id))) {
-                            merged.push(li);
-                        }
-                    });
+                if (!res.ok) throw new Error("Failed to fetch cart");
+                const data = await res.json();
+                const serverItems: CartItem[] = Array.isArray(data.items) ? data.items : [];
 
-                    setItems(merged);
-                    localStorage.setItem("cart", JSON.stringify(merged));
+                // Merge any local-only items (added while logged out)
+                const local: CartItem[] = (() => {
+                    try { return JSON.parse(localStorage.getItem("cart") || "[]"); }
+                    catch { return []; }
+                })();
 
-                    // If we had local items, push merged state to server
-                    if (currentLocal.length > 0) {
-                        await saveToServer(merged);
+                const merged = [...serverItems];
+                local.forEach((li) => {
+                    if (!merged.find(si => String(si.id) === String(li.id))) {
+                        merged.push({ ...li, id: String(li.id) });
                     }
+                });
+
+                setItems(merged);
+                localStorage.setItem("cart", JSON.stringify(merged));
+
+                // Push merged state back if we had extra local items
+                if (local.length > 0 && merged.length > serverItems.length) {
+                    await pushToServer(user.id, merged);
                 }
             } catch (err) {
-                console.error("[Cart] Sync error", err);
+                console.error("[Cart] Load error:", err);
+                // Fallback to localStorage
+                try {
+                    const local = JSON.parse(localStorage.getItem("cart") || "[]");
+                    if (Array.isArray(local)) setItems(local);
+                } catch { /* ignore */ }
             }
-            setIsInitialized(true);
         };
 
-        syncWithServer();
-    }, [user, authLoading]);
+        loadFromServer();
+    }, [user?.id, authLoading]);
 
-    // Internal helper to keep Local + Server in sync
-    const updateLocalAndServer = (updatedItems: CartItem[]) => {
-        setItems(updatedItems);
+    // Always push current items to server and localStorage
+    const pushToServer = async (userId: string, updatedItems: CartItem[]) => {
         localStorage.setItem("cart", JSON.stringify(updatedItems));
-        if (user?.id && isInitialized) {
-            saveToServer(updatedItems);
-        }
-    };
-
-    const saveToServer = async (updatedItems: CartItem[]) => {
-        if (!user?.id) return;
-        console.log(`[Cart Sync] Saving to server for user ${user.id}:`, updatedItems);
         try {
-            const res = await fetch(`${API_URL}/cart/${user.id}`, {
+            const res = await fetch(`${API_URL}/cart/${userId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ items: updatedItems })
             });
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
-                console.error("[Cart Sync] Server rejected update:", err);
-            } else {
-                console.log("[Cart Sync] Successfully saved to DB");
+                console.error("[Cart] Save failed:", err);
             }
         } catch (err) {
-            console.error("[Cart Sync] Network error sync cart to server", err);
+            console.error("[Cart] Save network error:", err);
+        }
+    };
+
+    const persist = (updatedItems: CartItem[]) => {
+        setItems(updatedItems);
+        localStorage.setItem("cart", JSON.stringify(updatedItems));
+        const uid = userRef.current?.id;
+        if (uid) {
+            pushToServer(uid, updatedItems);
         }
     };
 
@@ -150,20 +130,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
             updatedItems[existingIndex].qty += 1;
         } else {
             updatedItems.push({
-                ...product,
-                qty: 1,
                 id: String(product.id),
-                deliveryDate: "Wed Oct 25" 
+                title: product.title || product.name || '',
+                price: product.price || 0,
+                originalPrice: product.originalPrice || product.price || 0,
+                discount: product.discount || 0,
+                image: product.image || product.image_url || '',
+                qty: 1,
+                countInStock: product.countInStock,
+                deliveryDate: "Wed Oct 25"
             });
         }
 
-        updateLocalAndServer(updatedItems);
+        persist(updatedItems);
         showToast(`Added ${product.title || product.name || 'item'} to cart!`);
     };
 
     const removeFromCart = async (itemId: number | string) => {
         const updatedItems = items.filter(i => String(i.id) !== String(itemId));
-        updateLocalAndServer(updatedItems);
+        persist(updatedItems);
     };
 
     const updateCartItemQty = async (itemId: number | string, delta: number) => {
@@ -173,11 +158,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
             }
             return i;
         });
-        updateLocalAndServer(updatedItems);
+        persist(updatedItems);
     };
 
     const clearCart = async () => {
-        updateLocalAndServer([]);
+        persist([]);
     };
 
     const totalAmount = items.reduce((acc, item) => acc + (item.price || 0) * (item.qty || 1), 0);
