@@ -92,7 +92,7 @@ function ProductContent() {
                             </div>
                         ))}
                     </div>
-                    <div className="flex-1 relative border rounded-sm p-4 h-[495px]">
+                    <div className="flex-1 relative border rounded-2xl p-4 h-[495px] overflow-hidden">
                         <Image src={selectedImage || images[0]} alt="Product" fill className="object-contain" priority />
 
                         {/* Wishlist Button - Hidden in Preview */}
@@ -166,7 +166,7 @@ function ProductContent() {
                                                 window.location.href = "/login";
                                             }
                                         }}
-                                        className="flex-1 bg-[#ff9f00] text-white font-medium py-3.5 shadow px-2 uppercase text-[15px] flex items-center justify-center gap-2 hover:shadow-lg transition-shadow"
+                                        className="flex-1 bg-[#ff9f00] text-white font-medium py-3.5 shadow px-2 uppercase text-[15px] flex items-center justify-center gap-2 hover:shadow-lg transition-shadow rounded-lg"
                                     >
                                         <ShoppingCart className="w-5 h-5 fill-white" />
                                         Add to Cart
@@ -179,7 +179,7 @@ function ProductContent() {
                                                 window.location.href = "/login";
                                             }
                                         }}
-                                        className="flex-1 bg-[#cddc39] text-gray-900 font-medium py-3.5 shadow px-2 uppercase text-[15px] flex items-center justify-center gap-2 hover:shadow-lg transition-shadow"
+                                        className="flex-1 bg-[#cddc39] text-gray-900 font-medium py-3.5 shadow px-2 uppercase text-[15px] flex items-center justify-center gap-2 hover:shadow-lg transition-shadow rounded-lg"
                                     >
                                         <Zap className="w-5 h-5 fill-white" />
                                         Buy Now
