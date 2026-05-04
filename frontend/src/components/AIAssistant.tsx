@@ -200,7 +200,9 @@ export default function AIAssistant() {
       const data = await res.json();
 
       if (!data.success) {
-        throw new Error(data.details || data.reply || data.error || "Unknown server error");
+        // Prefer friendly reply for the user to hear/see, keep details for console
+        console.error("AI Assistant Server Error Details:", data.details);
+        throw new Error(data.reply || data.error || "I'm sorry, I ran into an issue. Please try again!");
       }
 
       const assistantMsg: Message = {
