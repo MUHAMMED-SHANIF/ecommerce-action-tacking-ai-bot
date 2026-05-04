@@ -108,8 +108,8 @@ export default function AddressBook({ user, apiBase }: AddressBookProps) {
                 <div className="text-center py-8 text-slate-500">No addresses saved yet.</div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {addresses.map((addr) => (
-                        <div key={addr.id} className="border border-slate-200 rounded-xl p-5 hover:border-emerald-500 hover:shadow-md transition-all relative group bg-slate-50/50">
+                    {addresses.map((addr, idx) => (
+                        <div key={addr.id || idx} className="border border-slate-200 rounded-xl p-5 hover:border-emerald-500 hover:shadow-md transition-all relative group bg-slate-50/50">
                             <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button onClick={() => openEditAddress(addr)} className="text-slate-400 hover:text-emerald-600 p-1 hover:bg-white rounded transition-colors">
                                     <Edit2 className="w-4 h-4" />
