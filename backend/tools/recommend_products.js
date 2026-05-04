@@ -10,17 +10,16 @@ module.exports = {
         const categorySearch = params.category || params.type || params.query || params.product || "";
         const budget = params.budget || params.max_price;
 
-        // 1. Try to find a matching category first
-        let categoryId = null;
+        // 1. Try to find matching categories
+        let matchingCatIds = [];
         if (categorySearch) {
             const { data: catData } = await supabase
                 .from('categories')
                 .select('id')
-                .ilike('name', `%${categorySearch}%`)
-                .maybeSingle();
+                .ilike('name', `%${categorySearch}%`);
             
-            if (catData) {
-                categoryId = catData.id;
+            if (catData && catData.length > 0) {
+                matchingCatIds = catData.map(c => c.id);
             }
         }
 
@@ -31,13 +30,15 @@ module.exports = {
             .neq('metadata->>isPaused', 'true')
             .order('created_at', { ascending: false });
 
-        if (categoryId) {
-            // Strict category filtering if we found a match
-            dbQuery = dbQuery.eq('category_id', categoryId);
-        } else if (categorySearch) {
-            // Keyword search across multiple fields if no exact category match
-            const cleanSearch = categorySearch.trim();
-            dbQuery = dbQuery.or(`name.ilike.%${cleanSearch}%,description.ilike.%${cleanSearch}%,categories.name.ilike.%${cleanSearch}%`);
+        if (categorySearch) {
+            // Build a safe OR string
+            let orString = `name.ilike.%${categorySearch.trim()}%,description.ilike.%${categorySearch.trim()}%`;
+            
+            if (matchingCatIds.length > 0) {
+                orString += `,category_id.in.(${matchingCatIds.join(',')})`;
+            }
+            
+            dbQuery = dbQuery.or(orString);
         }
 
         if (budget) {
