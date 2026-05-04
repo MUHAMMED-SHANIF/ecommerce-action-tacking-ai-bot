@@ -34,12 +34,16 @@ export default function ProductCard({ id, title, image, price, originalPrice, di
     let displayImage = "https://placehold.co/400x400/png?text=No+Image";
     const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 
+    // Accept any non-empty string as a potential image URL
     if (image && typeof image === 'string' && image.trim().length > 0) {
         const trimmed = image.trim();
-        if (trimmed.startsWith('http') || trimmed.startsWith('data:')) {
+        if (trimmed.startsWith('http') || trimmed.startsWith('data:') || trimmed.startsWith('//')) {
             displayImage = trimmed;
         } else if (trimmed.startsWith('/')) {
             displayImage = `${API}${trimmed}`;
+        } else {
+            // Could be a relative path or other format — try it anyway
+            displayImage = trimmed;
         }
     }
 
@@ -91,7 +95,14 @@ export default function ProductCard({ id, title, image, price, originalPrice, di
                 `}
             >
                 {/* Usage of standard img tag to allow external URLs without next.config.js changes */}
-                <img src={displayImage} alt={title} className="w-full h-full object-contain" />
+                <img
+                    src={displayImage}
+                    alt={title}
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                        (e.target as HTMLImageElement).src = "https://placehold.co/400x400/png?text=No+Image";
+                    }}
+                />
             </div>
 
 
