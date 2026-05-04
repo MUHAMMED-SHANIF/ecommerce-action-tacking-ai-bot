@@ -38,6 +38,7 @@ interface Product {
   category?: string;
   brand?: string;
   stock?: number;
+  discount?: number;
 }
 
 interface PendingConfirmation {

@@ -335,28 +335,6 @@ function CheckoutContent() {
                             </button>
                         </div>
                     </div>
-                                <input type="radio" name="payment" id="cod" defaultChecked className="mt-1" />
-                                <label htmlFor="cod" className="cursor-pointer flex-1">
-                                    <div className="font-medium text-gray-800">Cash on Delivery</div>
-                                    <div className="text-[12px] text-gray-500">Pay cash at the time of delivery</div>
-                                </label>
-                            </div>
-
-                            {/* Online Payment (Disabled) */}
-                            <div className="flex items-start gap-3 mb-6 p-3 opacity-60">
-                                <input type="radio" name="payment" id="online" disabled className="mt-1" />
-                                <label htmlFor="online" className="cursor-not-allowed flex-1">
-                                    <div className="font-medium text-gray-800">Ups/Credit/Debit/ATM Card</div>
-                                    <div className="text-[12px] text-red-500 font-medium">Online payment will come soon</div>
-                                </label>
-                            </div>
-
-                            <button onClick={handlePlaceOrder} className="bg-[#F59E0B] text-white font-bold px-16 py-3 text-[16px] uppercase rounded-[2px] shadow hover:shadow-lg">
-                                Confirm Order
-                            </button>
-                        </div>
-                    </div>
-
                 </div>
 
                 {/* Right Section: Price Details */}
