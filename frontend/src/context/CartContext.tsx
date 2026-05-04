@@ -43,34 +43,87 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const { user } = useAuth();
     const { showToast } = useToast();
     const [items, setItems] = useState<CartItem[]>([]);
+    const [isInitialized, setIsInitialized] = useState(false);
 
-    // Fetch Cart when user changes
+    // 1. Initial Load from LocalStorage (Guest Cart)
     useEffect(() => {
-        if (user?.id) {
-            fetch(`${API_URL}/cart/${user.id}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data && Array.isArray(data.items)) {
-                        setItems(data.items);
-                    } else {
-                        setItems([]);
-                    }
-                })
-                .catch(err => {
-                    console.error("Failed to fetch cart", err);
-                    setItems([]);
-                });
-        } else {
-            setItems([]);
+        const localCart = localStorage.getItem("cart");
+        if (localCart) {
+            try {
+                setItems(JSON.parse(localCart));
+            } catch (e) {
+                console.error("Failed to parse local cart", e);
+            }
         }
-    }, [user]);
+        setIsInitialized(true);
+    }, []);
+
+    // 2. Sync/Merge with Server when user logs in
+    useEffect(() => {
+        if (!isInitialized) return;
+
+        if (user?.id) {
+            const syncCart = async () => {
+                try {
+                    // Fetch server cart
+                    const res = await fetch(`${API_URL}/cart/${user.id}`);
+                    const data = await res.json();
+                    const serverItems = Array.isArray(data.items) ? data.items : [];
+
+                    // Merge guest items into server items
+                    // We prioritize server items but add any unique local items
+                    const mergedItems = [...serverItems];
+                    items.forEach(localItem => {
+                        const existing = mergedItems.find(si => String(si.id) === String(localItem.id));
+                        if (!existing) {
+                            mergedItems.push(localItem);
+                        } else {
+                            // If it exists in both, maybe take the higher quantity?
+                            existing.qty = Math.max(existing.qty || 1, localItem.qty || 1);
+                        }
+                    });
+
+                    setItems(mergedItems);
+                    localStorage.setItem("cart", JSON.stringify(mergedItems));
+
+                    // Upload merged cart back to server to keep it in sync
+                    await fetch(`${API_URL}/cart/${user.id}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ items: mergedItems })
+                    });
+                } catch (err) {
+                    console.error("Sync error", err);
+                }
+            };
+            syncCart();
+        } else {
+            // If user logs out, we keep the items in state/localStorage (becomes guest cart again)
+            // Or we could clear it if preferred, but usually keeping it is better for UX.
+        }
+    }, [user, isInitialized]);
+
+    // 3. Save to LocalStorage whenever items change
+    useEffect(() => {
+        if (!isInitialized) return;
+        localStorage.setItem("cart", JSON.stringify(items));
+    }, [items, isInitialized]);
+
+    const saveToServer = async (updatedItems: CartItem[]) => {
+        if (!user?.id) return;
+        try {
+            await fetch(`${API_URL}/cart/${user.id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: updatedItems })
+            });
+        } catch (err) {
+            console.error("Failed to sync cart to server", err);
+        }
+    };
 
     const addToCart = async (product: any) => {
-        if (!user?.id) {
-            return;
-        }
-
-        let updatedItems = [...items];
+        const updatedItems = [...items];
         const existingIndex = updatedItems.findIndex(i => String(i.id) === String(product.id));
 
         if (existingIndex > -1) {
@@ -86,115 +139,34 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
         setItems(updatedItems);
         showToast(`Added ${product.title || product.name || 'item'} to cart!`);
-
-        try {
-            // 3. Sync Full Cart to Server
-            // Server expects: { items: [...] }
-            const res = await fetch(`${API_URL}/cart/${user.id}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: updatedItems })
-            });
-
-            if (res.ok) {
-                // Server returns { userId, items: [...] }
-                const data = await res.json();
-                if (data && Array.isArray(data.items)) {
-                    setItems(data.items);
-                }
-            }
-        } catch (err) {
-            console.error("Add to cart error", err);
-            // Revert state if necessary, but keep simple for now
-        }
+        saveToServer(updatedItems);
     };
 
     const removeFromCart = async (itemId: number | string) => {
-        if (!user?.id) return;
-
-        // 1. Calculate New Cart State Locally
         const updatedItems = items.filter(i => String(i.id) !== String(itemId));
-
-        // 2. Optimistic Update
         setItems(updatedItems);
-
-        try {
-            // 3. Sync to Server (Using POST to update full list is safer given current server logic, 
-            // but server has a DELETE route too. Let's try DELETE if it works or fallback to POST)
-            // server.js has DELETE /api/cart/:userId/:itemId? No, I don't see it in my view of lines 433-460.
-            // Let me check lines 380-505 again. I missed checking for DELETE cart route explicitly.
-            // Wait, looking at lines 433-460, I see GET and POST to /api/cart/:userId.
-            // I do NOT see a DELETE route for cart items in lines 433-460.
-            // Let's assume POST (full update) is the intended way if DELETE isn't there.
-            // Actually, I'll just use POST to overwrite the list with the item removed. It's safer.
-
-            const res = await fetch(`${API_URL}/cart/${user.id}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: updatedItems })
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                if (data && Array.isArray(data.items)) {
-                    setItems(data.items);
-                }
-            }
-        } catch (err) {
-            console.error("Remove from cart error", err);
-        }
+        saveToServer(updatedItems);
     };
 
     const updateCartItemQty = async (itemId: number | string, delta: number) => {
-        if (!user?.id) return;
-
-        let updatedItems = items.map(i => {
+        const updatedItems = items.map(i => {
             if (String(i.id) === String(itemId)) {
                 return { ...i, qty: Math.max(1, i.qty + delta) };
             }
             return i;
         });
-
         setItems(updatedItems);
+        saveToServer(updatedItems);
+    };
 
-        try {
-            const res = await fetch(`${API_URL}/cart/${user.id}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: updatedItems })
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                if (data && Array.isArray(data.items)) {
-                    setItems(data.items);
-                }
-            }
-        } catch (err) {
-            console.error("Update qty error", err);
-        }
+    const clearCart = async () => {
+        setItems([]);
+        saveToServer([]);
     };
 
     const totalAmount = items.reduce((acc, item) => acc + (item.price || 0) * (item.qty || 1), 0);
     const totalOriginal = items.reduce((acc, item) => acc + (item.originalPrice || 0) * (item.qty || 1), 0);
     const totalDiscount = totalOriginal - totalAmount;
-
-    const clearCart = async () => {
-        if (!user?.id) return;
-
-        setItems([]); // Local clear
-
-        try {
-            // Sync empty cart to server
-            await fetch(`${API_URL}/cart/${user.id}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: [] })
-            });
-        } catch (err) {
-            console.error("Clear cart error", err);
-        }
-    };
 
     return (
         <CartContext.Provider value={{ items, addToCart, removeFromCart, updateCartItemQty, clearCart, totalAmount, totalDiscount, totalOriginal }}>
