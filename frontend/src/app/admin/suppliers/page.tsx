@@ -33,6 +33,7 @@ export default function AdminSuppliers() {
     const [formData, setFormData] = useState({
         name: "",
         email: "",
+        password: "",
         phone: "",
         address: "",
         isTrusted: false
@@ -89,7 +90,7 @@ export default function AdminSuppliers() {
                 await fetchData();
                 setShowModal(false);
                 setEditingSupplier(null);
-                setFormData({ name: "", email: "", phone: "", address: "", isTrusted: false });
+                setFormData({ name: "", email: "", password: "", phone: "", address: "", isTrusted: false });
             } else {
                 const err = await res.json();
                 alert("Failed to save supplier: " + (err.error || "Unknown error"));
@@ -151,7 +152,7 @@ export default function AdminSuppliers() {
                 <button
                     onClick={() => {
                         setEditingSupplier(null);
-                        setFormData({ name: "", email: "", phone: "", address: "", isTrusted: false });
+                        setFormData({ name: "", email: "", password: "", phone: "", address: "", isTrusted: false });
                         setShowModal(true);
                     }}
                     className="bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-blue-700"
@@ -257,8 +258,21 @@ export default function AdminSuppliers() {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium mb-1">Email</label>
-                                <input type="email" className="w-full border p-2 rounded" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                                <input type="email" required className="w-full border p-2 rounded" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
                             </div>
+                            {!editingSupplier && (
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Password</label>
+                                    <input 
+                                        type="password" 
+                                        required={!editingSupplier} 
+                                        className="w-full border p-2 rounded" 
+                                        placeholder="Min 6 characters"
+                                        value={formData.password} 
+                                        onChange={e => setFormData({ ...formData, password: e.target.value })} 
+                                    />
+                                </div>
+                            )}
                             <div>
                                 <label className="block text-sm font-medium mb-1">Phone</label>
                                 <input type="text" className="w-full border p-2 rounded" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />

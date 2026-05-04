@@ -385,7 +385,45 @@ app.get('/api/admin/sellers', isAdmin, async (req, res) => {
 });
 
 app.post('/api/admin/sellers', isAdmin, async (req, res) => {
-    res.status(400).json({ error: "Creating sellers directly via this endpoint is deprecated. Update user role instead." });
+    try {
+        const { name, email, password, phone, address, isTrusted } = req.body;
+        if (!email || !password) {
+            return res.status(400).json({ error: "Email and password are required" });
+        }
+
+        const { data, error } = await supabase.auth.admin.createUser({
+            email,
+            password,
+            email_confirm: true,
+            user_metadata: {
+                name,
+                phone,
+                role: 'seller',
+                isTrusted: !!isTrusted,
+                addresses: address ? [{ street: address, city: '', country: '', type: 'business' }] : []
+            }
+        });
+
+        if (error) throw error;
+
+        // Create/Update profile to ensure role consistency
+        await supabase.from('profiles').upsert({
+            id: data.user.id,
+            email,
+            role: 'seller'
+        });
+
+        res.status(201).json({
+            id: data.user.id,
+            name: data.user.user_metadata?.name,
+            email: data.user.email,
+            phone: data.user.user_metadata?.phone,
+            isTrusted: data.user.user_metadata?.isTrusted
+        });
+    } catch (error) {
+        console.error("[Create Seller Error]", error);
+        res.status(500).json({ error: error.message });
+    }
 });
 
 app.put('/api/admin/sellers/:id', isAdmin, async (req, res) => {
