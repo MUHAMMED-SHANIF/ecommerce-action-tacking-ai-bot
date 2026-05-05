@@ -1055,12 +1055,11 @@ app.get('/api/products', async (req, res) => {
             const underMatch = lowerSearch.match(/(?:under|below|less than|within)\s*(\d+)/i);
             if (underMatch && !maxPrice) {
                 extractedMaxPrice = parseFloat(underMatch[1]);
-                // Remove the price phrase from search to improve keyword matching
                 lowerSearch = lowerSearch.replace(underMatch[0], "").trim();
             }
 
-            // Simple stop words removal
-            const stopWords = ['a', 'an', 'the', 'and', 'or', 'but', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'with', 'in', 'of'];
+            // Enhanced stop words for conversational and common noise
+            const stopWords = ['a', 'an', 'the', 'and', 'or', 'but', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'with', 'in', 'of', 'i', 'want', 'show', 'me', 'find', 'looking', 'please', 'help', 'search', 'get'];
             const tokens = lowerSearch.split(/\s+/).filter(t => t.length > 1 && !stopWords.includes(t));
             processedSearch = tokens.join(" ");
         }
@@ -1069,98 +1068,72 @@ app.get('/api/products', async (req, res) => {
 
         // --- 2. BROAD DATA FETCHING ---
         let query = supabase.from('products').select('*, categories(name)');
-        
-        // Basic visibility filters
         query = query.eq('metadata->>status', 'approved').neq('metadata->>isPaused', 'true');
 
         if (categoryParam) {
             const { data: catData } = await supabase.from('categories').select('id').ilike('name', categoryParam).maybeSingle();
-            if (catData) {
-                query = query.eq('category_id', catData.id);
-            } else {
-                return res.json([]);
-            }
+            if (catData) query = query.eq('category_id', catData.id);
+            else return res.json([]);
         }
 
-        if (finalMaxPrice) {
-            query = query.lte('price', finalMaxPrice);
-        }
+        if (finalMaxPrice) query = query.lte('price', finalMaxPrice);
 
         let { data: products, error } = await query;
         if (error) throw error;
 
         let filtered = products || [];
 
-        // --- 3. ADVANCED RANKING ALGORITHM ---
+        // --- 3. ADVANCED RANKING & STRICT FILTERING ---
         if (processedSearch) {
             const searchTokens = processedSearch.split(/\s+/);
+            const hasPhone = searchTokens.includes('phone') || searchTokens.includes('smartphone');
+            const hasTV = searchTokens.includes('tv') || searchTokens.includes('television');
+            const hasLaptop = searchTokens.includes('laptop') || searchTokens.includes('computer');
+            const hasWatch = searchTokens.includes('watch');
 
             filtered = filtered.map(p => {
                 const title = (p.name || "").toLowerCase();
                 const desc = (p.description || "").toLowerCase();
                 const brand = (p.brand || p.metadata?.brand || "").toLowerCase();
                 const catName = (p.categories?.name || "").toLowerCase();
-                const tags = Array.isArray(p.tags) ? p.tags.join(" ").toLowerCase() : (p.metadata?.tags ? (Array.isArray(p.metadata.tags) ? p.metadata.tags.join(" ") : p.metadata.tags) : "");
                 
+                const titleWords = title.split(/\s+/);
+                const catWords = catName.split(/\s+/);
+
                 let score = 0;
-                let matchCount = 0;
-
-                // A. Keyword Match Strength
+                
                 searchTokens.forEach(token => {
-                    let tokenFound = false;
-                    
-                    if (title.includes(token)) {
-                        score += 50; // High weight for title
-                        tokenFound = true;
-                    }
-                    if (brand.includes(token)) {
-                        score += 40; // High weight for brand
-                        tokenFound = true;
-                    }
-                    if (catName.includes(token)) {
-                        score += 30; // Medium weight for category
-                        tokenFound = true;
-                    }
-                    if (tags.includes(token)) {
-                        score += 20; // Tags
-                        tokenFound = true;
-                    }
-                    if (desc.includes(token)) {
-                        score += 5; // Low weight for description
-                        tokenFound = true;
-                    }
+                    let tokenMatched = false;
+                    // Whole word priority
+                    if (titleWords.includes(token)) { score += 500; tokenMatched = true; }
+                    if (catWords.includes(token)) { score += 600; tokenMatched = true; }
+                    if (brand === token) { score += 400; tokenMatched = true; }
 
-                    if (tokenFound) matchCount++;
+                    // Substring match
+                    if (!tokenMatched) {
+                        if (title.includes(token)) score += 50;
+                        if (brand.includes(token)) score += 60;
+                        if (catName.includes(token)) score += 80;
+                        if (desc.includes(token)) score += 5;
+                    }
                 });
 
-                // B. Exact Phrase Bonuses
-                if (title.includes(processedSearch)) score += 100;
-                if (brand === processedSearch) score += 60;
+                if (title.includes(processedSearch)) score += 1000;
+                if (catName.includes(processedSearch)) score += 1200;
 
-                // C. Popularity Weighting (Ratings & Reviews)
-                const rating = parseFloat(p.metadata?.rating || 0);
-                const numReviews = parseInt(p.metadata?.numReviews || 0);
-                score += (rating * Math.log10(numReviews + 1)) * 5;
+                // STRICT "AND" LOGIC: All tokens must match something in the product
+                const mustMatchAll = searchTokens.every(token => 
+                    title.includes(token) || catName.includes(token) || brand.includes(token)
+                );
 
-                // D. Inventory Logic (Push out of stock to bottom)
-                if ((p.stock_quantity || 0) <= 0) score -= 100;
+                // CATEGORY ISOLATION
+                if (hasPhone && (catName.includes('tv') || catName.includes('earbud') || catName.includes('watch'))) score -= 5000;
+                if (hasWatch && catName.includes('phone')) score -= 5000;
+                if (hasTV && catName.includes('phone')) score -= 5000;
 
-                // E. Relevancy Threshold: 
-                // If query has 3 words and product matches only 1, it's likely noise (e.g., 'smart' matching everything)
-                // Unless that 1 match is a very strong title/brand match.
-                let isRelevant = true;
-                if (searchTokens.length > 1 && matchCount < 1) isRelevant = false;
-                
-                // Special case: "earbuds" in "smartphone" search
-                // If the user searches for "phone" and "earbuds" is the category, we penalize it 
-                // if it doesn't contain the word "phone" in title.
-                if (searchTokens.includes("phone") && catName.includes("earbuds") && !title.includes("phone")) {
-                    score -= 80;
-                }
-
-                return { ...p, _score: score, _isRelevant: isRelevant };
+                return { ...p, _score: score, _isRelevant: mustMatchAll && score > 0 };
             })
-            .filter(p => p._isRelevant && p._score > 0)
+            .filter(p => p._isRelevant)
             .sort((a, b) => b._score - a._score);
         }
 
