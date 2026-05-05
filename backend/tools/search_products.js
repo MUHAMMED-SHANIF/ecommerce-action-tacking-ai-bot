@@ -9,6 +9,7 @@ module.exports = {
         max_price: 'number? - maximum price filter'
     },
     requiresConfirmation: false,
+    returnDirectText: true,
     execute: async ({ params, user, supabase }) => {
         let query = params.query || params.keyword || params.search || params.name || "";
         const categoryParam = params.category || params.type;

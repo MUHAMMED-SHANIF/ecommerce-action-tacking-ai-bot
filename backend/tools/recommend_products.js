@@ -6,6 +6,7 @@ module.exports = {
         budget: 'number? - maximum budget/price the user wants to spend'
     },
     requiresConfirmation: false,
+    returnDirectText: true,
     execute: async ({ params, user, supabase }) => {
         let categorySearch = params.category || params.type || params.query || params.product || "";
         const budget = params.budget || params.max_price;
