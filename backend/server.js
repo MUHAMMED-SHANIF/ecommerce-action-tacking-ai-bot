@@ -1067,7 +1067,13 @@ app.get('/api/products', async (req, res) => {
         const finalMaxPrice = maxPrice || extractedMaxPrice;
 
         // --- 2. BROAD DATA FETCHING ---
-        let query = supabase.from('products').select('*, categories(name)');
+        // Use !inner to ensure categories are joined correctly as a single object
+        let query = supabase.from('products').select(`
+            *,
+            categories(id, name)
+        `);
+        
+        console.log(`[Search Debug] Term: "${searchTerm}", Processed: "${processedSearch}", MaxPrice: ${finalMaxPrice}`);
         query = query.eq('metadata->>status', 'approved').neq('metadata->>isPaused', 'true');
 
         if (categoryParam) {
@@ -1135,6 +1141,8 @@ app.get('/api/products', async (req, res) => {
             })
             .filter(p => p._isRelevant)
             .sort((a, b) => b._score - a._score);
+            
+            console.log(`[Search Debug] Found ${products.length} raw, ${filtered.length} after strict filtering`);
         }
 
         const formattedProducts = filtered.map(formatProduct);

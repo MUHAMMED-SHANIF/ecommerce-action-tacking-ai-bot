@@ -30,7 +30,7 @@ module.exports = {
             .from('products')
             .select(`
                 id, name, price, description, image_url, brand, stock_quantity, metadata,
-                categories!inner(id, name)
+                categories(id, name)
             `)
             .eq('metadata->>status', 'approved')
             .neq('metadata->>isPaused', 'true');
