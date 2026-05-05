@@ -1076,8 +1076,8 @@ app.get('/api/products', async (req, res) => {
         console.log(`[Search Debug] Term: "${searchTerm}", Processed: "${processedSearch}", MaxPrice: ${finalMaxPrice}`);
         query = query.eq('metadata->>status', 'approved').neq('metadata->>isPaused', 'true');
 
-        if (categoryParam) {
-            const { data: catData } = await supabase.from('categories').select('id').ilike('name', categoryParam).maybeSingle();
+        if (categoryParam && categoryParam.toLowerCase() !== 'all') {
+            const { data: catData } = await supabase.from('categories').select('id').ilike('name', `%${categoryParam}%`).maybeSingle();
             if (catData) query = query.eq('category_id', catData.id);
             else return res.json([]);
         }

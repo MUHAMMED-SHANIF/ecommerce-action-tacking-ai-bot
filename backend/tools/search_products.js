@@ -41,7 +41,7 @@ module.exports = {
             dbQuery = dbQuery.lte('price', max_price);
         }
 
-        if (categoryParam) {
+        if (categoryParam && categoryParam.toLowerCase() !== 'all') {
             const { data: catData } = await supabase.from('categories').select('id').ilike('name', `%${categoryParam}%`).maybeSingle();
             if (catData) {
                 dbQuery = dbQuery.eq('category_id', catData.id);

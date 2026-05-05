@@ -12,7 +12,7 @@ module.exports = {
 
         // 1. Try to find matching categories
         let matchingCatIds = [];
-        if (categorySearch) {
+        if (categorySearch && categorySearch.toLowerCase() !== 'all') {
             const { data: catData } = await supabase
                 .from('categories')
                 .select('id')
