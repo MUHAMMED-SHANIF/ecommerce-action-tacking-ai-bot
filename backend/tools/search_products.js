@@ -62,12 +62,21 @@ module.exports = {
                 
                 let score = 0;
                 searchTokens.forEach(token => {
+                    // Exact matches within fields
+                    if (title === token) score += 200;
+                    if (catName === token) score += 150;
+                    if (brand === token) score += 100;
+
+                    // Partial matches
                     if (title.includes(token)) score += 50;
-                    if (brand.includes(token)) score += 40;
-                    if (catName.includes(token)) score += 30;
+                    if (brand.includes(token)) score += 60; // Brand is very specific
+                    if (catName.includes(token)) score += 80; // Category is high intent
                     if (desc.includes(token)) score += 5;
                 });
-                if (title.includes(finalKeywordSearch)) score += 100;
+
+                // Full phrase matches
+                if (title.includes(finalKeywordSearch)) score += 150;
+                if (catName.includes(finalKeywordSearch)) score += 200; // e.g. "smart phone" matching "SMART PHONE" category
                 
                 return { ...p, _score: score };
             })

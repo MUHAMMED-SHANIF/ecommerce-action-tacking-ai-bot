@@ -53,15 +53,42 @@ module.exports = {
 
         const { data, error } = await dbQuery.select('id, name, price, description, image_url, brand, stock_quantity, categories(name), metadata');
         if (error) throw error;
+        
+        let filtered = data || [];
+        
+        // --- RANKING FOR RELEVANCE ---
+        if (categorySearch) {
+            const searchTokens = categorySearch.toLowerCase().trim().split(/\s+/);
+            const fullSearch = categorySearch.toLowerCase().trim();
+            
+            filtered = filtered.map(p => {
+                const title = (p.name || "").toLowerCase();
+                const catName = (p.categories?.name || "").toLowerCase();
+                const desc = (p.description || "").toLowerCase();
+                let score = 0;
+                
+                searchTokens.forEach(token => {
+                    if (catName.includes(token)) score += 100;
+                    if (title.includes(token)) score += 50;
+                    if (desc.includes(token)) score += 5;
+                });
+                
+                if (catName.includes(fullSearch)) score += 200;
+                if (title.includes(fullSearch)) score += 150;
+                
+                return { ...p, _score: score };
+            })
+            .sort((a, b) => b._score - a._score);
+        }
 
-        if (!data || data.length === 0) {
+        if (filtered.length === 0) {
             return {
                 text: `I don't have ${categorySearch ? `"${categorySearch}" products` : 'products'} ${budget ? `under ₹${budget}` : ''} right now. Try browsing our full catalog!`,
                 products: []
             };
         }
-
-        const products = data.map(p => ({
+        
+        const products = filtered.slice(0, 10).map(p => ({
             id: p.id,
             name: p.name,
             price: p.price,
