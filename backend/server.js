@@ -1060,7 +1060,16 @@ app.get('/api/products', async (req, res) => {
 
             // Enhanced stop words for conversational and common noise
             const stopWords = ['a', 'an', 'the', 'and', 'or', 'but', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'with', 'in', 'of', 'i', 'want', 'show', 'me', 'find', 'looking', 'please', 'help', 'search', 'get'];
-            const tokens = lowerSearch.split(/\s+/).filter(t => t.length > 1 && !stopWords.includes(t));
+            const normalizePlural = w => {
+                if (w === 'phones') return 'phone';
+                if (w === 'smartphones') return 'smartphone';
+                if (w === 'laptops') return 'laptop';
+                if (w === 'tvs') return 'tv';
+                if (w === 'earbuds') return 'earbud';
+                if (w === 'watches') return 'watch';
+                return w;
+            };
+            const tokens = lowerSearch.split(/\s+/).filter(t => t.length > 1 && !stopWords.includes(t)).map(normalizePlural);
             processedSearch = tokens.join(" ");
         }
 

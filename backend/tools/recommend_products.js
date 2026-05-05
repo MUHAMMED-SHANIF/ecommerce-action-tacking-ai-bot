@@ -7,8 +7,21 @@ module.exports = {
     },
     requiresConfirmation: false,
     execute: async ({ params, user, supabase }) => {
-        const categorySearch = params.category || params.type || params.query || params.product || "";
+        let categorySearch = params.category || params.type || params.query || params.product || "";
         const budget = params.budget || params.max_price;
+        
+        // Normalize plurals
+        const normalizePlural = w => {
+            const low = w.toLowerCase().trim();
+            if (low === 'phones') return 'phone';
+            if (low === 'smartphones') return 'smartphone';
+            if (low === 'laptops') return 'laptop';
+            if (low === 'tvs') return 'tv';
+            if (low === 'earbuds') return 'earbud';
+            if (low === 'watches') return 'watch';
+            return low;
+        };
+        categorySearch = normalizePlural(categorySearch);
 
         // 1. Try to find matching categories
         let matchingCatIds = [];
@@ -31,7 +44,7 @@ module.exports = {
             .order('created_at', { ascending: false });
 
         if (categorySearch) {
-            let orString = `name.ilike.%${categorySearch.trim()}%,description.ilike.%${categorySearch.trim()}%`;
+            let orString = `name.ilike.%${categorySearch.trim()}%`;
             if (matchingCatIds.length > 0) {
                 orString += `,category_id.in.(${matchingCatIds.join(',')})`;
             }

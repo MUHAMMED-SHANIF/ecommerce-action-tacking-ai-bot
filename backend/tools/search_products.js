@@ -23,7 +23,17 @@ module.exports = {
         }
         
         const stopWords = ['a', 'an', 'the', 'and', 'or', 'but', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'with', 'in', 'of', 'i', 'want', 'show', 'me', 'find', 'looking', 'please', 'help', 'search', 'get'];
-        const tokens = processedSearch.split(/\s+/).filter(t => t.length > 1 && !stopWords.includes(t));
+        const normalizePlural = w => {
+            const low = w.toLowerCase().trim();
+            if (low === 'phones') return 'phone';
+            if (low === 'smartphones') return 'smartphone';
+            if (low === 'laptops') return 'laptop';
+            if (low === 'tvs') return 'tv';
+            if (low === 'earbuds') return 'earbud';
+            if (low === 'watches') return 'watch';
+            return low;
+        };
+        const tokens = processedSearch.split(/\s+/).filter(t => t.length > 1 && !stopWords.includes(t)).map(normalizePlural);
         const finalKeywordSearch = tokens.join(" ");
 
         console.log(`[Tool Debug: Search] Query: "${query}", Tokens: [${tokens.join(', ')}], MaxPrice: ${max_price}`);
@@ -45,6 +55,12 @@ module.exports = {
             const { data: catData } = await supabase.from('categories').select('id').ilike('name', `%${categoryParam}%`).maybeSingle();
             if (catData) {
                 dbQuery = dbQuery.eq('category_id', catData.id);
+            } else {
+                return {
+                    text: `I couldn't find any products in the "${categoryParam}" category. Try a different keyword or browse our main categories.`,
+                    products: [],
+                    query: query || categoryParam || null
+                };
             }
         }
 
