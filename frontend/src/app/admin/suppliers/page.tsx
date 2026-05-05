@@ -106,6 +106,7 @@ export default function AdminSuppliers() {
         setFormData({
             name: supplier.name,
             email: supplier.email,
+            password: "", // Added to satisfy TypeScript state requirements
             phone: supplier.phone,
             address: supplier.address || "",
             isTrusted: supplier.isTrusted
