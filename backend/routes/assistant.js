@@ -78,12 +78,16 @@ router.post('/message', requireAuth, async (req, res) => {
         // --- 4. Fetch user context ---
         let userContext = null;
         try {
-            const [profileRes, ordersRes, cartRes, addressRes] = await Promise.all([
+            // Fetch profile and other data
+            const [profileRes, ordersRes, cartRes] = await Promise.all([
                 supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle(),
                 supabase.from('orders').select('id, status, total_price, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(3),
-                supabase.from('cart_items').select('quantity, products(name)').eq('user_id', user.id).limit(5),
-                supabase.from('addresses').select('city').eq('user_id', user.id).limit(3)
+                supabase.from('cart_items').select('quantity, products(name)').eq('user_id', user.id).limit(5)
             ]);
+
+            // Fetch the user's metadata to get addresses (stored in auth.users)
+            const { data: { user: authUser } } = await serviceSupabase.auth.admin.getUserById(user.id);
+            const savedAddresses = authUser?.user_metadata?.addresses || [];
             
             // Extract the most recently shown products from history
             const contextProductsRow = (historyRows || []).find(m => m.role === 'assistant' && m.metadata?.rendered_products?.length > 0);
@@ -92,7 +96,7 @@ router.post('/message', requireAuth, async (req, res) => {
                 profile: profileRes.data,
                 orders: ordersRes.data || [],
                 cart: cartRes.data || [],
-                addresses: addressRes.data || [],
+                addresses: savedAddresses,
                 lastProducts: contextProductsRow ? contextProductsRow.metadata.rendered_products : null
             };
         } catch (_) { /* context fetch failure is non-fatal */ }

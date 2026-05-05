@@ -67,12 +67,15 @@ const extractIntent = async (userText, history = [], userContext = null) => {
                 lastProductsStr = lastProducts.map((p, i) => `${i + 1}. ${p.name} (₹${p.price})`).join('\n  ');
             }
 
+            const addressSummary = (addresses || []).map(a => `- ${a.label || 'Other'}: ${a.city}, ${a.state}`).join('\n');
+
             contextStr = `
 User Context:
 - Name: ${profile?.full_name || 'Customer'}
 - Recent Orders: ${recentOrders || 'None'}
 - Cart: ${cartItems || 'Empty'}
-- Saved Addresses: ${(addresses || []).length} address(es)
+- Saved Addresses:
+${addressSummary || '  (No addresses saved)'}
 
 Recently Shown Products (Index 1 is the 'first one'):
   ${lastProductsStr}`;
@@ -106,7 +109,9 @@ Type D — Multi-step plan (when multiple actions are needed in sequence):
 
 IMPORTANT RULES:
 - DO NOT carry over filters (like max_price or category) from previous turns unless the user explicitly says "also", "and", "still", or "keep the filter". Every new search should start fresh.
-- If a user wants to order something to a specific address (e.g. "order iphone to my office address"), first check if the address exists. If not, use multi_step to first call add_address and then create_order.
+- ADDRESS HANDLING: If the user wants to order but has NO saved addresses (check User Context), use type "reply" to ask them for their address details or use "multi_step" to first call "add_address" if they provided details in the prompt.
+- If the user says "order to my [label] address", check if that label exists in "Saved Addresses". If not, tell them you don't have that one saved but list the ones you DO have.
+- If a user wants to order something to a specific address (e.g. "order iphone to my office address"), and they provide the street/city/etc, use "multi_step" to first call "add_address" and then "create_order".
 - NEVER use type "tool_call" for cancel_order, create_order, or update_address unless the user has explicitly said "yes" to your previous confirmation_request.
 - If the user says "yes", "confirm", "go ahead" immediately after a Type C confirmation request: use type "tool_call" to execute it.
 - If the user says "no", "cancel": use type "reply" to acknowledge cancellation.
