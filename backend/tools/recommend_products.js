@@ -52,9 +52,12 @@ module.exports = {
         
         // --- RANKING FOR RELEVANCE ---
         if (categorySearch) {
-            const searchTokens = categorySearch.toLowerCase().trim().split(/\s+/).filter(t => t.length > 1);
-            const fullSearch = categorySearch.toLowerCase().trim();
+            const stopWords = ['a', 'an', 'the', 'and', 'or', 'but', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'with', 'in', 'of', 'i', 'want', 'show', 'me', 'find', 'looking', 'please', 'help', 'search', 'get', 'recommend', 'suggestion', 'best'];
+            const searchTokens = categorySearch.toLowerCase().trim().split(/\s+/).filter(t => t.length > 1 && !stopWords.includes(t));
+            const fullSearch = searchTokens.join(" ");
             
+            console.log(`[Tool Debug: Recommend] CategoryQuery: "${categorySearch}", Tokens: [${searchTokens.join(', ')}], Budget: ${budget}`);
+
             const hasPhone = searchTokens.includes('phone') || searchTokens.includes('smartphone');
             const hasWatch = searchTokens.includes('watch');
             const hasTV = searchTokens.includes('tv');
@@ -83,7 +86,7 @@ module.exports = {
                 if (catName.includes(fullSearch)) score += 1000;
                 if (title.includes(fullSearch)) score += 800;
 
-                // --- STRICT AND CHECK (Optional for recommendations but good for quality) ---
+                // --- STRICT AND CHECK ---
                 const matchesAnyToken = searchTokens.some(token => title.includes(token) || catName.includes(token));
 
                 // --- CATEGORY PENALTY ---
@@ -95,6 +98,8 @@ module.exports = {
             })
             .filter(p => p._matches && p._score > 0)
             .sort((a, b) => b._score - a._score);
+
+            console.log(`[Tool Debug: Recommend] Found ${filtered.length} relevant suggestions`);
         }
 
         if (filtered.length === 0) {

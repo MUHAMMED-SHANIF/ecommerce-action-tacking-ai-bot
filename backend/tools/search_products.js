@@ -22,9 +22,11 @@ module.exports = {
             processedSearch = processedSearch.replace(underMatch[0], "").trim();
         }
         
-        const stopWords = ['a', 'an', 'the', 'and', 'or', 'but', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'with', 'in', 'of'];
+        const stopWords = ['a', 'an', 'the', 'and', 'or', 'but', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'with', 'in', 'of', 'i', 'want', 'show', 'me', 'find', 'looking', 'please', 'help', 'search', 'get'];
         const tokens = processedSearch.split(/\s+/).filter(t => t.length > 1 && !stopWords.includes(t));
         const finalKeywordSearch = tokens.join(" ");
+
+        console.log(`[Tool Debug: Search] Query: "${query}", Tokens: [${tokens.join(', ')}], MaxPrice: ${max_price}`);
 
         let dbQuery = supabase
             .from('products')
@@ -122,6 +124,8 @@ module.exports = {
             })
             .filter(p => p._isRelevant)
             .sort((a, b) => b._score - a._score);
+            
+            console.log(`[Tool Debug: Search] Found ${filtered.length} products after strict filtering`);
         }
 
         if (!filtered || filtered.length === 0) {
