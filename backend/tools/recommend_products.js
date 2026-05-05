@@ -67,6 +67,12 @@ module.exports = {
                 const desc = (p.description || "").toLowerCase();
                 let score = 0;
                 
+                // Future-Proofing: Category conflict detection
+                const hasPhone = searchTokens.includes('phone') || searchTokens.includes('smartphone');
+                const hasTV = searchTokens.includes('tv') || searchTokens.includes('television');
+                const hasLaptop = searchTokens.includes('laptop') || searchTokens.includes('computer');
+                const hasWatch = searchTokens.includes('watch');
+
                 searchTokens.forEach(token => {
                     if (catName.includes(token)) score += 100;
                     if (title.includes(token)) score += 50;
@@ -75,6 +81,16 @@ module.exports = {
                 
                 if (catName.includes(fullSearch)) score += 200;
                 if (title.includes(fullSearch)) score += 150;
+
+                // --- CATEGORY PENALTY (Future Prevention) ---
+                if (hasPhone && catName.includes('tv')) score -= 500;
+                if (hasPhone && catName.includes('laptop')) score -= 500;
+                
+                if (hasTV && catName.includes('phone')) score -= 500;
+                if (hasTV && catName.includes('watch')) score -= 500;
+                
+                if (hasLaptop && catName.includes('phone')) score -= 500;
+                if (hasWatch && catName.includes('phone')) score -= 500;
                 
                 return { ...p, _score: score };
             })

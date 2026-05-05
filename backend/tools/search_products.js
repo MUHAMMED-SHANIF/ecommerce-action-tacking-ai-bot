@@ -51,16 +51,16 @@ module.exports = {
 
         let filtered = data || [];
 
-        // --- 2. ADVANCED RANKING ---
-        if (finalKeywordSearch) {
-            const searchTokens = finalKeywordSearch.split(/\s+/);
-            filtered = filtered.map(p => {
-                const title = (p.name || "").toLowerCase();
-                const desc = (p.description || "").toLowerCase();
-                const brand = (p.brand || p.metadata?.brand || "").toLowerCase();
-                const catName = (p.categories?.name || "").toLowerCase();
-                
+                // --- 2. ADVANCED RANKING ---
                 let score = 0;
+                const tokens = finalKeywordSearch.toLowerCase().split(/\s+/);
+                
+                // Future-Proofing: Category conflict detection
+                const hasPhone = tokens.includes('phone') || tokens.includes('smartphone');
+                const hasTV = tokens.includes('tv') || tokens.includes('television');
+                const hasLaptop = tokens.includes('laptop') || tokens.includes('computer');
+                const hasWatch = tokens.includes('watch');
+
                 searchTokens.forEach(token => {
                     // Exact matches within fields
                     if (title === token) score += 200;
@@ -69,20 +69,29 @@ module.exports = {
 
                     // Partial matches
                     if (title.includes(token)) score += 50;
-                    if (brand.includes(token)) score += 60; // Brand is very specific
-                    if (catName.includes(token)) score += 80; // Category is high intent
+                    if (brand.includes(token)) score += 60;
+                    if (catName.includes(token)) score += 80;
                     if (desc.includes(token)) score += 5;
                 });
 
                 // Full phrase matches
                 if (title.includes(finalKeywordSearch)) score += 150;
-                if (catName.includes(finalKeywordSearch)) score += 200; // e.g. "smart phone" matching "SMART PHONE" category
+                if (catName.includes(finalKeywordSearch)) score += 200;
+
+                // --- CATEGORY PENALTY (Future Prevention) ---
+                if (hasPhone && catName.includes('tv')) score -= 500;
+                if (hasPhone && catName.includes('laptop')) score -= 500;
+                
+                if (hasTV && catName.includes('phone')) score -= 500;
+                if (hasTV && catName.includes('watch')) score -= 500;
+                
+                if (hasLaptop && catName.includes('phone')) score -= 500;
+                if (hasWatch && catName.includes('phone')) score -= 500;
                 
                 return { ...p, _score: score };
             })
             .filter(p => p._score > 0)
             .sort((a, b) => b._score - a._score);
-        }
 
         if (!filtered || filtered.length === 0) {
             return {
