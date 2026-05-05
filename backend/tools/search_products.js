@@ -51,47 +51,78 @@ module.exports = {
 
         let filtered = data || [];
 
-                // --- 2. ADVANCED RANKING ---
-                let score = 0;
-                const tokens = finalKeywordSearch.toLowerCase().split(/\s+/);
+        // --- 2. ADVANCED RANKING & STRICT FILTERING ---
+        if (finalKeywordSearch) {
+            const searchTokens = tokens;
+            
+            // Intent Detection
+            const hasPhone = searchTokens.includes('phone') || searchTokens.includes('smartphone');
+            const hasTV = searchTokens.includes('tv') || searchTokens.includes('television');
+            const hasLaptop = searchTokens.includes('laptop') || searchTokens.includes('computer');
+            const hasWatch = searchTokens.includes('watch');
+
+            filtered = filtered.map(p => {
+                const title = (p.name || "").toLowerCase();
+                const desc = (p.description || "").toLowerCase();
+                const brand = (p.brand || p.metadata?.brand || "").toLowerCase();
+                const catName = (p.categories?.name || "").toLowerCase();
                 
-                // Future-Proofing: Category conflict detection
-                const hasPhone = tokens.includes('phone') || tokens.includes('smartphone');
-                const hasTV = tokens.includes('tv') || tokens.includes('television');
-                const hasLaptop = tokens.includes('laptop') || tokens.includes('computer');
-                const hasWatch = tokens.includes('watch');
+                const titleWords = title.split(/\s+/);
+                const catWords = catName.split(/\s+/);
+
+                let score = 0;
+                let matchCount = 0;
 
                 searchTokens.forEach(token => {
-                    // Exact matches within fields
-                    if (title === token) score += 200;
-                    if (catName === token) score += 150;
-                    if (brand === token) score += 100;
+                    let tokenMatched = false;
+                    
+                    // Priority 1: Whole word match in Title/Category/Brand
+                    if (titleWords.includes(token)) { score += 500; tokenMatched = true; }
+                    if (catWords.includes(token)) { score += 600; tokenMatched = true; }
+                    if (brand.toLowerCase() === token) { score += 400; tokenMatched = true; }
 
-                    // Partial matches
-                    if (title.includes(token)) score += 50;
-                    if (brand.includes(token)) score += 60;
-                    if (catName.includes(token)) score += 80;
-                    if (desc.includes(token)) score += 5;
+                    // Priority 2: Substring match
+                    if (!tokenMatched) {
+                        if (title.includes(token)) score += 50;
+                        if (brand.includes(token)) score += 60;
+                        if (catName.includes(token)) score += 80;
+                        if (desc.includes(token)) score += 5;
+                    }
+
+                    if (title.includes(token) || catName.includes(token) || brand.includes(token)) {
+                        matchCount++;
+                    }
                 });
 
-                // Full phrase matches
-                if (title.includes(finalKeywordSearch)) score += 150;
-                if (catName.includes(finalKeywordSearch)) score += 200;
+                // FULL Phrase match bonus
+                if (title.includes(finalKeywordSearch)) score += 1000;
+                if (catName.includes(finalKeywordSearch)) score += 1200;
+
+                // --- STRICT "AND" LOGIC ---
+                // Every search token must match at least something. 
+                // This prevents "Smart TV" from appearing for "Smart Phone" because TV doesn't have "Phone".
+                const mustMatchAll = searchTokens.every(token => 
+                    title.includes(token) || catName.includes(token) || brand.includes(token)
+                );
 
                 // --- CATEGORY PENALTY (Future Prevention) ---
-                if (hasPhone && catName.includes('tv')) score -= 500;
-                if (hasPhone && catName.includes('laptop')) score -= 500;
+                if (hasPhone && (catName.includes('tv') || catName.includes('earbud'))) score -= 5000;
+                if (hasPhone && catName.includes('laptop')) score -= 5000;
+                if (hasPhone && catName.includes('watch')) score -= 5000;
                 
-                if (hasTV && catName.includes('phone')) score -= 500;
-                if (hasTV && catName.includes('watch')) score -= 500;
+                if (hasWatch && catName.includes('phone')) score -= 5000;
+                if (hasWatch && catName.includes('tv')) score -= 5000;
+
+                if (hasTV && (catName.includes('phone') || catName.includes('watch'))) score -= 5000;
+
+                // Final relevance check
+                const isRelevant = mustMatchAll && score > 0;
                 
-                if (hasLaptop && catName.includes('phone')) score -= 500;
-                if (hasWatch && catName.includes('phone')) score -= 500;
-                
-                return { ...p, _score: score };
+                return { ...p, _score: score, _isRelevant: isRelevant };
             })
-            .filter(p => p._score > 0)
+            .filter(p => p._isRelevant)
             .sort((a, b) => b._score - a._score);
+        }
 
         if (!filtered || filtered.length === 0) {
             return {

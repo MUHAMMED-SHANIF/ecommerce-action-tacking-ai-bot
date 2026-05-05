@@ -31,13 +31,10 @@ module.exports = {
             .order('created_at', { ascending: false });
 
         if (categorySearch) {
-            // Build a safe OR string
             let orString = `name.ilike.%${categorySearch.trim()}%,description.ilike.%${categorySearch.trim()}%`;
-            
             if (matchingCatIds.length > 0) {
                 orString += `,category_id.in.(${matchingCatIds.join(',')})`;
             }
-            
             dbQuery = dbQuery.or(orString);
         }
 
@@ -45,10 +42,7 @@ module.exports = {
             dbQuery = dbQuery.lte('price', budget);
         }
 
-        // Fetch total count for pagination info
         const { count: totalCount } = await dbQuery.select('*', { count: 'exact', head: true });
-
-        // Apply a realistic limit
         dbQuery = dbQuery.limit(20);
 
         const { data, error } = await dbQuery.select('id, name, price, description, image_url, brand, stock_quantity, categories(name), metadata');
@@ -58,42 +52,48 @@ module.exports = {
         
         // --- RANKING FOR RELEVANCE ---
         if (categorySearch) {
-            const searchTokens = categorySearch.toLowerCase().trim().split(/\s+/);
+            const searchTokens = categorySearch.toLowerCase().trim().split(/\s+/).filter(t => t.length > 1);
             const fullSearch = categorySearch.toLowerCase().trim();
             
+            const hasPhone = searchTokens.includes('phone') || searchTokens.includes('smartphone');
+            const hasWatch = searchTokens.includes('watch');
+            const hasTV = searchTokens.includes('tv');
+
             filtered = filtered.map(p => {
                 const title = (p.name || "").toLowerCase();
                 const catName = (p.categories?.name || "").toLowerCase();
                 const desc = (p.description || "").toLowerCase();
+                
+                const titleWords = title.split(/\s+/);
+                const catWords = catName.split(/\s+/);
+                
                 let score = 0;
                 
-                // Future-Proofing: Category conflict detection
-                const hasPhone = searchTokens.includes('phone') || searchTokens.includes('smartphone');
-                const hasTV = searchTokens.includes('tv') || searchTokens.includes('television');
-                const hasLaptop = searchTokens.includes('laptop') || searchTokens.includes('computer');
-                const hasWatch = searchTokens.includes('watch');
-
                 searchTokens.forEach(token => {
+                    // Priority 1: Whole word match
+                    if (titleWords.includes(token)) score += 500;
+                    if (catWords.includes(token)) score += 600;
+
+                    // Priority 2: Partial match
                     if (catName.includes(token)) score += 100;
                     if (title.includes(token)) score += 50;
                     if (desc.includes(token)) score += 5;
                 });
                 
-                if (catName.includes(fullSearch)) score += 200;
-                if (title.includes(fullSearch)) score += 150;
+                if (catName.includes(fullSearch)) score += 1000;
+                if (title.includes(fullSearch)) score += 800;
 
-                // --- CATEGORY PENALTY (Future Prevention) ---
-                if (hasPhone && catName.includes('tv')) score -= 500;
-                if (hasPhone && catName.includes('laptop')) score -= 500;
+                // --- STRICT AND CHECK (Optional for recommendations but good for quality) ---
+                const matchesAnyToken = searchTokens.some(token => title.includes(token) || catName.includes(token));
+
+                // --- CATEGORY PENALTY ---
+                if (hasPhone && (catName.includes('tv') || catName.includes('watch') || catName.includes('earbud'))) score -= 5000;
+                if (hasWatch && catName.includes('phone')) score -= 5000;
+                if (hasTV && catName.includes('phone')) score -= 5000;
                 
-                if (hasTV && catName.includes('phone')) score -= 500;
-                if (hasTV && catName.includes('watch')) score -= 500;
-                
-                if (hasLaptop && catName.includes('phone')) score -= 500;
-                if (hasWatch && catName.includes('phone')) score -= 500;
-                
-                return { ...p, _score: score };
+                return { ...p, _score: score, _matches: matchesAnyToken };
             })
+            .filter(p => p._matches && p._score > 0)
             .sort((a, b) => b._score - a._score);
         }
 

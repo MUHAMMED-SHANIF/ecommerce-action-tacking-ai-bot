@@ -1292,7 +1292,7 @@ app.get('/api/cart/:userId', async (req, res) => {
         const { userId } = req.params;
         const { data: dbItems, error } = await supabase
             .from('cart_items')
-            .select('quantity, price, product_id')
+            .select('quantity, product_id')
             .eq('user_id', userId);
 
         if (error) throw error;
@@ -1344,8 +1344,7 @@ app.post('/api/cart/:userId', async (req, res) => {
             const payload = items.map(item => ({
                 user_id: userId,
                 product_id: item.id || item.productId,
-                quantity: item.qty || item.quantity || 1,
-                price: item.price
+                quantity: item.qty || item.quantity || 1
             }));
 
             const { error: insErr } = await supabase.from('cart_items').insert(payload);
