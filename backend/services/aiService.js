@@ -23,6 +23,14 @@ const resolveOrdinalRefs = (text, products) => {
         const pattern = new RegExp(`\\b(the\\s+)?${word}(\\s+(one|product|item|phone|laptop|tv|device))?\\b`, 'gi');
         result = result.replace(pattern, product.name);
     }
+    
+    // Resolve ambiguous pronouns to the first product shown
+    if (products.length > 0 && products[0]) {
+        const topProduct = products[0].name;
+        // Match exact words like "this", "that", "it", "this one", "that one"
+        result = result.replace(/\b(this one|that one|this|that|it)\b/gi, topProduct);
+    }
+    
     return result;
 };
 
@@ -160,8 +168,8 @@ IMPORTANT RULES:
             if (parsed.tool || parsed.action) parsed.type = 'tool_call';
         }
         
-        // 2. If 'type' is not one of our standard 3 (e.g., 'action', 'search_products')
-        if (parsed.type && !['reply', 'tool_call', 'confirmation_request'].includes(parsed.type)) {
+        // 2. If 'type' is not one of our standard types
+        if (parsed.type && !['reply', 'tool_call', 'confirmation_request', 'multi_step'].includes(parsed.type)) {
             const actualTool = parsed.tool || parsed.action || parsed.name || parsed.type;
             parsed = {
                 type: 'tool_call',
@@ -169,7 +177,7 @@ IMPORTANT RULES:
                 params: parsed.params || {}
             };
         }
-        
+
         // 3. Ensure 'tool' field exists for tool_calls
         if (parsed.type === 'tool_call' && !parsed.tool) {
             parsed.tool = parsed.action || parsed.name;
