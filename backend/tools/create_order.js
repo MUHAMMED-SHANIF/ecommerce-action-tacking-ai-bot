@@ -38,9 +38,8 @@ module.exports = {
             return { text: `Sorry, only ${product.stock_quantity} unit(s) of ${product.name} are available. I can order ${product.stock_quantity} for you instead.` };
         }
 
-        // Get user's saved addresses
-        const { data: { user: authUser } } = await supabase.auth.getUser();
-        const addresses = authUser?.user_metadata?.addresses || [];
+        // Get user's saved addresses directly from the verified token payload
+        const addresses = user?.user_metadata?.addresses || [];
 
         let defaultAddress = null;
         if (params.address_name) {

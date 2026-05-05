@@ -36,8 +36,12 @@ module.exports = {
             };
         }
 
-        // Fetch existing addresses from user metadata
-        const { data: { user: authUser }, error: userErr } = await supabase.auth.getUser();
+        // We must use the admin client to update user metadata because the anon client lacks a session
+        const { createClient } = require('@supabase/supabase-js');
+        const supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+        // Fetch fresh existing addresses from user metadata
+        const { data: { user: authUser }, error: userErr } = await supabaseAdmin.auth.admin.getUserById(user.id);
         if (userErr || !authUser) {
             return { text: "I couldn't access your profile. Please try again." };
         }
@@ -61,8 +65,8 @@ module.exports = {
         updatedAddresses.push(newAddress);
 
         // Save back to user metadata
-        const { error: updateErr } = await supabase.auth.updateUser({
-            data: { addresses: updatedAddresses }
+        const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
+            user_metadata: { ...authUser.user_metadata, addresses: updatedAddresses }
         });
 
         if (updateErr) throw updateErr;
