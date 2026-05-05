@@ -39,7 +39,7 @@ module.exports = {
         }
 
         // Get user's saved addresses
-        const { data: { user: authUser } } = await supabase.auth.admin.getUserById(user.id);
+        const { data: { user: authUser } } = await supabase.auth.getUser();
         const addresses = authUser?.user_metadata?.addresses || [];
 
         let defaultAddress = null;

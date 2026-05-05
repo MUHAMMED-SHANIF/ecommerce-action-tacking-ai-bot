@@ -37,7 +37,7 @@ module.exports = {
         }
 
         // Fetch existing addresses from user metadata
-        const { data: { user: authUser }, error: userErr } = await supabase.auth.admin.getUserById(user.id);
+        const { data: { user: authUser }, error: userErr } = await supabase.auth.getUser();
         if (userErr || !authUser) {
             return { text: "I couldn't access your profile. Please try again." };
         }
@@ -61,11 +61,8 @@ module.exports = {
         updatedAddresses.push(newAddress);
 
         // Save back to user metadata
-        const { error: updateErr } = await supabase.auth.admin.updateUserById(user.id, {
-            user_metadata: {
-                ...authUser.user_metadata,
-                addresses: updatedAddresses
-            }
+        const { error: updateErr } = await supabase.auth.updateUser({
+            data: { addresses: updatedAddresses }
         });
 
         if (updateErr) throw updateErr;
