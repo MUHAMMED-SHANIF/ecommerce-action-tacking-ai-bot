@@ -9,20 +9,19 @@ module.exports = {
     execute: async ({ params, user, supabase }) => {
         const { product_name } = params;
 
-        // Find the product
-        const { data: product } = await supabase
-            .from('products')
-            .select('id, name')
-            .ilike('name', `%${product_name}%`)
-            .limit(1)
-            .maybeSingle();
+        const searchTool = require('./search_products');
 
-        if (!product) {
+        // Find the product robustly
+        const searchResult = await searchTool.execute({ params: { query: product_name }, user, supabase });
+        
+        if (!searchResult.products || searchResult.products.length === 0) {
             return {
                 text: `I couldn't find "${product_name}" in our catalog. Please check the spelling!`,
                 success: false
             };
         }
+
+        const product = searchResult.products[0];
 
         // Check if it's in wishlist
         const { data: wishItem } = await supabase

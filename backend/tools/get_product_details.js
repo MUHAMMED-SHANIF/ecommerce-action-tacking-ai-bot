@@ -9,17 +9,26 @@ module.exports = {
     execute: async ({ params, user, supabase }) => {
         const { product_name } = params;
 
+        const searchTool = require('./search_products');
+
+        // Find the product robustly
+        const searchResult = await searchTool.execute({ params: { query: product_name }, user, supabase });
+        
+        if (!searchResult.products || searchResult.products.length === 0) {
+            return { text: `I couldn't find a product named "${product_name}". Try searching with a different name.`, product: null };
+        }
+
+        const topProduct = searchResult.products[0];
+
         const { data, error } = await supabase
             .from('products')
             .select('id, name, price, description, image_url, brand, stock_quantity, categories(name), metadata')
-            .ilike('name', `%${product_name}%`)
-            .eq('metadata->>status', 'approved')
-            .limit(1)
+            .eq('id', topProduct.id)
             .maybeSingle();
 
         if (error) throw error;
         if (!data) {
-            return { text: `I couldn't find a product named "${product_name}". Try searching with a different name.`, product: null };
+            return { text: `Sorry, there was an issue retrieving details for "${topProduct.name}".`, product: null };
         }
 
         const product = {
