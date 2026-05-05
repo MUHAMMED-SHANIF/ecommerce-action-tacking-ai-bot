@@ -23,6 +23,13 @@ module.exports = {
         };
         categorySearch = normalizePlural(categorySearch);
 
+        if (!categorySearch && !budget) {
+            return {
+                text: "What kind of products would you like me to recommend? (e.g. phones, laptops, or something under ₹5000)",
+                products: []
+            };
+        }
+
         // 1. Try to find matching categories
         let matchingCatIds = [];
         if (categorySearch && categorySearch.toLowerCase() !== 'all') {

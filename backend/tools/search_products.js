@@ -38,6 +38,20 @@ module.exports = {
 
         console.log(`[Tool Debug: Search] Query: "${query}", Tokens: [${tokens.join(', ')}], MaxPrice: ${max_price}`);
 
+        if (!query && !categoryParam && !max_price) {
+            return {
+                text: "What kind of product are you looking for? You can search by name, category, or brand.",
+                products: []
+            };
+        }
+
+        if (query && tokens.length === 0) {
+            return {
+                text: "Please provide a more specific search term.",
+                products: []
+            };
+        }
+
         let dbQuery = supabase
             .from('products')
             .select(`
