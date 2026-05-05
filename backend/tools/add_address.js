@@ -1,6 +1,6 @@
 module.exports = {
     name: 'add_address',
-    description: 'Save a new delivery address to the user\'s profile. Ask user for name, mobile (numbers only), address line, city, state, and pincode. Optionally give the address a label like "home" or "office".',
+    description: 'Save a new delivery address to the user\'s profile. Ask user for name, mobile (numbers only), address line, city, state, and pincode. Optionally give the address a label like "home" or "office". DO NOT CALL THIS TOOL unless the user has explicitly provided their street address and city in the chat.',
     parameters: {
         label: 'string? - label for the address e.g. "home", "office", "work" (default: "home")',
         name: 'string - recipient full name',

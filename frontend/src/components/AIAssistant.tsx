@@ -235,18 +235,22 @@ export default function AIAssistant() {
         console.log("Will attempt to route for tool:", data.tool);
         setTimeout(() => {
           switch (data.tool) {
-             case "search_products":
-             case "recommend_products":
+            case "search_products":
+            case "recommend_products":
               console.log("Handling search_products tool route...", data.data?.query);
               {
-                const sq = data.data?.query;
-                const sc = data.data?.category;
-                const sp = data.data?.max_price;
-                const params = new URLSearchParams();
-                if (sq) params.set("q", sq);
-                if (sc) params.set("category", sc);
-                if (sp) params.set("maxPrice", sp.toString());
-                router.push(`/search?${params.toString()}`);
+                if (data.data?.products?.length === 1) {
+                  router.push(`/product/${data.data.products[0].id}`);
+                } else {
+                  const sq = data.data?.query;
+                  const sc = data.data?.category;
+                  const sp = data.data?.max_price;
+                  const params = new URLSearchParams();
+                  if (sq) params.set("q", sq);
+                  if (sc) params.set("category", sc);
+                  if (sp) params.set("maxPrice", sp.toString());
+                  router.push(`/search?${params.toString()}`);
+                }
               }
               break;
             case "get_product_details":
