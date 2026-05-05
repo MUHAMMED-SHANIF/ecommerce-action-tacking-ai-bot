@@ -44,8 +44,11 @@ module.exports = {
 
         let defaultAddress = null;
         if (params.address_name) {
-            const labelLower = params.address_name.toLowerCase();
-            defaultAddress = addresses.find(a => (a.label || '').toLowerCase() === labelLower) || null;
+            const searchLabel = params.address_name.toLowerCase().replace(/address/g, '').replace(/my/g, '').trim();
+            defaultAddress = addresses.find(a => {
+                const aLabel = (a.label || '').toLowerCase().trim();
+                return aLabel === searchLabel || aLabel.includes(searchLabel) || searchLabel.includes(aLabel);
+            }) || null;
             if (!defaultAddress) {
                 return {
                     text: `I couldn't find a saved address labelled **"${params.address_name}"**. Would you like me to create one? Just say "add my ${params.address_name} address" and tell me the details!`
