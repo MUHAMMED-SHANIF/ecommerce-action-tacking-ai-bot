@@ -118,15 +118,40 @@ router.post('/message', requireAuth, async (req, res) => {
         } catch (_) { /* context fetch failure is non-fatal */ }
 
         // --- 6. Call AI for intent extraction (role-aware) ---
-        const aiResult = await extractIntent(userMessage, history, userContext, userRole);
+        // New signature: extractIntent(userMessage, userId, role)
+        const aiResult = await extractIntent(userMessage, user.id, userRole);
 
         let replyText = '';
         let responseData = null;
         let pendingConfirmation = null;
 
+        // Helper to resolve result_ref like "s1.results[0]"
+        const resolveResultRef = (ref, resultsMap) => {
+            if (typeof ref !== 'string' || !ref.includes('.')) return ref;
+            const parts = ref.split('.'); // ['s1', 'results[0]']
+            const stepId = parts[0];
+            const path = parts[1];
+            
+            const stepResult = resultsMap[stepId];
+            if (!stepResult) return ref;
+
+            // Simple parser for results[0] or products[0]
+            const match = path.match(/(\w+)\[(-?\d+)\]/);
+            if (match) {
+                const key = match[1];
+                const index = parseInt(match[2]);
+                const list = stepResult[key] || stepResult.products || stepResult.data;
+                if (Array.isArray(list)) {
+                    const item = index < 0 ? list[list.length + index] : list[index];
+                    return item?.id || item; // Return ID if it's an object
+                }
+            }
+            return stepResult[path] || stepResult.data?.[path] || ref;
+        };
+
         // --- 6. Route based on AI response type ---
         if (aiResult.type === 'reply') {
-            replyText = aiResult.text || "I'm here to help!";
+            replyText = aiResult.reply || aiResult.text || "I'm here to help!";
 
         } else if (aiResult.type === 'tool_call') {
             const tool = require('../tools').getTool(aiResult.tool);
@@ -135,39 +160,57 @@ router.post('/message', requireAuth, async (req, res) => {
             if (tool && tool.roles && !tool.roles.includes(userRole)) {
                 console.warn(`[Assistant] Role "${userRole}" attempted to use tool "${aiResult.tool}" (allowed: ${tool.roles.join(',')}). Blocked.`);
                 replyText = "I'm sorry, that action isn't available for your account type.";
-            // SECURITY: Never let AI bypass confirmation for destructive tools
             } else if (tool && tool.requiresConfirmation) {
-                console.log(`[Assistant] Intercepted unauthorized tool_call for ${aiResult.tool}. Forcing confirmation.`);
-                replyText = aiResult.question || aiResult.text_on_success || `Are you sure you want to ${aiResult.tool.replace(/_/g, ' ')}?`;
+                replyText = aiResult.reply || aiResult.question || `Are you sure you want to ${aiResult.tool.replace(/_/g, ' ')}?`;
                 pendingConfirmation = {
                     action: aiResult.tool,
                     params: aiResult.params || {}
                 };
             } else {
                 const toolResult = await handleToolCall(aiResult.tool, aiResult.params || {}, user, token, aiResult);
-                replyText = toolResult.message;
+                replyText = aiResult.reply || toolResult.message;
                 responseData = toolResult.data;
             }
 
         } else if (aiResult.type === 'multi_step') {
-            replyText = aiResult.text || "I'm starting that for you...";
+            replyText = aiResult.reply || aiResult.text || "Processing your request...";
             const steps = aiResult.steps || [];
-            let allMessages = [replyText];
+            let allMessages = [];
+            if (replyText) allMessages.push(replyText);
+            
             let combinedData = {};
+            const stepResults = {};
 
             for (const step of steps) {
                 const tool = require('../tools').getTool(step.tool);
+                
+                // Resolve references in params
+                const resolvedParams = { ...(step.params || {}) };
+                for (const key in resolvedParams) {
+                    if (typeof resolvedParams[key] === 'string' && resolvedParams[key].includes('result_ref')) {
+                        // Extract the ref part if the AI sent it as a string
+                        const ref = resolvedParams[key].replace('result_ref: ', '').replace('result_ref:', '');
+                        resolvedParams[key] = resolveResultRef(ref, stepResults);
+                    } else if (key === 'result_ref') {
+                        // AI sent it as a specific key
+                        const ref = resolvedParams[key];
+                        // If result_ref is used, we usually want to map it to a specific parameter like product_id
+                        // But for now we just resolve it and keep it in params for the tool to find
+                        resolvedParams[key] = resolveResultRef(ref, stepResults);
+                    }
+                }
+
                 if (tool && tool.requiresConfirmation) {
-                    // Stop execution and ask for confirmation for this step
                     pendingConfirmation = {
                         action: step.tool,
-                        params: step.params || {}
+                        params: resolvedParams
                     };
-                    allMessages.push(tool.confirmationMessage ? tool.confirmationMessage(step.params) : `Are you sure you want to ${step.tool.replace(/_/g, ' ')}?`);
+                    allMessages.push(tool.confirmationMessage ? tool.confirmationMessage(resolvedParams) : `Are you sure you want to ${step.tool.replace(/_/g, ' ')}?`);
                     break; 
                 } else {
-                    const toolResult = await handleToolCall(step.tool, step.params || {}, user, token, aiResult);
+                    const toolResult = await handleToolCall(step.tool, resolvedParams, user, token, aiResult);
                     allMessages.push(toolResult.message);
+                    stepResults[step.id] = toolResult.data;
                     if (toolResult.data) {
                         combinedData = { ...combinedData, ...toolResult.data };
                     }
@@ -177,9 +220,9 @@ router.post('/message', requireAuth, async (req, res) => {
             responseData = combinedData;
 
         } else if (aiResult.type === 'confirmation_request') {
-            replyText = aiResult.question || `Are you sure you want to ${aiResult.action}?`;
+            replyText = aiResult.reply || aiResult.question || `Are you sure?`;
             pendingConfirmation = {
-                action: aiResult.action,
+                action: aiResult.tool || aiResult.action,
                 params: aiResult.params || {}
             };
 

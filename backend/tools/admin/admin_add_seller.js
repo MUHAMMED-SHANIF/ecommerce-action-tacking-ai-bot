@@ -3,21 +3,19 @@ const { createClient } = require('@supabase/supabase-js');
 
 module.exports = {
     name: 'admin_add_seller',
-    description: 'Manually add a new seller account.',
+    description: 'Manually create a seller account.',
     roles: ['admin'],
     parameters: {
-        name: 'string - Seller full name',
-        email: 'string - Seller email address',
-        phone: 'string? - Seller phone number'
+        name: 'string - Full name',
+        email: 'string - Email address',
+        phone: 'string? - Phone number'
     },
     requiresConfirmation: true,
     confirmationMessage: (params) => `Create new seller account for ${params.name} (${params.email})?`,
 
     execute: async ({ params, user, supabase }) => {
         const serviceSupabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-        
-        // Generate a random temporary password
-        const tempPassword = Math.random().toString(36).slice(-10) + '!';
+        const tempPassword = Math.random().toString(36).slice(-10) + 'A1!';
 
         const { data, error } = await serviceSupabase.auth.admin.createUser({
             email: params.email,
@@ -33,10 +31,10 @@ module.exports = {
         if (error) throw error;
 
         return {
-            text: `✅ Seller account created successfully.\nEmail: ${params.email}\nTemp Password: ${tempPassword}`,
-            data: {
-                seller_id: data.user.id,
-                credentials: { email: params.email, password: tempPassword }
+            text: `✅ Seller account created.\nEmail: ${params.email}\nTemp Password: ${tempPassword}`,
+            data: { 
+                seller_id: data.user.id, 
+                credentials: { email: params.email, password: tempPassword } 
             }
         };
     }

@@ -3,13 +3,13 @@ const { createClient } = require('@supabase/supabase-js');
 
 module.exports = {
     name: 'admin_update_home_layout',
-    description: 'Update the homepage section order.',
+    description: 'Reorder or update homepage sections.',
     roles: ['admin'],
     parameters: {
-        new_order: 'array - Array of section objects in the desired order'
+        new_order: 'array - Array of section objects: [{id, type, category_id, position}]'
     },
     requiresConfirmation: true,
-    confirmationMessage: (params) => `Apply new homepage layout? This will change what all customers see first.`,
+    confirmationMessage: (params) => `Update homepage layout with ${params.new_order?.length} sections?`,
 
     execute: async ({ params, user, supabase }) => {
         const serviceSupabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);

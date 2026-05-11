@@ -3,13 +3,13 @@ const { createClient } = require('@supabase/supabase-js');
 
 module.exports = {
     name: 'admin_trust_seller',
-    description: 'Mark a seller as trusted to enable auto-approval of their products.',
+    description: 'Mark a seller as trusted. Trusted sellers get auto-approval for products.',
     roles: ['admin'],
     parameters: {
         seller_id: 'string - Full seller ID'
     },
     requiresConfirmation: true,
-    confirmationMessage: (params) => `Mark seller ${params.seller_id} as TRUSTED? Their future products will be auto-approved.`,
+    confirmationMessage: (params) => `Mark seller ${params.seller_id} as TRUSTED?`,
 
     execute: async ({ params, user, supabase }) => {
         const serviceSupabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -22,7 +22,7 @@ module.exports = {
         if (error) throw error;
 
         return {
-            text: `✅ Seller is now trusted. Their new products will go live automatically.`,
+            text: `✅ Seller is now marked as Trusted. Their future products will be live immediately.`,
             success: true,
             message: "Seller trusted"
         };

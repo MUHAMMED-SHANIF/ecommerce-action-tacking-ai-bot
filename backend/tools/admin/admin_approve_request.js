@@ -3,11 +3,11 @@ const { createClient } = require('@supabase/supabase-js');
 
 module.exports = {
     name: 'admin_approve_request',
-    description: 'Approve a seller request (product or category).',
+    description: 'Approve a pending seller request.',
     roles: ['admin'],
     parameters: {
-        request_id: 'string - Full request (product) ID',
-        type: 'string - Request type ("product" or "category")'
+        request_id: 'string - Full request ID',
+        type: 'string - "product" or "category"'
     },
     requiresConfirmation: true,
     confirmationMessage: (params) => `Approve this ${params.type} request (${params.request_id})?`,
@@ -15,34 +15,23 @@ module.exports = {
     execute: async ({ params, user, supabase }) => {
         const serviceSupabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
         
-        const { data: product } = await serviceSupabase.from('products').select('name, metadata').eq('id', params.request_id).single();
-        if (!product) return { text: "Request not found.", success: false };
-
         if (params.type === 'category') {
-            // Actually create the category
-            const catName = product.metadata?.category_name || product.name.replace('[CATEGORY REQUEST] ', '');
-            const slug = catName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-            
-            await serviceSupabase.from('categories').insert({ name: catName, slug: slug });
+            const { data: request } = await serviceSupabase.from('products').select('metadata').eq('id', params.request_id).single();
+            if (request?.metadata?.category_name) {
+                const slug = request.metadata.category_name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                await serviceSupabase.from('categories').insert({ name: request.metadata.category_name, slug });
+            }
         }
-
-        // Mark the request as approved
-        const newMeta = {
-            ...product.metadata,
-            status: 'approved',
-            isApproved: true,
-            adminRemark: 'Approved via AI Assistant'
-        };
 
         const { error } = await serviceSupabase
             .from('products')
-            .update({ metadata: newMeta })
+            .update({ metadata: { status: 'approved', isApproved: true, approved_at: new Date().toISOString() } })
             .eq('id', params.request_id);
 
         if (error) throw error;
 
         return {
-            text: `✅ Request for ${params.type} has been approved.`,
+            text: `✅ ${params.type} request approved.`,
             success: true,
             message: "Request approved"
         };

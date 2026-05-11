@@ -3,15 +3,15 @@ const { createClient } = require('@supabase/supabase-js');
 
 module.exports = {
     name: 'admin_add_banner',
-    description: 'Add a new homepage banner.',
+    description: 'Add a new promotional banner to the homepage.',
     roles: ['admin'],
     parameters: {
         image_url: 'string - URL of the banner image',
-        link: 'string? - URL to navigate to on click',
-        duration: 'number? - Duration in days'
+        link: 'string? - Destination URL when clicked',
+        duration: 'number? - Number of days to display'
     },
     requiresConfirmation: true,
-    confirmationMessage: (params) => `Add new banner: ${params.image_url}?`,
+    confirmationMessage: (params) => `Add new banner for ${params.duration || 'indefinite'} days?`,
 
     execute: async ({ params, user, supabase }) => {
         const serviceSupabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -23,11 +23,14 @@ module.exports = {
             .single();
 
         const list = existing?.value?.list || [];
+        const expiresAt = params.duration ? new Date(Date.now() + params.duration * 24 * 60 * 60 * 1000).toISOString() : null;
+        
         const newBanner = {
             image_url: params.image_url,
             link: params.link || '/',
             active: true,
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
+            expires_at: expiresAt
         };
         list.push(newBanner);
 

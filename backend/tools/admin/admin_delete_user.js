@@ -3,14 +3,14 @@ const { createClient } = require('@supabase/supabase-js');
 
 module.exports = {
     name: 'admin_delete_user',
-    description: 'Delete a user account. Requires confirmation.',
+    description: 'Permanently delete a user account.',
     roles: ['admin'],
     parameters: {
         user_id: 'string - Full user ID',
         reason: 'string? - Reason for deletion'
     },
     requiresConfirmation: true,
-    confirmationMessage: (params) => `Permanently DELETE user account ${params.user_id}? This action cannot be undone.`,
+    confirmationMessage: (params) => `Are you sure you want to PERMANENTLY DELETE user ${params.user_id}? This cannot be undone.`,
 
     execute: async ({ params, user, supabase }) => {
         const serviceSupabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -20,7 +20,7 @@ module.exports = {
         if (error) throw error;
 
         return {
-            text: `✅ User account ${params.user_id} has been deleted.`,
+            text: `✅ User account has been deleted.`,
             success: true,
             message: "User deleted"
         };

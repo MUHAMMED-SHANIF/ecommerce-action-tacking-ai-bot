@@ -3,14 +3,14 @@ const { createClient } = require('@supabase/supabase-js');
 
 module.exports = {
     name: 'admin_reject_product',
-    description: 'Reject a pending product from a seller. Requires confirmation.',
+    description: 'Reject a pending product submission from a seller.',
     roles: ['admin'],
     parameters: {
         product_id: 'string - Full product ID',
-        reason: 'string - Reason for rejection (shown to seller)'
+        reason: 'string - Reason for rejection'
     },
     requiresConfirmation: true,
-    confirmationMessage: (params) => `Reject product ${params.product_id}? Reason: ${params.reason || 'Not specified'}`,
+    confirmationMessage: (params) => `Reject product ${params.product_id}? Reason: ${params.reason}`,
 
     execute: async ({ params, user, supabase }) => {
         const serviceSupabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -33,7 +33,7 @@ module.exports = {
         if (error) throw error;
 
         return {
-            text: `❌ Product has been rejected. The seller has been notified.`,
+            text: `❌ Product rejected. Seller will see reason: "${params.reason}"`,
             success: true,
             message: "Product rejected"
         };

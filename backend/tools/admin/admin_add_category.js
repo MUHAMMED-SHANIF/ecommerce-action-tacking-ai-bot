@@ -3,19 +3,18 @@ const { createClient } = require('@supabase/supabase-js');
 
 module.exports = {
     name: 'admin_add_category',
-    description: 'Add a new product category to the platform.',
+    description: 'Add a new product category.',
     roles: ['admin'],
     parameters: {
         name: 'string - Category name',
-        slug: 'string? - URL-friendly slug (auto-generated if missing)',
-        description: 'string? - Category description'
+        slug: 'string? - URL slug',
+        description: 'string? - Description',
+        parent_category_id: 'string? - Parent category for sub-categories'
     },
     requiresConfirmation: false,
-    returnDirectText: true,
 
     execute: async ({ params, user, supabase }) => {
         const serviceSupabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-        
         const slug = params.slug || params.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
         const { data, error } = await serviceSupabase
@@ -23,7 +22,8 @@ module.exports = {
             .insert({
                 name: params.name,
                 slug: slug,
-                description: params.description || ''
+                description: params.description || '',
+                parent_id: params.parent_category_id || null
             })
             .select()
             .single();
@@ -31,7 +31,7 @@ module.exports = {
         if (error) throw error;
 
         return {
-            text: `✅ Category "${params.name}" added successfully.`,
+            text: `✅ Category "${params.name}" has been created.`,
             data: { category_id: data.id, message: "Category created" }
         };
     }

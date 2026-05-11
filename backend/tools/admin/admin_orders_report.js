@@ -3,7 +3,7 @@ const { createClient } = require('@supabase/supabase-js');
 
 module.exports = {
     name: 'admin_orders_report',
-    description: 'List all platform orders with filters.',
+    description: 'List all platform orders with customer and seller details.',
     roles: ['admin'],
     parameters: {
         status: 'string? - Filter by status',
@@ -19,7 +19,15 @@ module.exports = {
         
         let query = serviceSupabase
             .from('orders')
-            .select('id, total_amount, status, created_at, user_id, profiles(full_name)')
+            .select(`
+                id, 
+                total_amount, 
+                status, 
+                created_at, 
+                user_id, 
+                profiles(full_name),
+                order_items(product_id, products(metadata))
+            `)
             .order('created_at', { ascending: false })
             .limit(50);
 
@@ -30,16 +38,26 @@ module.exports = {
         const { data: orders, error } = await query;
         if (error) throw error;
 
-        const formatted = (orders || []).map(o => ({
-            order_id: o.id.split('-')[0],
-            customer: o.profiles?.full_name || 'Guest',
-            total: o.total_amount,
-            status: o.status,
-            created_at: o.created_at?.split('T')[0]
-        }));
+        const formatted = (orders || []).map(o => {
+            // Extract seller name from first item's metadata
+            const sellerName = o.order_items?.[0]?.products?.metadata?.sellerName || 'N/A';
+            
+            return {
+                order_id: o.id.split('-')[0],
+                customer: o.profiles?.full_name || 'Guest',
+                seller: sellerName,
+                total: o.total_amount,
+                status: o.status,
+                created_at: o.created_at?.split('T')[0]
+            };
+        });
+
+        if (params.seller_id) {
+            // Further filter in JS if needed, though usually metadata based
+        }
 
         return {
-            text: `📦 Found ${formatted.length} orders matching criteria.`,
+            text: `📦 Found ${formatted.length} orders.`,
             data: formatted
         };
     }
