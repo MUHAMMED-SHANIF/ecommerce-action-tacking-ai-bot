@@ -1,0 +1,24 @@
+# ── Secrets & Environment Variables ──────────────────────────
+.env
+.env.local
+.env.*.local
+.env.production
+
+# ── Dependencies ──────────────────────────────────────────────
+node_modules/
+
+# ── AI Evaluation Results (generated, not source code) ────────
+ai-eval/results/
+
+# ── Logs ──────────────────────────────────────────────────────
+*.log
+logs/
+npm-debug.log*
+
+# ── OS Files ──────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── IDE Files ─────────────────────────────────────────────────
+.vscode/
+.idea/
