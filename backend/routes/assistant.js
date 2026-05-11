@@ -36,6 +36,11 @@ router.post('/message', requireAuth, async (req, res) => {
         const supabase = getAuthSupabase(token);
         const serviceSupabase = getServiceSupabase();
 
+        // --- Determine user role ---
+        // Role is stored in Supabase user_metadata by the auth system
+        const userRole = user.user_metadata?.role || 'user'; // 'user' | 'seller' | 'admin'
+        console.log(`[Assistant] Role: ${userRole}, User: ${user.id}`);
+
         // --- 1. Save user message ---
         await serviceSupabase.from('ai_messages').insert({
             user_id: user.id,
@@ -77,10 +82,7 @@ router.post('/message', requireAuth, async (req, res) => {
 
         const history = (historyRows || []).reverse(); // oldest first for context
 
-        // --- 4. Determine user role ---
-        // Role is stored in Supabase user_metadata by the auth system
-        const userRole = user.user_metadata?.role || 'user'; // 'user' | 'seller' | 'admin'
-        console.log(`[Assistant] Role: ${userRole}, User: ${user.id}`);
+
 
         // --- 5. Fetch user context (role-appropriate) ---
         let userContext = null;
