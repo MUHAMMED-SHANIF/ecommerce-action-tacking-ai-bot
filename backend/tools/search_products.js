@@ -13,6 +13,21 @@ module.exports = {
     execute: async ({ params, user, supabase }) => {
         let query = params.query || params.keyword || params.search || params.name || "";
         let categoryParam = params.category || params.type;
+
+        // Define normalizePlural FIRST before using it
+        const normalizePlural = w => {
+            const low = w.toLowerCase().trim();
+            if (low === 'phones') return 'phone';
+            if (low === 'smartphones') return 'smartphone';
+            if (low === 'mobiles') return 'mobile';
+            if (low === 'laptops') return 'laptop';
+            if (low === 'tvs') return 'tv';
+            if (low === 'earbuds') return 'earbud';
+            if (low === 'watches') return 'watch';
+            if (low === 'tablets') return 'tablet';
+            return low;
+        };
+
         if (categoryParam) categoryParam = normalizePlural(categoryParam);
         let max_price = params.max_price || params.budget;
 
@@ -25,16 +40,6 @@ module.exports = {
         }
         
         const stopWords = ['a', 'an', 'the', 'and', 'or', 'but', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'with', 'in', 'of', 'i', 'want', 'show', 'me', 'find', 'looking', 'please', 'help', 'search', 'get'];
-        const normalizePlural = w => {
-            const low = w.toLowerCase().trim();
-            if (low === 'phones') return 'phone';
-            if (low === 'smartphones') return 'smartphone';
-            if (low === 'laptops') return 'laptop';
-            if (low === 'tvs') return 'tv';
-            if (low === 'earbuds') return 'earbud';
-            if (low === 'watches') return 'watch';
-            return low;
-        };
         const tokens = processedSearch.split(/\s+/).filter(t => t.length > 1 && !stopWords.includes(t)).map(normalizePlural);
         const finalKeywordSearch = tokens.join(" ");
 
