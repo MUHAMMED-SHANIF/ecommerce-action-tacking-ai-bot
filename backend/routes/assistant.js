@@ -75,34 +75,50 @@ router.post('/message', requireAuth, async (req, res) => {
 
         const history = (historyRows || []).reverse(); // oldest first for context
 
-        // --- 4. Fetch user context ---
+        // --- 4. Determine user role ---
+        // Role is stored in Supabase user_metadata by the auth system
+        const userRole = user.user_metadata?.role || 'user'; // 'user' | 'seller' | 'admin'
+        console.log(`[Assistant] Role: ${userRole}, User: ${user.id}`);
+
+        // --- 5. Fetch user context (role-appropriate) ---
         let userContext = null;
         try {
-            // Fetch profile and other data
-            const [profileRes, ordersRes, cartRes] = await Promise.all([
-                supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle(),
-                supabase.from('orders').select('id, status, total_price, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(3),
-                supabase.from('cart_items').select('quantity, products(name)').eq('user_id', user.id).limit(5)
-            ]);
-
-            // Fetch the user's metadata to get addresses (stored in auth.users)
             const { data: { user: authUser } } = await serviceSupabase.auth.admin.getUserById(user.id);
             const savedAddresses = authUser?.user_metadata?.addresses || [];
-            
-            // Extract the most recently shown products from history
-            const contextProductsRow = (historyRows || []).find(m => m.role === 'assistant' && m.metadata?.rendered_products?.length > 0);
-            
-            userContext = {
-                profile: profileRes.data,
-                orders: ordersRes.data || [],
-                cart: cartRes.data || [],
-                addresses: savedAddresses,
-                lastProducts: contextProductsRow ? contextProductsRow.metadata.rendered_products : null
-            };
+
+            if (userRole === 'user') {
+                // Customer context — orders, cart, addresses, last shown products
+                const [profileRes, ordersRes, cartRes] = await Promise.all([
+                    supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle(),
+                    supabase.from('orders').select('id, status, total_price, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(3),
+                    supabase.from('cart_items').select('quantity, products(name)').eq('user_id', user.id).limit(5)
+                ]);
+                const contextProductsRow = (historyRows || []).find(m => m.role === 'assistant' && m.metadata?.rendered_products?.length > 0);
+                userContext = {
+                    profile: profileRes.data,
+                    orders: ordersRes.data || [],
+                    cart: cartRes.data || [],
+                    addresses: savedAddresses,
+                    lastProducts: contextProductsRow ? contextProductsRow.metadata.rendered_products : null
+                };
+
+            } else if (userRole === 'seller') {
+                // Seller context — minimal, tools fetch data on demand
+                const profileRes = await supabase.from('profiles').select('full_name, id').eq('id', user.id).maybeSingle();
+                userContext = {
+                    profile: { ...profileRes.data, id: user.id },
+                    stats: null // Quick stats fetched by individual tools
+                };
+
+            } else if (userRole === 'admin') {
+                // Admin context — just profile
+                const profileRes = await supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle();
+                userContext = { profile: profileRes.data };
+            }
         } catch (_) { /* context fetch failure is non-fatal */ }
 
-        // --- 5. Call AI for intent extraction ---
-        const aiResult = await extractIntent(userMessage, history, userContext);
+        // --- 6. Call AI for intent extraction (role-aware) ---
+        const aiResult = await extractIntent(userMessage, history, userContext, userRole);
 
         let replyText = '';
         let responseData = null;
@@ -114,11 +130,15 @@ router.post('/message', requireAuth, async (req, res) => {
 
         } else if (aiResult.type === 'tool_call') {
             const tool = require('../tools').getTool(aiResult.tool);
-            
-            // SECURITY ENFORCEMENT: Never let the AI bypass confirmation for destructive tools
-            if (tool && tool.requiresConfirmation) {
+
+            // SECURITY: Verify tool belongs to user's role
+            if (tool && tool.roles && !tool.roles.includes(userRole)) {
+                console.warn(`[Assistant] Role "${userRole}" attempted to use tool "${aiResult.tool}" (allowed: ${tool.roles.join(',')}). Blocked.`);
+                replyText = "I'm sorry, that action isn't available for your account type.";
+            // SECURITY: Never let AI bypass confirmation for destructive tools
+            } else if (tool && tool.requiresConfirmation) {
                 console.log(`[Assistant] Intercepted unauthorized tool_call for ${aiResult.tool}. Forcing confirmation.`);
-                replyText = aiResult.text_on_success || `Are you sure you want to ${aiResult.tool.replace(/_/g, ' ')}?`;
+                replyText = aiResult.question || aiResult.text_on_success || `Are you sure you want to ${aiResult.tool.replace(/_/g, ' ')}?`;
                 pendingConfirmation = {
                     action: aiResult.tool,
                     params: aiResult.params || {}

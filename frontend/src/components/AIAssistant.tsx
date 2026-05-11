@@ -100,6 +100,12 @@ export default function AIAssistant() {
       });
       if (!res.ok) throw new Error(`History fetch failed: ${res.status}`);
       const data = await res.json();
+      const currentRole = user?.role || 'user';
+      const welcomeMsg = {
+        user:   "👋 Hi! I'm ActionBot, your EMart AI assistant. I can help you search products, track orders, get recommendations, and more. How can I help you today?",
+        seller: "📊 Hi! I'm SellerBot, your business assistant. Ask me about sales, inventory, orders, or product management!",
+        admin:  "⚙️ Hi! I'm AdminBot, your platform operations assistant. Ask me about revenue, sellers, pending approvals, or platform stats!",
+      }[currentRole] || "👋 Hi! How can I help?";
       if (data.success && data.history.length > 0) {
         const loaded: Message[] = data.history.map((h: any) => ({
           role: h.role as "user" | "assistant",
@@ -108,19 +114,11 @@ export default function AIAssistant() {
         }));
         setMessages(loaded);
       } else {
-        setMessages([{
-          role: "assistant",
-          text: "👋 Hi! I'm ActionBot, your EMart AI assistant. I can help you search products, track orders, get recommendations, and more. How can I help you today?",
-          timestamp: new Date()
-        }]);
+        setMessages([{ role: "assistant", text: welcomeMsg, timestamp: new Date() }]);
       }
       setHistoryLoaded(true);
     } catch (_) {
-      setMessages([{
-        role: "assistant",
-        text: "👋 Hi! I'm ActionBot, your EMart AI assistant. How can I help you today?",
-        timestamp: new Date()
-      }]);
+      setMessages([{ role: "assistant", text: "👋 Hi! How can I help you today?", timestamp: new Date() }]);
       setHistoryLoaded(true);
     }
   };
@@ -226,83 +224,77 @@ export default function AIAssistant() {
 
       speakText(data.reply);
 
-      // --- UI ACTION MAPPING MAPPING ---
-      console.log("AI ACTION DATA TOOL:", data.tool);
+      // --- UI ACTION ROUTING (customer + seller + admin) ---
       if (data.tool) {
         if (data.tool === 'add_to_cart') showToast("Added to cart! 🛒");
         if (data.tool === 'add_to_wishlist') showToast("Added to wishlist! ❤️");
-        
-        console.log("Will attempt to route for tool:", data.tool);
+        if (data.tool === 'seller_pause_product') showToast("Product paused ⏸️");
+        if (data.tool === 'admin_approve_product') showToast("Product approved ✅");
+
+        // Handle CSV download
+        if (data.data?.download && data.data?.csv_data_uri) {
+          const link = document.createElement('a');
+          link.href = data.data.csv_data_uri;
+          link.download = data.data.filename || 'report.csv';
+          link.click();
+        }
+
         setTimeout(() => {
           switch (data.tool) {
+            // ── CUSTOMER ROUTES ──────────────────────────────────────
             case "search_products":
             case "recommend_products":
-              console.log("Handling search_products tool route...", data.data?.query);
-              {
-                if (data.data?.products?.length === 1) {
-                  router.push(`/product/${data.data.products[0].id}`);
-                } else if (data.data?.products?.length > 1) {
-                  const sq = data.data?.query;
-                  const sc = data.data?.category;
-                  const sp = data.data?.max_price;
-                  const params = new URLSearchParams();
-                  if (sq) params.set("q", sq);
-                  if (sc) params.set("category", sc);
-                  if (sp) params.set("maxPrice", sp.toString());
-                  router.push(`/search?${params.toString()}`);
-                }
+              if (data.data?.products?.length === 1) {
+                router.push(`/product/${data.data.products[0].id}`);
+              } else if (data.data?.products?.length > 1) {
+                const sq = data.data?.query; const sc = data.data?.category; const sp = data.data?.max_price;
+                const qp = new URLSearchParams();
+                if (sq) qp.set("q", sq); if (sc) qp.set("category", sc); if (sp) qp.set("maxPrice", sp.toString());
+                router.push(`/search?${qp.toString()}`);
               }
               break;
             case "get_product_details":
-              console.log("Handling get_product_details tool route...");
-              if (data.data?.product?.id) {
-                router.push(`/product/${data.data.product.id}`);
-              } else if (data.data?.id) {
-                router.push(`/product/${data.data.id}`);
-              }
+              if (data.data?.product?.id) router.push(`/product/${data.data.product.id}`);
+              else if (data.data?.id) router.push(`/product/${data.data.id}`);
               break;
-            case "view_cart":
-            case "add_to_cart":
-            case "remove_from_cart":
-            case "update_cart_quantity":
-            case "move_wishlist_to_cart":
-              console.log("Handling cart route...");
-              router.push('/cart');
-              break;
-            case "add_to_wishlist":
-            case "remove_from_wishlist":
-            case "view_wishlist":
-              console.log("Handling wishlist route...");
-              router.push('/wishlist');
-              break;
-            case "track_order":
-            case "cancel_order":
-            case "create_order":
-            case "return_order":
-            case "view_orders":
-              console.log("Handling orders route...");
-              router.push('/profile?tab=orders');
-              break;
-            case "view_profile":
-            case "update_address":
-              console.log("Handling profile route...");
-              router.push('/profile');
-              break;
-            case "navigate_home":
-              router.push('/');
-              break;
-            case "go_back":
-              router.back();
-              break;
-            case "show_deals":
-              console.log("Handling deals route...");
-              router.push('/search'); // Fallback since /offers doesn't exist
-              break;
+            case "view_cart": case "add_to_cart": case "remove_from_cart":
+            case "update_cart_quantity": case "move_wishlist_to_cart":
+              router.push('/cart'); break;
+            case "add_to_wishlist": case "remove_from_wishlist": case "view_wishlist":
+              router.push('/wishlist'); break;
+            case "track_order": case "cancel_order": case "create_order":
+            case "return_order": case "view_orders":
+              router.push('/profile?tab=orders'); break;
+            case "view_profile": case "update_address":
+              router.push('/profile'); break;
+            case "navigate_home": router.push('/'); break;
+            case "go_back": router.back(); break;
+            case "show_deals": router.push('/search'); break;
+            // ── SELLER ROUTES ────────────────────────────────────────
+            case "seller_view_orders": case "seller_update_order_status":
+              router.push('/seller/orders'); break;
+            case "seller_view_requests": case "seller_request_category":
+              router.push('/seller/requests'); break;
+            case "seller_check_inventory": case "seller_pause_product":
+            case "seller_add_product": case "seller_edit_product":
+              router.push('/seller/products'); break;
+            case "seller_sales_report": case "seller_best_products":
+            case "seller_cancelled_orders": case "seller_revenue_today":
+            case "seller_pending_orders":
+              router.push('/seller/analytics'); break;
+            // ── ADMIN ROUTES ─────────────────────────────────────────
+            case "admin_platform_stats": case "admin_platform_revenue":
+              router.push('/admin/dashboard'); break;
+            case "admin_pending_products": case "admin_approve_product":
+              router.push('/admin/products'); break;
+            case "admin_all_orders":
+              router.push('/admin/orders'); break;
+            case "admin_all_sellers":
+              router.push('/admin/suppliers'); break;
             default:
-              console.log("Unhandled tool string:", data.tool);
-              break;
+              console.log("[AIAssistant] Unhandled tool:", data.tool); break;
           }
-        }, 1500); // 1.5s delay to let the voice start speaking before page transition
+        }, 1500);
       }
 
     } catch (err: any) {
@@ -417,7 +409,28 @@ export default function AIAssistant() {
     }));
   };
 
-  if (!user || user.role !== "user") return null;
+  // Show for all roles: customer, seller, admin
+  if (!user) return null;
+  const role = user.role || 'user';
+
+  // Role-based branding
+  const roleConfig = {
+    user:   { label: 'ActionBot', sub: 'EMart AI Assistant',   gradient: 'from-green-600 to-emerald-500',  bubble: 'from-green-500 to-emerald-600',  bubbleHover: 'from-green-600 to-emerald-700',  avatar: 'bg-emerald-100', icon: 'text-emerald-600' },
+    seller: { label: 'SellerBot', sub: 'Business Assistant',   gradient: 'from-blue-600 to-indigo-500',    bubble: 'from-blue-500 to-indigo-600',    bubbleHover: 'from-blue-600 to-indigo-700',    avatar: 'bg-blue-100',    icon: 'text-blue-600'    },
+    admin:  { label: 'AdminBot',  sub: 'Platform Control',     gradient: 'from-purple-600 to-violet-500',  bubble: 'from-purple-500 to-violet-600',  bubbleHover: 'from-purple-600 to-violet-700',  avatar: 'bg-purple-100',  icon: 'text-purple-600'  },
+  }[role] || { label: 'ActionBot', sub: 'EMart AI', gradient: 'from-green-600 to-emerald-500', bubble: 'from-green-500 to-emerald-600', bubbleHover: 'from-green-600 to-emerald-700', avatar: 'bg-emerald-100', icon: 'text-emerald-600' };
+
+  const quickSuggestions = {
+    user:   ['Search phones', 'Track order', 'Recommend laptops', 'Cancel order'],
+    seller: ['Sales this month', 'Pending orders', 'Check inventory', 'Best products'],
+    admin:  ['Platform stats', 'Pending approvals', 'Revenue today', 'All sellers'],
+  }[role] || [];
+
+  const welcomeText = {
+    user:   "👋 Hi! I'm ActionBot, your EMart AI assistant. I can help you search products, track orders, and more!",
+    seller: "📊 Hi! I'm SellerBot, your business assistant. Ask me about sales, inventory, orders, or product management.",
+    admin:  "⚙️ Hi! I'm AdminBot, your platform operations assistant. Ask me about revenue, sellers, pending approvals, or platform stats.",
+  }[role] || "👋 Hi! How can I help you today?";
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
@@ -428,17 +441,18 @@ export default function AIAssistant() {
           style={{ animation: "slideUp 0.25s ease-out" }}>
 
           {/* Header */}
-          <div className="bg-gradient-to-r from-green-600 to-emerald-500 text-white px-4 py-3 flex items-center justify-between">
+          <div className={`bg-gradient-to-r ${roleConfig.gradient} text-white px-4 py-3 flex items-center justify-between`}>
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
                 <Sparkles className="w-4 h-4" />
               </div>
               <div>
-                <p className="font-semibold text-sm leading-none">ActionBot</p>
-                <p className="text-xs text-green-100 mt-0.5">EMart AI Assistant</p>
+                <p className="font-semibold text-sm leading-none">{roleConfig.label}</p>
+                <p className="text-xs text-white/80 mt-0.5">{roleConfig.sub}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full uppercase tracking-wide font-bold">{role}</span>
               <button onClick={clearHistory} title="Clear chat"
                 className="p-1.5 rounded-lg hover:bg-white/20 transition-colors">
                 <Trash2 className="w-4 h-4" />
@@ -560,12 +574,16 @@ export default function AIAssistant() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick suggestions */}
+          {/* Quick suggestions — role-aware */}
           {messages.length <= 1 && (
             <div className="px-3 pb-2 flex gap-1.5 overflow-x-auto scrollbar-hide">
-              {["🔍 Search phones", "📦 Track order", "💡 Recommend laptops", "❌ Cancel order"].map(s => (
-                <button key={s} onClick={() => sendMessage(s.replace(/^[^\s]+\s/, ''))}
-                  className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1.5 rounded-full whitespace-nowrap hover:bg-emerald-100 transition-colors shrink-0">
+              {quickSuggestions.map(s => (
+                <button key={s} onClick={() => sendMessage(s)}
+                  className={`text-xs px-3 py-1.5 rounded-full whitespace-nowrap transition-colors shrink-0 border ${
+                    role === 'seller' ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' :
+                    role === 'admin'  ? 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100' :
+                    'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                  }`}>
                   {s}
                 </button>
               ))}
@@ -622,7 +640,7 @@ export default function AIAssistant() {
         className={`w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all duration-300 hover:scale-110 ${
           isOpen
             ? "bg-gray-700 hover:bg-gray-800"
-            : "bg-gradient-to-br from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
+            : `bg-gradient-to-br ${roleConfig.bubble} hover:${roleConfig.bubbleHover}`
         }`}
       >
         {isOpen
