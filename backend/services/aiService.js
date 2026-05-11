@@ -11,14 +11,16 @@ const PERSONAS = {
 You help customers search products, get recommendations, compare items, track orders, cancel orders, and more.
 You are warm, helpful, and speak naturally like a knowledgeable salesperson. Use ₹ for prices.`,
 
-    seller: `You are a professional business intelligence assistant for EMart sellers.
-You help sellers understand their sales data, manage products, track orders, and grow their business.
-You are data-driven, concise, and actionable. Provide specific numbers and insights.
-Always relate answers to business impact (revenue, growth, customer satisfaction).`,
+    seller: `You are a professional business intelligence assistant for sellers on E-Mart.
+You are data-driven, concise, and focus on actionable insights.
+When showing reports, always highlight the most important insight first.
+Use business language: "Your top performer this month is...", "Revenue is up 15% vs last week"
+End with a question like: "Want me to download the full breakdown as CSV?" or "Should I check your pending orders too?"`,
 
     admin: `You are the EMart platform operations assistant for the admin team.
 You help administrators monitor platform health, manage users and sellers, review products, and track revenue.
-You are formal, precise, and metrics-focused. Use exact numbers. Flag urgent items clearly.`
+You are formal, precise, and metrics-focused. Use exact numbers. Flag urgent items clearly.
+When multiple things need attention, prioritize: 1) Pending approvals 2) Urgent orders 3) Revenue anomalies.`
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -119,6 +121,81 @@ ADDITIONAL RULES:
 };
 
 // ─────────────────────────────────────────────────────────────────
+// FLEXIBLE MODEL ROUTER — reads env vars at call time
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * Determine which AI provider to use for this role, then call it.
+ * Falls back Groq→Ollama automatically on rate limit / auth errors.
+ *
+ * AI_ROUTING_MODE options (set in backend/.env):
+ *   'split'      → Customer: Groq, Seller: Ollama, Admin: Ollama   [DEFAULT]
+ *   'all_groq'   → Everyone: Groq
+ *   'all_ollama' → Everyone: Ollama (local or ngrok)
+ *   'custom'     → Per-role env vars:
+ *                    CUSTOMER_AI_PROVIDER=groq|ollama
+ *                    SELLER_AI_PROVIDER=groq|ollama
+ *                    ADMIN_AI_PROVIDER=groq|ollama
+ *
+ * @param {string} role - 'user' | 'seller' | 'admin'
+ * @param {string} message - Resolved user message
+ * @param {string} systemPrompt - Full assembled system prompt
+ * @returns {Promise<object>} Parsed AI JSON response
+ */
+const resolveAndCall = async (role, message, systemPrompt) => {
+    const mode = (process.env.AI_ROUTING_MODE || 'split').toLowerCase();
+
+    // Resolve provider for this role based on mode
+    let provider;
+    if (mode === 'all_groq') {
+        provider = 'groq';
+    } else if (mode === 'all_ollama') {
+        provider = 'ollama';
+    } else if (mode === 'custom') {
+        const providerMap = {
+            user: process.env.CUSTOMER_AI_PROVIDER || 'groq',
+            seller: process.env.SELLER_AI_PROVIDER || 'ollama',
+            admin: process.env.ADMIN_AI_PROVIDER || 'ollama',
+        };
+        provider = providerMap[role] || 'ollama';
+    } else {
+        // Default: 'split' — Customer→Groq, Seller/Admin→Ollama
+        provider = (role === 'user') ? 'groq' : 'ollama';
+    }
+
+    console.log(`[AI Router] mode=${mode} | role=${role} | provider=${provider}`);
+
+    // Try primary provider
+    if (provider === 'groq') {
+        if (!isGroqConfigured()) {
+            console.warn('[AI Router] Groq selected but GROQ_API_KEY not set → falling back to Ollama');
+            return await callOllama(message, systemPrompt, role);
+        }
+        try {
+            return await callGroq(message, systemPrompt);
+        } catch (err) {
+            if (err.code === 'GROQ_RATE_LIMIT' || err.code === 'GROQ_AUTH_ERROR') {
+                console.warn(`[AI Router] Groq failed (${err.code}) → falling back to Ollama`);
+                return await callOllama(message, systemPrompt, role);
+            }
+            console.warn(`[AI Router] Groq error → falling back to Ollama: ${err.message}`);
+            return await callOllama(message, systemPrompt, role);
+        }
+    } else {
+        // 'ollama' — try Ollama, optionally fall back to Groq if configured
+        try {
+            return await callOllama(message, systemPrompt, role);
+        } catch (ollamaErr) {
+            if (isGroqConfigured()) {
+                console.warn(`[AI Router] Ollama failed → falling back to Groq: ${ollamaErr.message}`);
+                return await callGroq(message, systemPrompt);
+            }
+            throw ollamaErr; // No fallback available
+        }
+    }
+};
+
+// ─────────────────────────────────────────────────────────────────
 // MAIN: extractIntent — role-aware AI routing
 // ─────────────────────────────────────────────────────────────────
 
@@ -200,34 +277,24 @@ Admin Context:
 
         const systemPrompt = buildSystemPrompt(role, toolsPrompt, historyStr, contextStr);
 
-        // ─── MODEL ROUTING ───────────────────────────────────────────
-        // Customer → Groq primary, Ollama fallback
-        // Seller/Admin → Ollama (private, unlimited)
+        // ─── FLEXIBLE MODEL ROUTING ───────────────────────────────────
+        // Controlled entirely by environment variables. No code change needed.
+        //
+        // Set AI_ROUTING_MODE in backend/.env:
+        //   'split'      → Customer:Groq,  Seller:Ollama, Admin:Ollama  (DEFAULT)
+        //   'all_groq'   → Everyone uses Groq
+        //   'all_ollama' → Everyone uses Ollama (local/ngrok)
+        //   'custom'     → Per-role via CUSTOMER_AI_PROVIDER, SELLER_AI_PROVIDER, ADMIN_AI_PROVIDER
+        //                  Each can be 'groq' or 'ollama'
+        //
+        // Examples:
+        //   AI_ROUTING_MODE=all_groq
+        //   AI_ROUTING_MODE=custom
+        //   CUSTOMER_AI_PROVIDER=groq
+        //   SELLER_AI_PROVIDER=groq
+        //   ADMIN_AI_PROVIDER=ollama
         // ─────────────────────────────────────────────────────────────
-        let parsed;
-
-        if (role === 'user' && isGroqConfigured()) {
-            try {
-                console.log(`[AI] Customer → Groq (fast cloud)`);
-                parsed = await callGroq(resolvedText, systemPrompt);
-            } catch (groqErr) {
-                if (groqErr.code === 'GROQ_RATE_LIMIT' || groqErr.code === 'GROQ_AUTH_ERROR') {
-                    console.warn(`[AI] Groq failed (${groqErr.code}) → falling back to Ollama`);
-                    parsed = await callOllama(resolvedText, systemPrompt, role);
-                } else {
-                    console.warn(`[AI] Groq error → falling back to Ollama: ${groqErr.message}`);
-                    parsed = await callOllama(resolvedText, systemPrompt, role);
-                }
-            }
-        } else {
-            // Seller, Admin, or Groq not configured → use Ollama
-            if (role === 'user') {
-                console.log(`[AI] Customer → Ollama (Groq not configured)`);
-            } else {
-                console.log(`[AI] ${role} → Ollama (local/ngrok)`);
-            }
-            parsed = await callOllama(resolvedText, systemPrompt, role);
-        }
+        const parsed = await resolveAndCall(role, resolvedText, systemPrompt);
 
         // ─── NORMALIZE RESPONSE ───────────────────────────────────────
         // Handle quirks where AI doesn't follow format exactly

@@ -2,15 +2,15 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
 module.exports = {
-    name: 'admin_approve_product',
-    description: 'Approve a pending product, making it live on the store.',
+    name: 'admin_reject_product',
+    description: 'Reject a pending product from a seller. Requires confirmation.',
     roles: ['admin'],
     parameters: {
         product_id: 'string - Full product ID',
-        feedback: 'string? - Optional feedback for the seller'
+        reason: 'string - Reason for rejection (shown to seller)'
     },
     requiresConfirmation: true,
-    confirmationMessage: (params) => `Approve product ${params.product_id}?`,
+    confirmationMessage: (params) => `Reject product ${params.product_id}? Reason: ${params.reason || 'Not specified'}`,
 
     execute: async ({ params, user, supabase }) => {
         const serviceSupabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -20,10 +20,9 @@ module.exports = {
 
         const newMeta = {
             ...product.metadata,
-            status: 'approved',
-            isApproved: true,
-            isPaused: false,
-            adminRemark: params.feedback || 'Approved by admin'
+            status: 'rejected',
+            isApproved: false,
+            adminRemark: params.reason || 'Rejected by admin'
         };
 
         const { error } = await serviceSupabase
@@ -34,9 +33,9 @@ module.exports = {
         if (error) throw error;
 
         return {
-            text: `✅ Product approved successfully and is now live.`,
+            text: `❌ Product has been rejected. The seller has been notified.`,
             success: true,
-            message: "Product approved"
+            message: "Product rejected"
         };
     }
 };

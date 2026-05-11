@@ -34,8 +34,15 @@ module.exports = {
             const { data: authData } = await serviceSupabase.auth.admin.listUsers();
             const sellers = (authData?.users || []).filter(u => u.user_metadata?.role === 'seller');
             csvRows = [['Name', 'Email', 'Trusted', 'Joined']];
-            sellers.forEach(s => csvRows.push([s.user_metadata?.name || '', s.email, s.user_metadata?.isTrusted ? 'Yes' : 'No', s.created_at?.split('T')[0]]));
+            sellers.forEach(s => csvRows.push([s.user_metadata?.full_name || s.user_metadata?.name || '', s.email, s.user_metadata?.isTrusted ? 'Yes' : 'No', s.created_at?.split('T')[0]]));
             filename = `all_sellers_${to_date}.csv`;
+
+        } else if (report_type === 'users') {
+            const { data: authData } = await serviceSupabase.auth.admin.listUsers();
+            const users = (authData?.users || []).filter(u => !u.user_metadata?.role || u.user_metadata?.role === 'user');
+            csvRows = [['Name', 'Email', 'Joined']];
+            users.forEach(u => csvRows.push([u.user_metadata?.full_name || u.user_metadata?.name || '', u.email, u.created_at?.split('T')[0]]));
+            filename = `all_users_${to_date}.csv`;
 
         } else if (report_type === 'products') {
             const { data: products } = await serviceSupabase
@@ -43,6 +50,15 @@ module.exports = {
             csvRows = [['Name', 'Price', 'Stock', 'Category', 'Status', 'Seller ID']];
             (products || []).forEach(p => csvRows.push([p.name, p.price, p.stock_quantity, p.categories?.name || '', p.metadata?.status || '', p.metadata?.sellerId?.split('-')[0] || '']));
             filename = `all_products_${to_date}.csv`;
+
+        } else if (report_type === 'revenue') {
+            const { data: orders } = await serviceSupabase
+                .from('orders').select('id, total_amount, status, created_at')
+                .gte('created_at', `${from_date}T00:00:00`).lte('created_at', `${to_date}T23:59:59`)
+                .neq('status', 'cancelled');
+            csvRows = [['Order ID', 'Revenue', 'Date']];
+            (orders || []).forEach(o => csvRows.push([o.id?.split('-')[0], o.total_amount, o.created_at?.split('T')[0]]));
+            filename = `revenue_report_${from_date}_to_${to_date}.csv`;
         }
 
         if (csvRows.length === 0) {
