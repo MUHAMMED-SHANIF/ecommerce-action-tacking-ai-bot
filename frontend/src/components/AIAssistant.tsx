@@ -9,6 +9,8 @@ import { startContinuousListening, stopListening } from "@/utils/voice";
 import { speakText } from "@/utils/speak";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
+import { useCart } from "@/context/CartContext";
+import { useWishlist } from "@/context/WishlistContext";
 import { useRouter } from "next/navigation";
 
 const getApiUrl = () => {
@@ -50,6 +52,8 @@ interface PendingConfirmation {
 export default function AIAssistant() {
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { fetchCart } = useCart();
+  const { fetchWishlist } = useWishlist();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -226,8 +230,14 @@ export default function AIAssistant() {
 
       // --- UI ACTION ROUTING (customer + seller + admin) ---
       if (data.tool) {
-        if (data.tool === 'add_to_cart') showToast("Added to cart! 🛒");
-        if (data.tool === 'add_to_wishlist') showToast("Added to wishlist! ❤️");
+        if (data.tool === 'add_to_cart' || data.tool === 'update_cart_quantity' || data.tool === 'remove_from_cart' || data.tool === 'move_wishlist_to_cart') {
+          showToast(data.tool === 'remove_from_cart' ? "Removed from cart!" : "Cart updated! 🛒");
+          fetchCart();
+        }
+        if (data.tool === 'add_to_wishlist' || data.tool === 'remove_from_wishlist') {
+          showToast(data.tool === 'remove_from_wishlist' ? "Removed from wishlist!" : "Wishlist updated! ❤️");
+          fetchWishlist();
+        }
         if (data.tool === 'seller_pause_product') showToast("Product paused ⏸️");
         if (data.tool === 'admin_approve_product') showToast("Product approved ✅");
 

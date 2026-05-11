@@ -18,6 +18,7 @@ interface WishlistContextType {
     addToWishlist: (item: any) => Promise<void>;
     removeFromWishlist: (itemId: number | string | undefined | null) => Promise<void>;
     isInWishlist: (itemId: number | string | undefined | null) => boolean;
+    fetchWishlist: () => Promise<void>;
 }
 
 const WishlistContext = createContext<WishlistContextType | undefined>(undefined);
@@ -43,7 +44,8 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
             return;
         }
 
-        const loadWishlist = async () => {
+        const fetchWishlist = async () => {
+            if (!user?.id) return;
             try {
                 const res = await fetch(`${API_URL}/wishlist/${user.id}`);
                 if (!res.ok) throw new Error("Wishlist fetch failed");
@@ -94,7 +96,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
             }
         };
 
-        loadWishlist();
+        fetchWishlist();
     }, [user?.id, authLoading]);
 
     const addToWishlist = async (product: any) => {
@@ -147,8 +149,29 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
         return items.some(i => i.id === String(itemId));
     };
 
+    const fetchWishlist = async () => {
+        if (!userRef.current?.id) return;
+        try {
+            const res = await fetch(`${API_URL}/wishlist/${userRef.current.id}`);
+            if (!res.ok) throw new Error("Wishlist fetch failed");
+            const data = await res.json();
+            const normalized: WishlistItem[] = (Array.isArray(data) ? data : [])
+                .map((entry: any) => ({
+                    id: String(entry.id || entry.product_id || ''),
+                    title: entry.title || entry.name || '',
+                    price: entry.price || 0,
+                    originalPrice: entry.originalPrice || entry.price || 0,
+                    discount: entry.discount || 0,
+                    image: entry.image || entry.image_url || ''
+                })).filter(e => e.id);
+            setItems(normalized);
+        } catch (err) {
+            console.error("[Wishlist] Fetch error:", err);
+        }
+    };
+
     return (
-        <WishlistContext.Provider value={{ items, addToWishlist, removeFromWishlist, isInWishlist }}>
+        <WishlistContext.Provider value={{ items, addToWishlist, removeFromWishlist, isInWishlist, fetchWishlist }}>
             {children}
         </WishlistContext.Provider>
     );

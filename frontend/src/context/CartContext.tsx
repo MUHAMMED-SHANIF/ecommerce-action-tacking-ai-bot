@@ -23,6 +23,7 @@ interface CartContextType {
     removeFromCart: (itemId: number | string) => Promise<void>;
     updateCartItemQty: (itemId: number | string, delta: number) => Promise<void>;
     clearCart: () => Promise<void>;
+    fetchCart: () => Promise<void>;
     totalAmount: number;
     totalDiscount: number;
     totalOriginal: number;
@@ -55,7 +56,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
 
         // Logged in — fetch from DB
-        const loadFromServer = async () => {
+        const fetchCart = async () => {
+            if (!user?.id) return;
             try {
                 const res = await fetch(`${API_URL}/cart/${user.id}`);
                 const data = res.ok ? await res.json() : { items: [] };
@@ -91,7 +93,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             }
         };
 
-        loadFromServer();
+        fetchCart();
     }, [user?.id, authLoading]);
 
     // Always push current items to server and localStorage
@@ -168,8 +170,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const totalOriginal = items.reduce((acc, item) => acc + (item.originalPrice || 0) * (item.qty || 1), 0);
     const totalDiscount = totalOriginal - totalAmount;
 
+    const fetchCart = async () => {
+        if (!userRef.current?.id) return;
+        try {
+            const res = await fetch(`${API_URL}/cart/${userRef.current.id}`);
+            const data = res.ok ? await res.json() : { items: [] };
+            const serverItems: CartItem[] = Array.isArray(data.items) ? data.items : [];
+            setItems(serverItems);
+            localStorage.setItem("cart", JSON.stringify(serverItems));
+        } catch (err) {
+            console.error("[Cart] Fetch error:", err);
+        }
+    };
+
     return (
-        <CartContext.Provider value={{ items, addToCart, removeFromCart, updateCartItemQty, clearCart, totalAmount, totalDiscount, totalOriginal }}>
+        <CartContext.Provider value={{ items, addToCart, removeFromCart, updateCartItemQty, clearCart, fetchCart, totalAmount, totalDiscount, totalOriginal }}>
             {children}
         </CartContext.Provider>
     );
