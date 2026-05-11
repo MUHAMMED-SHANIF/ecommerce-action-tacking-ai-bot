@@ -2,39 +2,44 @@ module.exports = {
     name: 'add_to_cart',
     description: 'Add a specific product to the user\'s shopping cart. Use when the user says "add to cart", "put in cart", or "I want to buy X" (without placing an order). Do NOT use create_order for this.',
     parameters: {
-        product_name: 'string - name or partial name of the product to add',
-        quantity: 'number? - how many to add (defaults to 1)'
+        product_name: 'string? - name or partial name of the product to add',
+        quantity: 'number? - how many to add (defaults to 1)',
+        result_ref: 'string? - internal product ID passed from previous steps'
     },
     requiresConfirmation: false,
     returnDirectText: true,
     execute: async ({ params, user, supabase }) => {
-        const { product_name, quantity = 1 } = params;
+        const { product_name, quantity = 1, product_id, result_ref } = params;
 
-        const searchTool = require('./search_products');
+        let targetProductId = product_id || result_ref;
+        let targetProductName = product_name;
 
-        // Find the product robustly using the search tool's intelligent ranking
-        const searchResult = await searchTool.execute({ params: { query: product_name }, user, supabase });
-        
-        if (!searchResult.products || searchResult.products.length === 0) {
-            return {
-                text: `I couldn't find "${product_name}" in our store. Try searching with a different name!`,
-                success: false
-            };
+        // If no ID is provided, search by name
+        if (!targetProductId) {
+            const searchTool = require('./search_products');
+            const searchResult = await searchTool.execute({ params: { query: product_name }, user, supabase });
+            
+            if (!searchResult.products || searchResult.products.length === 0) {
+                return {
+                    text: `I couldn't find "${product_name}" in our store. Try searching with a different name!`,
+                    success: false
+                };
+            }
+            targetProductId = searchResult.products[0].id;
+            targetProductName = searchResult.products[0].name;
         }
-
-        const topProduct = searchResult.products[0];
 
         // Fetch full product details needed for cart
         const { data: product, error: prodErr } = await supabase
             .from('products')
             .select('id, name, price, stock_quantity, image_url, metadata')
-            .eq('id', topProduct.id)
+            .eq('id', targetProductId)
             .maybeSingle();
 
         if (prodErr) throw prodErr;
         if (!product || product.stock_quantity <= 0) {
              return {
-                text: `Sorry, "${topProduct.name}" is currently out of stock.`,
+                text: `Sorry, "${targetProductName || 'that product'}" is currently out of stock.`,
                 success: false
             };
         }
