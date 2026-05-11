@@ -2,19 +2,21 @@ module.exports = {
     name: 'track_order',
     description: 'Track the status of a user order. Use when user asks about their order status, delivery, or "where is my order". Can look up a specific order or the most recent one.',
     parameters: {
-        order_id: 'string? - specific order ID to track (optional, uses latest order if not given)'
+        order_id: 'string? - specific order ID to track (optional, uses latest order if not given)',
+        result_ref: 'string? - internal order ID passed from previous steps'
     },
     requiresConfirmation: false,
     execute: async ({ params, user, supabase }) => {
-        const { order_id } = params;
+        const { order_id, result_ref } = params;
+        const targetOrderId = order_id || result_ref;
 
         let dbQuery = supabase
             .from('orders')
             .select('id, status, total_price, created_at, payment_method, shipping_address, order_items(quantity, price, products(name, image_url))')
             .order('created_at', { ascending: false });
 
-        if (order_id) {
-            dbQuery = dbQuery.eq('id', order_id);
+        if (targetOrderId) {
+            dbQuery = dbQuery.eq('id', targetOrderId);
         }
 
         // Scope to user if UUID

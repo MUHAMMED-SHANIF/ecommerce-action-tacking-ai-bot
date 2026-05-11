@@ -2,33 +2,37 @@ module.exports = {
     name: 'get_product_details',
     description: 'Get full details about a specific product by name. Use when user asks about a specific product, its price, features, or availability.',
     parameters: {
-        product_name: 'string - name or partial name of the product'
+        product_name: 'string? - name or partial name of the product',
+        result_ref: 'string? - internal product ID passed from previous steps'
     },
     requiresConfirmation: false,
     returnDirectText: true,
     execute: async ({ params, user, supabase }) => {
-        const { product_name } = params;
+        const { product_name, product_id, result_ref } = params;
 
-        const searchTool = require('./search_products');
+        let targetProductId = product_id || result_ref;
+        let targetProductName = product_name;
 
-        // Find the product robustly
-        const searchResult = await searchTool.execute({ params: { query: product_name }, user, supabase });
-        
-        if (!searchResult.products || searchResult.products.length === 0) {
-            return { text: `I couldn't find a product named "${product_name}". Try searching with a different name.`, product: null };
+        if (!targetProductId) {
+            const searchTool = require('./search_products');
+            const searchResult = await searchTool.execute({ params: { query: product_name }, user, supabase });
+            
+            if (!searchResult.products || searchResult.products.length === 0) {
+                return { text: `I couldn't find a product named "${product_name}". Try searching with a different name.`, product: null };
+            }
+            targetProductId = searchResult.products[0].id;
+            targetProductName = searchResult.products[0].name;
         }
-
-        const topProduct = searchResult.products[0];
 
         const { data, error } = await supabase
             .from('products')
             .select('id, name, price, description, image_url, brand, stock_quantity, categories(name), metadata')
-            .eq('id', topProduct.id)
+            .eq('id', targetProductId)
             .maybeSingle();
 
         if (error) throw error;
         if (!data) {
-            return { text: `Sorry, there was an issue retrieving details for "${topProduct.name}".`, product: null };
+            return { text: `Sorry, there was an issue retrieving details for "${targetProductName || 'that product'}".`, product: null };
         }
 
         const product = {

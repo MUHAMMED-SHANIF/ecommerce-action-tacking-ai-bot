@@ -6,17 +6,20 @@ module.exports = {
     description: 'Update an existing product details.',
     roles: ['seller'],
     parameters: {
-        product_id: 'string - Full product ID',
-        updates: 'object - Fields to update (name, price, description, stock_quantity)'
+        product_id: 'string? - Full product ID',
+        updates: 'object - Fields to update (name, price, description, stock_quantity)',
+        result_ref: 'string? - internal product ID passed from previous steps'
     },
     requiresConfirmation: false,
 
     execute: async ({ params, user, supabase }) => {
+        const targetProductId = params.result_ref || params.product_id;
+
         // Verify ownership
         const { data: product } = await supabase
             .from('products')
             .select('metadata')
-            .eq('id', params.product_id)
+            .eq('id', targetProductId)
             .single();
 
         if (!product || product.metadata?.sellerId !== user.id) {
@@ -26,7 +29,7 @@ module.exports = {
         const { error } = await supabase
             .from('products')
             .update(params.updates)
-            .eq('id', params.product_id);
+            .eq('id', targetProductId);
 
         if (error) throw error;
 

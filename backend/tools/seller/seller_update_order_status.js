@@ -6,19 +6,23 @@ module.exports = {
     description: 'Update the shipping status of an order item to "shipped" or "delivered". Requires confirmation.',
     roles: ['seller'],
     parameters: {
-        order_id: 'string - Full or partial order ID to update',
+        order_id: 'string? - Full or partial order ID to update',
         new_status: 'string - New status: "shipped" or "delivered"',
-        tracking_number: 'string? - Optional tracking/AWB number for shipped orders'
+        tracking_number: 'string? - Optional tracking/AWB number for shipped orders',
+        result_ref: 'string? - internal order ID passed from previous steps'
     },
     requiresConfirmation: true,
-    confirmationMessage: (params) =>
-        `Update order #${params.order_id?.split('-')[0] || params.order_id} to "${params.new_status}"?` +
-        (params.tracking_number ? ` (Tracking: ${params.tracking_number})` : ''),
+    confirmationMessage: (params) => {
+        const id = params.result_ref || params.order_id;
+        return `Update order #${id?.split('-')[0] || id} to "${params.new_status}"?` +
+               (params.tracking_number ? ` (Tracking: ${params.tracking_number})` : '');
+    },
 
     execute: async ({ params, user, supabase }) => {
         const serviceSupabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
         const sellerId = user.id;
-        const { order_id, new_status, tracking_number } = params;
+        const { order_id, new_status, tracking_number, result_ref } = params;
+        const targetOrderId = result_ref || order_id;
 
         if (!['shipped', 'delivered'].includes(new_status)) {
             return { text: `Invalid status "${new_status}". Use "shipped" or "delivered".`, success: false };
@@ -32,10 +36,10 @@ module.exports = {
             .from('order_items')
             .select('orders!inner(id)')
             .in('product_id', products.map(p => p.id))
-            .ilike('orders.id', `${order_id}%`);
+            .ilike('orders.id', `${targetOrderId}%`);
 
         if (!orderItems || orderItems.length === 0) {
-            return { text: `Order #${order_id} not found or doesn't contain your products.`, success: false };
+            return { text: `Order #${targetOrderId} not found or doesn't contain your products.`, success: false };
         }
 
         const fullOrderId = orderItems[0].orders.id;
@@ -55,7 +59,7 @@ module.exports = {
         if (error) throw error;
 
         return {
-            text: `✅ Order #${order_id?.split('-')[0]} updated to "${new_status}" successfully!` +
+            text: `✅ Order #${targetOrderId?.split('-')[0]} updated to "${new_status}" successfully!` +
                   (tracking_number ? ` Tracking: ${tracking_number}` : ''),
             success: true,
             order_id: fullOrderId,

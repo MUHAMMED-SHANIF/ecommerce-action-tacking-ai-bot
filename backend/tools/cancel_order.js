@@ -2,12 +2,14 @@ module.exports = {
     name: 'cancel_order',
     description: 'Cancel a user\'s order. Only works if order has not yet been shipped. Requires confirmation before executing.',
     parameters: {
-        order_id: 'string? - specific order ID to cancel (uses most recent pending order if not given)'
+        order_id: 'string? - specific order ID to cancel (uses most recent pending order if not given)',
+        result_ref: 'string? - internal order ID passed from previous steps'
     },
     requiresConfirmation: true,
     confirmationMessage: (params) => `Are you sure you want to cancel this order? This action cannot be undone.`,
     execute: async ({ params, user, supabase }) => {
-        const { order_id } = params;
+        const { order_id, result_ref } = params;
+        const targetOrderId = order_id || result_ref;
 
         // Find the order
         let dbQuery = supabase
@@ -23,10 +25,10 @@ module.exports = {
 
         // Support both full UUID and short display IDs (first 8 chars of UUID)
         let orderQuery;
-        if (order_id) {
-            const isFullUUID = /^[0-9a-f-]{36}$/i.test(order_id);
+        if (targetOrderId) {
+            const isFullUUID = /^[0-9a-f-]{36}$/i.test(targetOrderId);
             if (isFullUUID) {
-                orderQuery = supabase.from('orders').select('id, status, total_price').eq('id', order_id).eq('user_id', user.id).maybeSingle();
+                orderQuery = supabase.from('orders').select('id, status, total_price').eq('id', targetOrderId).eq('user_id', user.id).maybeSingle();
             } else {
                 // Fetch all recent pending/paid orders and find the matching short ID manually in JS
                 // because PostgREST does not support ILIKE on UUID fields.
@@ -37,7 +39,7 @@ module.exports = {
                     .in('status', ['pending', 'paid'])
                     .order('created_at', { ascending: false });
                 
-                const matched = (allOrders || []).find(o => o.id.toLowerCase().startsWith(order_id.toLowerCase()));
+                const matched = (allOrders || []).find(o => o.id.toLowerCase().startsWith(targetOrderId.toLowerCase()));
                 
                 if (matched) {
                     orderQuery = Promise.resolve({ data: matched, error: null });
