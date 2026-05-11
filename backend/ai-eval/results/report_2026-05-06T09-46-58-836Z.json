@@ -1,0 +1,107 @@
+[
+  {
+    "model": "Universal AI (mistral @ http://localhost:11434/v1)",
+    "total_cases": 7,
+    "passed_json": 7,
+    "passed_tool": 4,
+    "total_latency": 78113,
+    "details": [
+      {
+        "id": 1,
+        "name": "Basic Product Search",
+        "latency": 15850,
+        "json_valid": true,
+        "tool_correct": false,
+        "response": {
+          "type": "reply",
+          "text": "Here are some smartphones available at EMart. You can view more details by asking for specific product names.\n1. Samsung Galaxy S21\n2. Apple iPhone 13\n3. OnePlus 9 Pro\n4. Xiaomi Mi 11"
+        }
+      },
+      {
+        "id": 2,
+        "name": "Search with Price Filter",
+        "latency": 23177,
+        "json_valid": true,
+        "tool_correct": false,
+        "response": {
+          "type": "reply",
+          "text": "I found some laptops under INR 50,000. Here are a few recommendations: \n1. Acer Aspire 3 - Intel Core i3, 4GB RAM, 1TB HDD\n2. HP Pavilion - AMD Ryzen 3, 4GB RAM, 1TB HDD\n3. Lenovo Ideapad 3 - AMD Athlon Silver 3050U, 4GB RAM, 64GB SSD + 1TB HDD\nPlease let me know if you'd like more details or if you'd like to compare these laptops."
+        }
+      },
+      {
+        "id": 3,
+        "name": "Track Order",
+        "latency": 5422,
+        "json_valid": true,
+        "tool_correct": true,
+        "response": {
+          "type": "tool_call",
+          "tool": "track_order",
+          "params": {
+            "order_id": "12345"
+          }
+        }
+      },
+      {
+        "id": 4,
+        "name": "Comparison Request",
+        "latency": 7041,
+        "json_valid": true,
+        "tool_correct": true,
+        "response": {
+          "type": "tool_call",
+          "tool": "compare_products",
+          "params": {
+            "product_a": "iPhone 15",
+            "product_b": "Samsung S23"
+          }
+        }
+      },
+      {
+        "id": 5,
+        "name": "Cancel Order (Confirmation Required)",
+        "latency": 7091,
+        "json_valid": true,
+        "tool_correct": true,
+        "response": {
+          "type": "confirmation_request",
+          "action": "cancel_order",
+          "params": {},
+          "question": "Are you sure you want to cancel your last order? This action cannot be undone."
+        }
+      },
+      {
+        "id": 6,
+        "name": "Conversational Greeting",
+        "latency": 5157,
+        "json_valid": true,
+        "tool_correct": true,
+        "response": {
+          "type": "reply",
+          "text": "Hello! I'm here to help you with your shopping at EMart. How can I assist you today?"
+        }
+      },
+      {
+        "id": 7,
+        "name": "Complex Multi-step",
+        "latency": 14375,
+        "json_valid": true,
+        "tool_correct": false,
+        "response": {
+          "type": "tool_call",
+          "tool": "add_address",
+          "params": {
+            "label": "office",
+            "name": "John Doe",
+            "mobile": "9876543210",
+            "addressLine": "C-123, IT Park",
+            "city": "Mumbai",
+            "state": "Maharashtra",
+            "pincode": "400001"
+          }
+        }
+      }
+    ],
+    "avg_latency": 11159
+  }
+]

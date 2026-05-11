@@ -241,7 +241,7 @@ export default function AIAssistant() {
               {
                 if (data.data?.products?.length === 1) {
                   router.push(`/product/${data.data.products[0].id}`);
-                } else {
+                } else if (data.data?.products?.length > 1) {
                   const sq = data.data?.query;
                   const sc = data.data?.category;
                   const sp = data.data?.max_price;

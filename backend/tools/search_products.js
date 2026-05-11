@@ -12,7 +12,8 @@ module.exports = {
     returnDirectText: true,
     execute: async ({ params, user, supabase }) => {
         let query = params.query || params.keyword || params.search || params.name || "";
-        const categoryParam = params.category || params.type;
+        let categoryParam = params.category || params.type;
+        if (categoryParam) categoryParam = normalizePlural(categoryParam);
         let max_price = params.max_price || params.budget;
 
         // --- 1. PREPROCESSING & FILTER EXTRACTION ---

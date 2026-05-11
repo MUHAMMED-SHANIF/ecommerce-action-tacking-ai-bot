@@ -1,0 +1,53 @@
+[
+    {
+        "id": 1,
+        "name": "Basic Product Search",
+        "prompt": "show me some smartphones",
+        "expected_type": "tool_call",
+        "expected_tool": "search_products",
+        "expected_params": { "query": "smartphones" }
+    },
+    {
+        "id": 2,
+        "name": "Search with Price Filter",
+        "prompt": "find laptops under 50000",
+        "expected_type": "tool_call",
+        "expected_tool": "search_products",
+        "expected_params": { "query": "laptops", "max_price": 50000 }
+    },
+    {
+        "id": 3,
+        "name": "Track Order",
+        "prompt": "where is my order #12345?",
+        "expected_type": "tool_call",
+        "expected_tool": "track_order",
+        "expected_params": { "order_id": "12345" }
+    },
+    {
+        "id": 4,
+        "name": "Comparison Request",
+        "prompt": "compare the iPhone 15 and Samsung S23",
+        "expected_type": "tool_call",
+        "expected_tool": "compare_products",
+        "expected_params": { "product1": "iPhone 15", "product2": "Samsung S23" }
+    },
+    {
+        "id": 5,
+        "name": "Cancel Order (Confirmation Required)",
+        "prompt": "cancel my last order",
+        "expected_type": "confirmation_request",
+        "expected_action": "cancel_order"
+    },
+    {
+        "id": 6,
+        "name": "Conversational Greeting",
+        "prompt": "hello, how are you today?",
+        "expected_type": "reply"
+    },
+    {
+        "id": 7,
+        "name": "Complex Multi-step",
+        "prompt": "add the office address in Mumbai and then buy the first item",
+        "expected_type": "multi_step"
+    }
+]

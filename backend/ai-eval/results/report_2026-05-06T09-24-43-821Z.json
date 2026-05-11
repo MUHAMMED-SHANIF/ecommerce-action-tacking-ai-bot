@@ -1,0 +1,157 @@
+[
+  {
+    "model": "Mistral (Ollama)",
+    "total_cases": 7,
+    "passed_json": 7,
+    "passed_tool": 3,
+    "total_latency": 29123,
+    "details": [
+      {
+        "id": 1,
+        "name": "Basic Product Search",
+        "latency": 8190,
+        "json_valid": true,
+        "tool_correct": false,
+        "response": {
+          "type": "recommend_products",
+          "params": {
+            "category": "smartphone"
+          }
+        }
+      },
+      {
+        "id": 2,
+        "name": "Search with Price Filter",
+        "latency": 2638,
+        "json_valid": true,
+        "tool_correct": false,
+        "response": {
+          "type": "search_products",
+          "query": "laptop",
+          "max_price": 50000
+        }
+      },
+      {
+        "id": 3,
+        "name": "Track Order",
+        "latency": 3275,
+        "json_valid": true,
+        "tool_correct": true,
+        "response": {
+          "type": "tool_call",
+          "tool": "track_order",
+          "params": {
+            "order_id": "12345"
+          }
+        }
+      },
+      {
+        "id": 4,
+        "name": "Comparison Request",
+        "latency": 4339,
+        "json_valid": true,
+        "tool_correct": true,
+        "response": {
+          "type": "tool_call",
+          "tool": "compare_products",
+          "params": {
+            "product_a": "iPhone 15",
+            "product_b": "Samsung S23"
+          }
+        }
+      },
+      {
+        "id": 5,
+        "name": "Cancel Order (Confirmation Required)",
+        "latency": 1709,
+        "json_valid": true,
+        "tool_correct": false,
+        "response": {
+          "type": "tool_call",
+          "tool": "cancel_order"
+        }
+      },
+      {
+        "id": 6,
+        "name": "Conversational Greeting",
+        "latency": 3400,
+        "json_valid": true,
+        "tool_correct": true,
+        "response": {
+          "type": "reply",
+          "text": "Hello! I'm here to help you with your shopping at EMart. How can I assist you today?"
+        }
+      },
+      {
+        "id": 7,
+        "name": "Complex Multi-step",
+        "latency": 5572,
+        "json_valid": true,
+        "tool_correct": false,
+        "response": {
+          "type": "tool_call",
+          "tool": "add_address",
+          "params": {
+            "label": "office",
+            "city": "Mumbai",
+            "state": "Maharashtra",
+            "pincode": "your_pincode_here"
+          }
+        }
+      }
+    ],
+    "avg_latency": 4160
+  },
+  {
+    "model": "Gemini (API)",
+    "total_cases": 7,
+    "passed_json": 0,
+    "passed_tool": 0,
+    "total_latency": 0,
+    "details": [
+      {
+        "id": 1,
+        "name": "Basic Product Search",
+        "status": "error",
+        "error": "GEMINI_API_KEY not found in environment"
+      },
+      {
+        "id": 2,
+        "name": "Search with Price Filter",
+        "status": "error",
+        "error": "GEMINI_API_KEY not found in environment"
+      },
+      {
+        "id": 3,
+        "name": "Track Order",
+        "status": "error",
+        "error": "GEMINI_API_KEY not found in environment"
+      },
+      {
+        "id": 4,
+        "name": "Comparison Request",
+        "status": "error",
+        "error": "GEMINI_API_KEY not found in environment"
+      },
+      {
+        "id": 5,
+        "name": "Cancel Order (Confirmation Required)",
+        "status": "error",
+        "error": "GEMINI_API_KEY not found in environment"
+      },
+      {
+        "id": 6,
+        "name": "Conversational Greeting",
+        "status": "error",
+        "error": "GEMINI_API_KEY not found in environment"
+      },
+      {
+        "id": 7,
+        "name": "Complex Multi-step",
+        "status": "error",
+        "error": "GEMINI_API_KEY not found in environment"
+      }
+    ],
+    "avg_latency": 0
+  }
+]

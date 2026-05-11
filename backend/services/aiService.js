@@ -1,5 +1,6 @@
 require('dotenv').config();
 const { buildToolsPrompt } = require('../tools');
+const { OpenAI } = require('openai');
 
 /**
  * Rewrites ordinal references like "the first one", "second one" into actual product names.
@@ -103,6 +104,13 @@ RESPONSE RULES (CRITICAL):
 2. If a tool definition contains "[REQUIRES USER CONFIRMATION]", you MUST NOT use "tool_call". You MUST use "confirmation_request" FIRST.
 3. Choose ONE of these response types:
 
+EXAMPLES:
+- User: "show me phones" -> {"type": "tool_call", "tool": "search_products", "params": {"query": "phone"}, "text_on_success": "I found some phones for you!"}
+- User: "I want to find a laptop under 50000" -> {"type": "tool_call", "tool": "search_products", "params": {"query": "laptop", "max_price": 50000}, "text_on_success": "Here are some laptops under ₹50,000."}
+- User: "find apple 15" -> {"type": "tool_call", "tool": "search_products", "params": {"query": "apple 15"}, "text_on_success": "I found the Apple 15 for you."}
+- User: "recommend me a good watch" -> {"type": "tool_call", "tool": "recommend_products", "params": {"category": "watch"}, "text_on_success": "Here are some top-rated watches I recommend."}
+
+
 Type A — Conversational reply (no tool needed):
 {"type": "reply", "text": "your friendly response here"}
 
@@ -116,6 +124,8 @@ Type D — Multi-step plan (when multiple actions are needed in sequence):
 {"type": "multi_step", "steps": [{"tool": "tool1", "params": {...}}, {"tool": "tool2", "params": {...}}], "text": "I'll help you with that. First I'll [step1], then [step2]."}
 
 IMPORTANT RULES:
+- SEARCH TRIGGERING: If the user says "show", "find", "want", "search", "looking for", or just names a category (e.g., "phones"), you MUST use the "search_products" tool.
+- PLURAL HANDLING: If the user uses plural words like "phones", "laptops", "tvs", use the singular version ("phone", "laptop", "tv") in the "category" or "query" parameter for better matching.
 - DO NOT carry over filters (like max_price or category) from previous turns unless the user explicitly says "also", "and", "still", or "keep the filter". Every new search should start fresh.
 - ADDRESS HANDLING: 
   1. If the user asks to order but has NO saved addresses, use type "reply" to ask for their full address details.
@@ -127,29 +137,23 @@ IMPORTANT RULES:
 - Keep "text" and "question" fields friendly, concise, and natural.
 - Currency is Indian Rupees (₹) (INR)`;
 
-        const ollamaBaseUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
-        const response = await fetch(`${ollamaBaseUrl}/api/generate`, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'ngrok-skip-browser-warning': 'true'
-            },
-            body: JSON.stringify({
-                model: 'mistral',
-                prompt: `${SYSTEM_PROMPT}\n\nUser Message: "${resolvedText}"\n\nJSON Response:`,
-                stream: false,
-                format: 'json',
-                options: { temperature: 0.1, num_predict: 512 }
-            })
+        const baseURL = process.env.AI_BASE_URL || 'http://localhost:11434/v1';
+        const apiKey = process.env.AI_API_KEY || 'ollama';
+        const model = process.env.AI_MODEL || 'mistral';
+
+        const openai = new OpenAI({ baseURL, apiKey });
+
+        const response = await openai.chat.completions.create({
+            model: model,
+            messages: [
+                { role: 'system', content: SYSTEM_PROMPT },
+                { role: 'user', content: resolvedText }
+            ],
+            temperature: 0.1,
+            response_format: { type: "json_object" },
         });
 
-        if (!response.ok) {
-            const errText = await response.text().catch(() => 'unknown');
-            throw new Error(`Ollama unavailable (${response.status}): ${errText}`);
-        }
-
-        const data = await response.json();
-        let rawContent = (data.response || '').trim();
+        let rawContent = (response.choices[0].message.content || '').trim();
         
         // Strip markdown json formatting if Mistral hallucinates it
         if (rawContent.startsWith('```json')) {

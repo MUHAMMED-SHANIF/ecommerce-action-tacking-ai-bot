@@ -1086,7 +1086,18 @@ app.get('/api/products', async (req, res) => {
         query = query.eq('metadata->>status', 'approved').neq('metadata->>isPaused', 'true');
 
         if (categoryParam && categoryParam.toLowerCase() !== 'all') {
-            const { data: catData } = await supabase.from('categories').select('id').ilike('name', `%${categoryParam}%`).maybeSingle();
+            const normalizePlural = w => {
+                const low = w.toLowerCase().trim();
+                if (low === 'phones') return 'phone';
+                if (low === 'smartphones') return 'smartphone';
+                if (low === 'laptops') return 'laptop';
+                if (low === 'tvs') return 'tv';
+                if (low === 'earbuds') return 'earbud';
+                if (low === 'watches') return 'watch';
+                return low;
+            };
+            const normalizedCat = normalizePlural(categoryParam);
+            const { data: catData } = await supabase.from('categories').select('id').ilike('name', `%${normalizedCat}%`).maybeSingle();
             if (catData) query = query.eq('category_id', catData.id);
             else return res.json([]);
         }
