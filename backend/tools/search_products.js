@@ -2,11 +2,14 @@ const { createClient } = require('@supabase/supabase-js');
 
 module.exports = {
     name: 'search_products',
-    description: 'Search for products in the store by name keyword, category, or max price. Use this when the user wants to find or look for products.',
+    description: 'Search for products in the store by name keyword, category, price, brand, rating, or deals. Use this when the user wants to find, show, or browse products.',
     parameters: {
         query: 'string - search keyword (optional if category given)',
         category: 'string? - product category to filter by',
-        max_price: 'number? - maximum price filter'
+        max_price: 'number? - maximum price filter',
+        brand: 'string? - filter by brand name',
+        min_rating: 'number? - filter by minimum rating (1-5)',
+        has_discount: 'boolean? - only show products with active discounts/deals'
     },
     requiresConfirmation: false,
     returnDirectText: true,
@@ -70,6 +73,18 @@ module.exports = {
 
         if (max_price) {
             dbQuery = dbQuery.lte('price', max_price);
+        }
+
+        if (params.brand) {
+            dbQuery = dbQuery.ilike('brand', `%${params.brand}%`);
+        }
+
+        if (params.min_rating) {
+            dbQuery = dbQuery.gte('metadata->rating', parseFloat(params.min_rating));
+        }
+
+        if (params.has_discount === true) {
+            dbQuery = dbQuery.gt('metadata->discount', 0);
         }
 
         if (categoryParam && categoryParam.toLowerCase() !== 'all') {

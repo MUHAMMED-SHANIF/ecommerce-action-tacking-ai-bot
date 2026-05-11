@@ -68,8 +68,8 @@ Single action:
 {
   "type": "tool_call",
   "tool": "search_products",
-  "params": { "query": "phone", "max_price": 20000 },
-  "reply": "Let me find some great phones under ₹20,000 for you! 🔍"
+  "params": { "query": "phone", "max_price": 20000, "brand": "Samsung", "min_rating": 4 },
+  "reply": "Let me find some great Samsung phones under ₹20,000 with good ratings for you! 🔍"
 }
 
 Multi-step sequence (when user wants multiple actions):
@@ -183,8 +183,8 @@ async function extractIntent(userMessage, userId, role) {
     const ollamaSystemPrompt = `You are an e-commerce AI assistant. Reply ONLY with a JSON object. No text before or after JSON.
 
 FORMATS:
-1. Single action: {"type":"tool_call","tool":"TOOL_NAME","params":{},"reply":"message to user"}
-2. Two actions: {"type":"multi_step","steps":[{"id":"s1","tool":"search_products","params":{"query":"phone"},"depends_on":[]},{"id":"s2","tool":"add_to_cart","params":{"result_ref":"s1.results[0]"},"depends_on":["s1"]}],"reply":"message"}
+1. Single action: {"type":"tool_call","tool":"search_products","params":{"query":"phone","max_price":20000,"brand":"Apple"},"reply":"Searching..."}
+2. Two actions: {"type":"multi_step","steps":[{"id":"s1","tool":"search_products","params":{"query":"phone"},"depends_on":[]},{"id":"s2","tool":"add_to_cart","params":{"result_ref":"s1.results[0]"},"depends_on":["s1"]}],"reply":"Searching and adding..."}
 3. Just reply: {"type":"reply","reply":"message"}
 
 TOOLS: ${toolMap[role] || toolMap.user}
