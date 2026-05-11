@@ -5,7 +5,7 @@ const { getSystemPrompt } = require('../services/aiService');
 const MODELS_TO_TEST = [
   { provider: 'groq', model: 'llama-3.1-8b-instant', name: 'Groq Llama 3.1 8B' },
   { provider: 'groq', model: 'llama-3.3-70b-versatile', name: 'Groq Llama 3.3 70B' },
-  { provider: 'ollama', model: 'mistral', name: 'Ollama Mistral' }
+  { provider: 'ollama', model: 'mistral:latest', name: 'Ollama Mistral' }
 ];
 
 const testCases = [

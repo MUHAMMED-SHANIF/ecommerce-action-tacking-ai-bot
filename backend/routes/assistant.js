@@ -41,7 +41,7 @@ router.post('/message', requireAuth, async (req, res) => {
             user_id: user.id,
             role: 'user',
             message: userMessage,
-            metadata: {}
+            metadata: { chat_role: userRole }  // store the user's platform role
         });
 
         // --- 2. Handle confirmed action (user said yes to a destructive action) ---
@@ -70,6 +70,7 @@ router.post('/message', requireAuth, async (req, res) => {
             .from('ai_messages')
             .select('role, message, metadata')
             .eq('user_id', user.id)
+            .eq('metadata->>chat_role', userRole)  // 🔑 Separate history per role
             .order('created_at', { ascending: false })
             .limit(HISTORY_LIMIT);
 
@@ -249,6 +250,7 @@ router.post('/message', requireAuth, async (req, res) => {
             role: 'assistant',
             message: replyText,
             metadata: {
+                chat_role: userRole,   // 🔑 Tag every message with the platform role
                 type: aiResult.type,
                 tool: aiResult.tool || aiResult.action || null,
                 rendered_products
@@ -261,6 +263,7 @@ router.post('/message', requireAuth, async (req, res) => {
             .from('ai_messages')
             .select('created_at')
             .eq('user_id', user.id)
+            .eq('metadata->>chat_role', userRole)  // 🔑 GC per role separately
             .order('created_at', { ascending: false })
             .limit(30)
             .then(({ data: keepMessages }) => {
@@ -270,8 +273,9 @@ router.post('/message', requireAuth, async (req, res) => {
                         .from('ai_messages')
                         .delete()
                         .eq('user_id', user.id)
+                        .eq('metadata->>chat_role', userRole)
                         .lt('created_at', oldestKeepDate)
-                        .then(() => console.log(`[History GC] Cleaned up old messages for user ${user.id}`))
+                        .then(() => console.log(`[History GC] Cleaned up old ${userRole} messages for user ${user.id}`))
                         .catch(e => console.error("[History GC Error]", e.message));
                 }
             })
@@ -321,12 +325,18 @@ router.get('/history', requireAuth, async (req, res) => {
         const serviceSupabase = getServiceSupabase();
         const limit = parseInt(req.query.limit) || 50;
 
-        const { data, error } = await serviceSupabase
+        const chatRole = req.query.role || null;
+        let query = serviceSupabase
             .from('ai_messages')
             .select('id, role, message, metadata, created_at')
             .eq('user_id', req.user.id)
             .order('created_at', { ascending: false })
             .limit(limit);
+        
+        // Filter by role if provided (separates customer/seller/admin history)
+        if (chatRole) query = query.eq('metadata->>chat_role', chatRole);
+
+        const { data, error } = await query;
 
         if (error) throw error;
 

@@ -24,9 +24,10 @@ async function callOllama(messages, modelConfig) {
                 model: modelConfig.model,
                 messages: messages,
                 stream: false,
+                format: 'json',  // 🔑 Forces Ollama to ALWAYS output valid JSON (engine-level, not prompt-level)
                 options: {
                     temperature: modelConfig.settings?.temperature || 0.1,
-                    num_predict: modelConfig.settings?.num_predict || 500
+                    num_predict: modelConfig.settings?.num_predict || 800
                 }
             })
         });
@@ -37,6 +38,7 @@ async function callOllama(messages, modelConfig) {
 
         const data = await response.json();
         const rawContent = data.message?.content || '';
+        console.log(`[Ollama] Raw response (first 300 chars): ${rawContent.slice(0, 300)}`);
 
         // Improved Extraction: Look for markdown JSON blocks first, then any { } block
         let jsonStr = '';
@@ -49,8 +51,16 @@ async function callOllama(messages, modelConfig) {
             jsonStr = braceMatch ? braceMatch[0].trim() : '';
         }
 
+        // Graceful fallback: if no JSON found, treat the raw text as a plain reply
         if (!jsonStr) {
-            throw new Error('No JSON structure found in AI response');
+            console.log('[Ollama] No JSON found, using raw text as reply fallback');
+            return {
+                success: true,
+                data: { type: 'reply', reply: rawContent.trim() || "I'm here to help! What would you like to do?" },
+                provider: 'ollama',
+                model: modelConfig.model,
+                latency: Date.now() - start
+            };
         }
 
         let parsedData;

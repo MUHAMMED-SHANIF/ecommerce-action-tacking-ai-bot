@@ -168,9 +168,29 @@ async function extractIntent(userMessage, userId, role) {
     const context = await buildContext(userId, role);
     const toolsList = await buildToolsPromptForRole(role);
     
-    const messages = [
+    const fullMessages = [
         { role: 'system', content: getSystemPrompt(role, context, toolsList) },
         ...context.recentMessages,
+        { role: 'user', content: userMessage }
+    ];
+
+    // Compact prompt for Ollama: Mistral can't handle 64 tools, so we give it a tight focused prompt
+    const toolMap = {
+        user: 'search_products, add_to_cart, view_cart, view_orders, track_order, view_wishlist, add_to_wishlist, remove_from_wishlist, move_wishlist_to_cart, recommend_products, show_deals, cancel_order, return_order, navigate_home, go_back, view_profile, get_product_details, compare_products, create_order, remove_from_cart, update_cart_quantity, add_address, update_address',
+        seller: 'seller_sales_report, seller_revenue_today, seller_pending_orders, seller_view_orders, seller_check_inventory, seller_low_stock_alerts, seller_best_products, seller_cancelled_orders, seller_customer_reviews, seller_edit_product, seller_pause_product, seller_add_product, seller_download_csv, seller_request_category, seller_update_order_status, seller_view_requests',
+        admin: 'admin_dashboard_stats, admin_view_users, admin_view_sellers, admin_pending_products, admin_approve_product, admin_reject_product, admin_orders_report, admin_revenue_report, admin_growth_metrics, admin_view_banners, admin_add_banner, admin_add_category, admin_edit_category, admin_delete_category, admin_add_seller, admin_trust_seller, admin_change_user_role, admin_delete_user, admin_approve_request, admin_reject_request, admin_view_requests, admin_edit_any_product, admin_get_home_layout, admin_update_home_layout, admin_download_csv'
+    };
+    const ollamaSystemPrompt = `You are an e-commerce AI assistant. Reply ONLY with a JSON object. No text before or after JSON.
+
+FORMATS:
+1. Single action: {"type":"tool_call","tool":"TOOL_NAME","params":{},"reply":"message to user"}
+2. Two actions: {"type":"multi_step","steps":[{"id":"s1","tool":"search_products","params":{"query":"phone"},"depends_on":[]},{"id":"s2","tool":"add_to_cart","params":{"result_ref":"s1.results[0]"},"depends_on":["s1"]}],"reply":"message"}
+3. Just reply: {"type":"reply","reply":"message"}
+
+TOOLS: ${toolMap[role] || toolMap.user}
+User: ${context.userName}`;
+    const ollamaMessages = [
+        { role: 'system', content: ollamaSystemPrompt },
         { role: 'user', content: userMessage }
     ];
 
@@ -182,7 +202,9 @@ async function extractIntent(userMessage, userId, role) {
         
         for (let attempt = 1; attempt <= 2; attempt++) {
             try {
-                const result = await providers[modelConfig.provider](messages, modelConfig);
+                // Use compact prompt for Ollama, full prompt for Groq
+                const callMessages = modelConfig.provider === 'ollama' ? ollamaMessages : fullMessages;
+                const result = await providers[modelConfig.provider](callMessages, modelConfig);
                 
                 if (result.success) {
                     console.log(`[AI] ✅ Success with ${result.provider} (latency: ${result.latency}ms)`);
@@ -197,10 +219,11 @@ async function extractIntent(userMessage, userId, role) {
                 }
 
                 if (attempt < 2) {
-                    messages.push({
-                        role: 'system',
-                        content: 'ERROR: Your previous response was not valid JSON or failed schema. Respond with ONLY valid JSON, no markdown, no extra text.'
-                    });
+                    if (modelConfig.provider === 'ollama') {
+                        ollamaMessages.push({ role: 'system', content: 'WRONG FORMAT. Reply with ONLY JSON: {"type":"tool_call","tool":"NAME","params":{},"reply":"text"}' });
+                    } else {
+                        fullMessages.push({ role: 'system', content: 'ERROR: Your previous response was not valid JSON or failed schema. Respond with ONLY valid JSON, no markdown, no extra text.' });
+                    }
                 }
             } catch (err) {
                 console.error(`[AI] Error in ${modelConfig.provider}:`, err.message);
