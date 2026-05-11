@@ -8,11 +8,16 @@ require('dotenv').config();
 async function callOllama(messages, modelConfig) {
     try {
         const url = process.env.OLLAMA_NGROK_URL || process.env.OLLAMA_URL || 'http://localhost:11434';
+        console.log(`[Ollama] Connecting to: ${url}`);
         const start = Date.now();
 
         const response = await fetch(`${url}/api/chat`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'ngrok-skip-browser-warning': 'true',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            },
             body: JSON.stringify({
                 model: modelConfig.model,
                 messages: messages,
@@ -31,20 +36,31 @@ async function callOllama(messages, modelConfig) {
         const data = await response.json();
         const rawContent = data.message?.content || '';
 
-        // Extract JSON (handle potential markdown/text)
-        const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-            throw new Error('No JSON found in Ollama response');
+        // Improved Extraction: Look for markdown JSON blocks first, then any { } block
+        let jsonStr = '';
+        const markdownMatch = rawContent.match(/```(?:json)?\s*([\s\S]*?)```/);
+        
+        if (markdownMatch) {
+            jsonStr = markdownMatch[1].trim();
+        } else {
+            const braceMatch = rawContent.match(/\{[\s\S]*\}/);
+            jsonStr = braceMatch ? braceMatch[0].trim() : '';
+        }
+
+        if (!jsonStr) {
+            throw new Error('No JSON structure found in AI response');
         }
 
         let parsedData;
         try {
-            parsedData = JSON.parse(jsonMatch[0]);
+            parsedData = JSON.parse(jsonStr);
         } catch (e) {
-            // Fallback: try cleaning common AI errors
-            const cleaned = jsonMatch[0]
-                .replace(/,\s*\}/g, '}') // trailing commas
-                .replace(/,\s*\]/g, ']');
+            // Last resort: Clean common errors (trailing commas, etc)
+            const cleaned = jsonStr
+                .replace(/,\s*\}/g, '}') 
+                .replace(/,\s*\]/g, ']')
+                .replace(/\\n/g, ' ')
+                .trim();
             parsedData = JSON.parse(cleaned);
         }
 

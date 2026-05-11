@@ -5,7 +5,7 @@ const { getSystemPrompt } = require('../services/aiService');
 const MODELS_TO_TEST = [
   { provider: 'groq', model: 'llama-3.1-8b-instant', name: 'Groq Llama 3.1 8B' },
   { provider: 'groq', model: 'llama-3.3-70b-versatile', name: 'Groq Llama 3.3 70B' },
-  { provider: 'ollama', model: 'qwen2.5:7b', name: 'Ollama Qwen 2.5 7B' }
+  { provider: 'ollama', model: 'mistral', name: 'Ollama Mistral' }
 ];
 
 const testCases = [
@@ -41,7 +41,10 @@ async function runEvaluation() {
       process.stdout.write(`  ${testCase.id}. ${testCase.input.slice(0, 40)}... `);
       
       const messages = [
-        { role: 'system', content: `Respond in JSON. Available tools: search_products, add_to_cart, seller_sales_report, admin_view_users.` },
+        { role: 'system', content: `You are an AI assistant. You MUST respond with ONLY a valid JSON object.
+Available types: "tool_call", "multi_step", "message".
+Available tools: search_products, add_to_cart, seller_sales_report, admin_view_users.
+Format: {"type": "tool_call", "tool": "name", "params": {}}` },
         { role: 'user', content: testCase.input }
       ];
       
