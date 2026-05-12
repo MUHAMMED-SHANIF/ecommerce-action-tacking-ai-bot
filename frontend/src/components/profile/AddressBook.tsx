@@ -6,12 +6,12 @@ import { MapPin, Plus, Edit2, Trash2 } from "lucide-react";
 interface Address {
     id: string;
     label: string;
-    street: string;
+    name: string;
+    mobile: string;
+    addressLine: string;
     city: string;
     state: string;
-    zip: string;
-    country: string;
-    phone?: string;
+    pincode: string;
     isDefault?: boolean;
 }
 
@@ -137,11 +137,10 @@ export default function AddressBook({ user, apiBase }: AddressBookProps) {
                                 )}
                             </div>
 
-                            <p className="font-bold text-slate-800 mb-2">{user.name}</p>
+                            <p className="font-bold text-slate-800 mb-2">{addr.name || user.name}</p>
                             <div className="text-sm text-slate-600 space-y-1 font-medium">
-                                <p>{addr.street}</p>
-                                <p>{addr.city}, {addr.state} {addr.zip}</p>
-                                <p>{addr.country}</p>
+                                <p>{addr.addressLine}</p>
+                                <p>{addr.city}, {addr.state} - <span className="font-bold text-slate-800">{addr.pincode}</span></p>
                             </div>
                         </div>
                     ))}
@@ -165,11 +164,20 @@ export default function AddressBook({ user, apiBase }: AddressBookProps) {
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">Street Address</label>
+                                <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">Recipient Name</label>
                                 <input
                                     type="text"
-                                    value={newAddress.street || ""}
-                                    onChange={(e) => setNewAddress(prev => ({ ...prev, street: e.target.value }))}
+                                    value={newAddress.name || ""}
+                                    onChange={(e) => setNewAddress(prev => ({ ...prev, name: e.target.value }))}
+                                    className="w-full p-3 border border-slate-300 rounded-lg text-sm text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">Address (Area and Street)</label>
+                                <input
+                                    type="text"
+                                    value={newAddress.addressLine || ""}
+                                    onChange={(e) => setNewAddress(prev => ({ ...prev, addressLine: e.target.value }))}
                                     className="w-full p-3 border border-slate-300 rounded-lg text-sm text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
                                 />
                             </div>
@@ -195,34 +203,26 @@ export default function AddressBook({ user, apiBase }: AddressBookProps) {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">ZIP Code</label>
+                                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">Pincode</label>
                                     <input
                                         type="text"
-                                        value={newAddress.zip || ""}
-                                        onChange={(e) => setNewAddress(prev => ({ ...prev, zip: e.target.value }))}
+                                        value={newAddress.pincode || ""}
+                                        onChange={(e) => setNewAddress(prev => ({ ...prev, pincode: e.target.value }))}
                                         className="w-full p-3 border border-slate-300 rounded-lg text-sm text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">Country</label>
+                                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">Mobile Number</label>
                                     <input
-                                        type="text"
-                                        value={newAddress.country || ""}
-                                        onChange={(e) => setNewAddress(prev => ({ ...prev, country: e.target.value }))}
+                                        type="tel"
+                                        value={newAddress.mobile || ""}
+                                        onChange={(e) => setNewAddress(prev => ({ ...prev, mobile: e.target.value }))}
                                         className="w-full p-3 border border-slate-300 rounded-lg text-sm text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
+                                        placeholder="e.g. 9876543210"
                                     />
                                 </div>
                             </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">Phone Number</label>
-                                <input
-                                    type="tel"
-                                    value={newAddress.phone || ""}
-                                    onChange={(e) => setNewAddress(prev => ({ ...prev, phone: e.target.value }))}
-                                    className="w-full p-3 border border-slate-300 rounded-lg text-sm text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
-                                    placeholder="e.g. 9876543210"
-                                />
-                            </div>
+
                         </div>
 
                         <div className="flex justify-end gap-3 mt-8">

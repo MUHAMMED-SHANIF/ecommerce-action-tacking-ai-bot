@@ -68,8 +68,8 @@ Single action:
 {
   "type": "tool_call",
   "tool": "search_products",
-  "params": { "query": "phone", "max_price": 20000, "brand": "Samsung", "min_rating": 4 },
-  "reply": "Let me find some great Samsung phones under ₹20,000 with good ratings for you! 🔍"
+  "params": { "query": "phone", "brand": "Samsung" },
+  "reply": "Let me find some great Samsung phones for you! 🔍"
 }
 
 Multi-step sequence (when user wants multiple actions):
@@ -116,9 +116,15 @@ CONTEXT YOU HAVE:
 - Last order: ${lastOrderStatus}
 - Recent conversation: [provided in messages]
 
+STRICT RULES:
+1. ONLY use tools listed in AVAILABLE TOOLS.
+2. NEVER invent tools like "view_products", "list_items", or "display_results". 
+3. For any product search or "show me" request, ONLY use "search_products". The system will handle the display automatically.
+4. NEVER set "max_price" unless the user EXPLICITLY mentions a price, budget, or "under X" in their message. Do NOT assume or infer a price limit.
+ 
 AVAILABLE TOOLS:
 ${toolsList}
-
+ 
 REMEMBER: ONLY JSON OUTPUT. NO TEXT BEFORE OR AFTER THE JSON.`;
 };
 
@@ -180,14 +186,17 @@ async function extractIntent(userMessage, userId, role) {
         seller: 'seller_sales_report, seller_revenue_today, seller_pending_orders, seller_view_orders, seller_check_inventory, seller_low_stock_alerts, seller_best_products, seller_cancelled_orders, seller_customer_reviews, seller_edit_product, seller_pause_product, seller_add_product, seller_download_csv, seller_request_category, seller_update_order_status, seller_view_requests',
         admin: 'admin_dashboard_stats, admin_view_users, admin_view_sellers, admin_pending_products, admin_approve_product, admin_reject_product, admin_orders_report, admin_revenue_report, admin_growth_metrics, admin_view_banners, admin_add_banner, admin_add_category, admin_edit_category, admin_delete_category, admin_add_seller, admin_trust_seller, admin_change_user_role, admin_delete_user, admin_approve_request, admin_reject_request, admin_view_requests, admin_edit_any_product, admin_get_home_layout, admin_update_home_layout, admin_download_csv'
     };
-    const ollamaSystemPrompt = `You are an e-commerce AI assistant. Reply ONLY with a JSON object. No text before or after JSON.
-
-FORMATS:
-1. Single action: {"type":"tool_call","tool":"search_products","params":{"query":"phone","max_price":20000,"brand":"Apple"},"reply":"Searching..."}
-2. Two actions: {"type":"multi_step","steps":[{"id":"s1","tool":"search_products","params":{"query":"phone"},"depends_on":[]},{"id":"s2","tool":"add_to_cart","params":{"result_ref":"s1.results[0]"},"depends_on":["s1"]}],"reply":"Searching and adding..."}
-3. Just reply: {"type":"reply","reply":"message"}
-
+    const ollamaSystemPrompt = `You are Aria, a friendly shopping assistant for E-Mart.
+CRITICAL: Reply ONLY with valid JSON.
+STRICT RULE: NEVER use tools like "view_products" or "list_items". ONLY use tools from the list below.
+For searching, ONLY use search_products once. Do not follow up with any "view" tool.
+ 
 TOOLS: ${toolMap[role] || toolMap.user}
+ 
+FORMATS:
+{"type":"tool_call","tool":"search_products","params":{"query":"laptop","max_price":50000},"reply":"Searching..."}
+{"type":"reply","reply":"message"}
+ 
 User: ${context.userName}`;
     const ollamaMessages = [
         { role: 'system', content: ollamaSystemPrompt },

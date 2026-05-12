@@ -53,6 +53,7 @@ module.exports = {
         const updatedAddresses = existingAddresses.filter(a => (a.label || '').toLowerCase() !== labelLower);
 
         const newAddress = {
+            id: `addr-ai-${Date.now()}`,
             label: labelLower,
             name,
             mobile,

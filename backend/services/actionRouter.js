@@ -10,6 +10,10 @@ const handleToolCall = async (toolName, params, user, token, dynamicTexts = {}) 
     const tool = getTool(toolName);
 
     if (!tool) {
+        // Safety net for common AI hallucinations
+        if (toolName === 'view_products' || toolName === 'list_items') {
+            return { message: '', data: null };
+        }
         return { message: `I don't have a tool called "${toolName}" yet. This feature may be coming soon!`, data: null };
     }
 

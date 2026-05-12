@@ -9,9 +9,10 @@ import ProductCard from "@/components/ProductCard";
 export default function SearchPage() {
     const searchParams = useSearchParams();
     const router = useRouter();
-    const query = searchParams.get("q") || searchParams.get("query") || "";
+    const query = searchParams.get("search") || searchParams.get("q") || searchParams.get("query") || "";
     const categoryParam = searchParams.get("category") || "";
-    const maxPriceParam = searchParams.get("maxPrice") || "";
+    const maxPriceParam = searchParams.get("max_price") || searchParams.get("maxPrice") || "";
+    const minPriceParam = searchParams.get("min_price") || searchParams.get("minPrice") || "";
 
     const type = searchParams.get("type") || "";
 
@@ -19,8 +20,14 @@ export default function SearchPage() {
     const [loading, setLoading] = useState(false);
     const [searchInput, setSearchInput] = useState(query);
     const [sortBy, setSortBy] = useState<'popular' | 'price_asc' | 'price_desc' | 'newest'>('popular');
+    const [minPrice, setMinPrice] = useState(minPriceParam);
+    const [maxPrice, setMaxPrice] = useState(maxPriceParam);
 
-    useEffect(() => { setSearchInput(query); }, [query]);
+    useEffect(() => { 
+        setSearchInput(query); 
+        setMinPrice(minPriceParam);
+        setMaxPrice(maxPriceParam);
+    }, [query, minPriceParam, maxPriceParam]);
 
     useEffect(() => {
         const fetchProducts = async () => {
@@ -36,7 +43,8 @@ export default function SearchPage() {
                     const params = new URLSearchParams();
                     if (query) params.set("search", query);
                     if (categoryParam) params.set("category", categoryParam);
-                    if (maxPriceParam) params.set("max_price", maxPriceParam);
+                    if (maxPrice) params.set("max_price", maxPrice);
+                    if (minPrice) params.set("min_price", minPrice);
                     if (params.toString()) url += "?" + params.toString();
                 }
 
@@ -61,7 +69,7 @@ export default function SearchPage() {
             }
         };
         fetchProducts();
-    }, [query, categoryParam, type]);
+    }, [query, categoryParam, type, minPrice, maxPrice]);
 
     const sorted = useMemo(() => {
         const list = [...products];
@@ -124,13 +132,45 @@ export default function SearchPage() {
             <div className="container mx-auto px-4 max-w-[1248px] py-5">
 
                 {/* Sort Bar */}
-                <div className="bg-white rounded-xl shadow-sm px-5 py-3 mb-5 flex items-center justify-between flex-wrap gap-3">
-                    <p className="text-sm text-gray-500 font-medium">
-                        {loading
-                            ? 'Searching…'
-                            : <><span className="text-gray-800 font-semibold">{sorted.length}</span> result{sorted.length !== 1 ? 's' : ''} {query ? `for "${query}"` : ''}</>
-                        }
-                    </p>
+                <div className="bg-white rounded-xl shadow-sm px-5 py-4 mb-5 flex items-center justify-between flex-wrap gap-4">
+                    <div className="flex flex-wrap items-center gap-6">
+                        <p className="text-sm text-gray-500 font-medium">
+                            {loading
+                                ? 'Searching…'
+                                : <><span className="text-gray-800 font-semibold">{sorted.length}</span> result{sorted.length !== 1 ? 's' : ''}</>
+                            }
+                        </p>
+                        
+                        <div className="flex items-center gap-3 border-l pl-6 border-gray-100">
+                            <label className="text-[12px] font-bold text-gray-400 uppercase tracking-tight">Price Range</label>
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    type="number" 
+                                    placeholder="Min" 
+                                    min="0"
+                                    value={minPrice} 
+                                    onChange={e => {
+                                        const val = e.target.value;
+                                        if (val === "" || parseFloat(val) >= 0) setMinPrice(val);
+                                    }}
+                                    className="w-20 px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#145A3A] outline-none"
+                                />
+                                <span className="text-gray-300">—</span>
+                                <input 
+                                    type="number" 
+                                    placeholder="Max" 
+                                    min="1"
+                                    value={maxPrice} 
+                                    onChange={e => {
+                                        const val = e.target.value;
+                                        if (val === "" || parseFloat(val) >= 1) setMaxPrice(val);
+                                    }}
+                                    className="w-20 px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#145A3A] outline-none"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="flex items-center gap-2">
                         <ArrowUpDown className="w-4 h-4 text-gray-400" />
                         <label className="text-sm text-gray-600 font-medium">Sort by:</label>

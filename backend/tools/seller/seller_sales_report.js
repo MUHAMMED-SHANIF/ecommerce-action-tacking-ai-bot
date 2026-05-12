@@ -42,6 +42,7 @@ module.exports = {
             .from('order_items')
             .select('id, product_id, quantity, price_at_purchase, order_id, orders!inner(id, created_at, status)')
             .in('product_id', productIds)
+            .eq('seller_status', 'accepted')
             .gte('orders.created_at', `${from_date}T00:00:00`)
             .lte('orders.created_at', `${to_date}T23:59:59`)
             .neq('orders.status', 'cancelled');

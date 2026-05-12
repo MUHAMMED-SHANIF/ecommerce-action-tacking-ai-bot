@@ -1043,6 +1043,11 @@ app.get('/api/products', async (req, res) => {
         let categoryParam = req.query.category;
         let searchTerm = req.query.search;
         let maxPrice = parseFloat(req.query.max_price);
+        let minPrice = parseFloat(req.query.min_price);
+
+        // Prevent negative values
+        if (minPrice < 0) minPrice = 0;
+        if (maxPrice < 1 && !isNaN(maxPrice)) maxPrice = 1;
 
         // --- 1. QUERY PREPROCESSING & FILTER EXTRACTION ---
         let extractedMaxPrice = null;
@@ -1050,6 +1055,16 @@ app.get('/api/products', async (req, res) => {
 
         if (searchTerm) {
             let lowerSearch = searchTerm.toLowerCase().trim();
+            
+            // Normalize "smart phone" to "smartphone" and "ear pods" to "earbud"
+            lowerSearch = lowerSearch.replace(/smart[\s-]*phone/g, "smartphone");
+            lowerSearch = lowerSearch.replace(/(?:ear|air)[\s-]*pods?/g, "earbud");
+            
+            // Normalize "tv" to "t v" for category matching since DB uses "T V"
+            if (lowerSearch === 'tv' || lowerSearch === 'tvs') lowerSearch = 't v';
+            if (categoryParam && (categoryParam.toLowerCase() === 'tv' || categoryParam.toLowerCase() === 'tvs')) {
+                categoryParam = 'T V';
+            }
             
             // Extract "under 2000" or "below 2000" patterns
             const underMatch = lowerSearch.match(/(?:under|below|less than|within)\s*(\d+)/i);
@@ -1082,7 +1097,7 @@ app.get('/api/products', async (req, res) => {
             categories(id, name)
         `);
         
-        console.log(`[Search Debug] Term: "${searchTerm}", Processed: "${processedSearch}", MaxPrice: ${finalMaxPrice}`);
+        console.log(`[Search Debug] Term: "${searchTerm}", Processed: "${processedSearch}", MaxPrice: ${finalMaxPrice}, MinPrice: ${minPrice}`);
         query = query.eq('metadata->>status', 'approved').neq('metadata->>isPaused', 'true');
 
         if (categoryParam && categoryParam.toLowerCase() !== 'all') {
@@ -1102,6 +1117,7 @@ app.get('/api/products', async (req, res) => {
             else return res.json([]);
         }
 
+        if (minPrice) query = query.gte('price', minPrice);
         if (finalMaxPrice) query = query.lte('price', finalMaxPrice);
 
         let { data: products, error } = await query;
@@ -1122,35 +1138,54 @@ app.get('/api/products', async (req, res) => {
                 const desc = (p.description || "").toLowerCase();
                 const brand = (p.brand || p.metadata?.brand || "").toLowerCase();
                 const catName = (p.categories?.name || "").toLowerCase();
+                const tags = Array.isArray(p.tags) ? p.tags.map((t) => t.toLowerCase()) : [];
                 
-                const titleWords = title.split(/\s+/);
-                const catWords = catName.split(/\s+/);
+                const normTitle = title.replace(/smart[\s-]*phone/g, "smartphone");
+                const normCat = catName.replace(/smart[\s-]*phone/g, "smartphone");
+                const normBrand = brand.replace(/smart[\s-]*phone/g, "smartphone");
+
+                const titleWordsList = normTitle.split(/\s+/);
+                const catWordsList = normCat.split(/\s+/);
 
                 let score = 0;
                 
                 searchTokens.forEach(token => {
                     let tokenMatched = false;
-                    // Whole word priority
-                    if (titleWords.includes(token)) { score += 500; tokenMatched = true; }
-                    if (catWords.includes(token)) { score += 600; tokenMatched = true; }
-                    if (brand === token) { score += 400; tokenMatched = true; }
+                    // Whole word priority (use normalized fields)
+                    if (titleWordsList.includes(token)) { score += 500; tokenMatched = true; }
+                    if (catWordsList.includes(token)) { score += 600; tokenMatched = true; }
+                    if (normBrand === token) { score += 400; tokenMatched = true; }
+                    if (tags.includes(token)) { score += 700; tokenMatched = true; }
 
-                    // Substring match
+                    // Substring match (use normalized fields)
                     if (!tokenMatched) {
-                        if (title.includes(token)) score += 50;
-                        if (brand.includes(token)) score += 60;
-                        if (catName.includes(token)) score += 80;
+                        if (normTitle.includes(token)) score += 50;
+                        if (normBrand.includes(token)) score += 60;
+                        if (normCat.includes(token)) score += 80;
                         if (desc.includes(token)) score += 5;
+                        if (tags.some((t) => t.includes(token))) score += 70;
                     }
                 });
 
-                if (title.includes(processedSearch)) score += 1000;
-                if (catName.includes(processedSearch)) score += 1200;
+                if (normTitle.includes(processedSearch)) score += 1000;
+                if (normCat.includes(processedSearch)) score += 1200;
 
                 // STRICT "AND" LOGIC: All tokens must match something in the product
-                const mustMatchAll = searchTokens.every(token => 
-                    title.includes(token) || catName.includes(token) || brand.includes(token)
-                );
+                const mustMatchAll = searchTokens.every(token => {
+                    if (normTitle.includes(token)) return true;
+                    if (normCat.includes(token)) return true;
+                    if (normBrand.includes(token)) return true;
+                    if (tags.some((t) => t.includes(token))) return true;
+
+                    // Special case: "smartphone" matches if BOTH "smart" and "phone" exist in tags/fields
+                    if (token === 'smartphone') {
+                        const hasSmart = tags.some(t => t === 'smart') || normCat.includes('smart') || normTitle.includes('smart');
+                        const hasPhone = tags.some(t => t === 'phone') || normCat.includes('phone') || normTitle.includes('phone');
+                        if (hasSmart && hasPhone) return true;
+                    }
+
+                    return false;
+                });
 
                 // CATEGORY ISOLATION
                 if (hasPhone && (catName.includes('tv') || catName.includes('earbud') || catName.includes('watch'))) score -= 5000;
@@ -1519,27 +1554,43 @@ app.get('/api/seller/stats', async (req, res) => {
         const catMap = {};
         (categories || []).forEach(c => { catMap[c.id] = c.name; });
 
+        // Only fetch order_items WITH seller_status field
         let sellerOrders = [];
         let orderItems = [];
+        let acceptedOrders = [];
         if (productIds.length > 0) {
             const { data: orders } = await supabase
                 .from('orders')
-                .select('id, status, total_price, created_at, order_items(product_id, quantity, price, seller_status)');
+                .select('id, status, total_price, created_at, order_items(id, product_id, quantity, price, seller_status)');
             if (orders) {
-                // Only include non-cancelled orders for analytics
-                const confirmedOrders = orders.filter(o => o.status !== 'cancelled');
-                sellerOrders = confirmedOrders.filter(order =>
+                // Only include non-cancelled orders
+                const nonCancelledOrders = orders.filter(o => o.status !== 'cancelled');
+                sellerOrders = nonCancelledOrders.filter(order =>
                     order.order_items.some(item => productIds.includes(item.product_id))
                 );
+                // Only count items the seller has ACCEPTED for revenue
                 orderItems = sellerOrders.flatMap(o =>
-                    o.order_items.filter(i => productIds.includes(i.product_id))
+                    o.order_items.filter(i => productIds.includes(i.product_id) && i.seller_status === 'accepted')
+                );
+                // Populate acceptedOrders for the response
+                acceptedOrders = sellerOrders.filter(o =>
+                    o.order_items.some(i => productIds.includes(i.product_id) && i.seller_status === 'accepted')
                 );
             }
         }
 
-        // Revenue
+        // Revenue: only from accepted items
         const totalRevenue = orderItems.reduce((sum, i) => sum + ((i.price || 0) * (i.quantity || 0)), 0);
-        const pendingOrders = sellerOrders.filter(o => o.status === 'pending').length;
+
+        // Total orders: only orders that have at least one accepted item from this seller
+        acceptedOrders = sellerOrders.filter(o =>
+            o.order_items.some(i => productIds.includes(i.product_id) && i.seller_status === 'accepted')
+        );
+
+        // Pending: orders with items still waiting for seller to accept
+        const pendingOrders = sellerOrders.filter(o =>
+            o.order_items.some(i => productIds.includes(i.product_id) && i.seller_status === 'pending')
+        ).length;
 
         // Top products by units sold
         const productSales = {};
@@ -1590,7 +1641,7 @@ app.get('/api/seller/stats', async (req, res) => {
 
         res.json({
             totalProducts: productIds.length,
-            totalOrders: sellerOrders.length,
+            totalOrders: acceptedOrders.length,
             pendingOrders,
             totalRevenue,
             topProducts: topProducts.slice(0, 5),
@@ -1613,6 +1664,17 @@ app.post('/api/seller/category-request', async (req, res) => {
         if (error) throw error;
 
         res.status(201).json({ ...newCat, isApproved: false, image });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/address/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { data: { user }, error } = await supabase.auth.admin.getUserById(userId);
+        if (error || !user) throw error || new Error("User not found");
+        res.json(user.user_metadata?.addresses || []);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

@@ -79,7 +79,13 @@ export default function AIAssistant() {
 
   useEffect(() => { scrollToBottom(); }, [messages, isProcessing]);
 
-  // Load history when panel opens
+  // Reset history when user changes so it reloads fresh
+  useEffect(() => {
+    setHistoryLoaded(false);
+    setMessages([]);
+  }, [user?.id]);
+
+  // Load history when panel opens and user is available
   useEffect(() => {
     if (isOpen && !historyLoaded && user?.token) {
       loadHistory();
@@ -87,6 +93,16 @@ export default function AIAssistant() {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
+  }, [isOpen, user, historyLoaded]);
+
+  // Persist isOpen state across navigations
+  useEffect(() => {
+    const saved = sessionStorage.getItem('ai-assistant-open');
+    if (saved === 'true') setIsOpen(true);
+  }, []);
+
+  useEffect(() => {
+    sessionStorage.setItem('ai-assistant-open', isOpen.toString());
   }, [isOpen]);
 
   useEffect(() => {
@@ -254,12 +270,21 @@ export default function AIAssistant() {
             // ── CUSTOMER ROUTES ──────────────────────────────────────
             case "search_products":
             case "recommend_products":
+            case "view_products":
               if (data.data?.products?.length === 1) {
                 router.push(`/product/${data.data.products[0].id}`);
-              } else if (data.data?.products?.length > 1) {
-                const sq = data.data?.query; const sc = data.data?.category; const sp = data.data?.max_price;
+              } else {
+                const sq = data.data?.query; 
+                const sc = data.data?.category; 
+                const sp = data.data?.max_price;
+                const minP = data.data?.min_price;
+                
                 const qp = new URLSearchParams();
-                if (sq) qp.set("q", sq); if (sc) qp.set("category", sc); if (sp) qp.set("maxPrice", sp.toString());
+                if (sq) qp.set("search", sq); 
+                if (sc) qp.set("category", sc); 
+                if (sp) qp.set("max_price", sp.toString());
+                if (minP) qp.set("min_price", minP.toString());
+                
                 router.push(`/search?${qp.toString()}`);
               }
               break;

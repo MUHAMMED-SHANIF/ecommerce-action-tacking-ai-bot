@@ -28,7 +28,7 @@ module.exports = {
             .from('order_items')
             .select('orders!inner(id, created_at, status)')
             .in('product_id', products.map(p => p.id))
-            .in('orders.status', ['pending', 'paid']);
+            .eq('seller_status', 'pending');
 
         const threshold24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
         const orders = (items || []).map(i => i.orders).filter(Boolean);

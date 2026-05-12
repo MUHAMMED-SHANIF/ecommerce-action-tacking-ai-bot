@@ -2,13 +2,12 @@ const { createClient } = require('@supabase/supabase-js');
 
 module.exports = {
     name: 'search_products',
-    description: 'Search for products in the store by name keyword, category, price, brand, rating, or deals. Use this when the user wants to find, show, or browse products.',
+    description: 'Search for products in the store by name keyword, category, price, brand, or deals. Use this when the user wants to find, show, or browse products.',
     parameters: {
         query: 'string - search keyword (optional if category given)',
         category: 'string? - product category to filter by',
         max_price: 'number? - maximum price filter',
         brand: 'string? - filter by brand name',
-        min_rating: 'number? - filter by minimum rating (1-5)',
         has_discount: 'boolean? - only show products with active discounts/deals'
     },
     requiresConfirmation: false,
@@ -31,11 +30,27 @@ module.exports = {
             return low;
         };
 
-        if (categoryParam) categoryParam = normalizePlural(categoryParam);
+        if (categoryParam) {
+            categoryParam = normalizePlural(categoryParam.toLowerCase());
+            if (categoryParam === 'mobile' || categoryParam === 'phone' || categoryParam === 'phones' || categoryParam === 'smartphones' || categoryParam === 'smartphone' || categoryParam === 'smart phone') {
+                categoryParam = 'SMART PHONE';
+            }
+        }
         let max_price = params.max_price || params.budget;
 
         // --- 1. PREPROCESSING & FILTER EXTRACTION ---
         let processedSearch = query.toLowerCase().trim();
+
+        // Normalize "smart phone" to "smartphone", and mobile/phone synonyms
+        processedSearch = processedSearch.replace(/smart[\s-]*phone|mobile|phone/g, "smartphone");
+        processedSearch = processedSearch.replace(/(?:ear|air)[\s-]*pods?/g, "earbud");
+        
+        // Normalize "tv" to "t v" since DB uses spaced version
+        if (processedSearch === 'tv' || processedSearch === 'tvs') processedSearch = 't v';
+        if (categoryParam && (categoryParam.toLowerCase() === 'tv' || categoryParam.toLowerCase() === 'tvs')) {
+            categoryParam = 'T V';
+        }
+
         const underMatch = processedSearch.match(/(?:under|below|less than|within)\s*(\d+)/i);
         if (underMatch && !max_price) {
             max_price = parseFloat(underMatch[1]);
@@ -79,9 +94,6 @@ module.exports = {
             dbQuery = dbQuery.ilike('brand', `%${params.brand}%`);
         }
 
-        if (params.min_rating) {
-            dbQuery = dbQuery.gte('metadata->rating', parseFloat(params.min_rating));
-        }
 
         if (params.has_discount === true) {
             dbQuery = dbQuery.gt('metadata->discount', 0);
@@ -120,9 +132,15 @@ module.exports = {
                 const desc = (p.description || "").toLowerCase();
                 const brand = (p.brand || p.metadata?.brand || "").toLowerCase();
                 const catName = (p.categories?.name || "").toLowerCase();
+                const tags = Array.isArray(p.tags) ? p.tags.map(t => t.toLowerCase()) : [];
                 
                 const titleWords = title.split(/\s+/);
                 const catWords = catName.split(/\s+/);
+
+                // Normalize fields for scoring
+                const normTitle = title.replace(/smart[\s-]*phone/g, "smartphone");
+                const normCat = catName.replace(/smart[\s-]*phone/g, "smartphone");
+                const normBrand = brand.replace(/smart[\s-]*phone/g, "smartphone");
 
                 let score = 0;
                 let matchCount = 0;
@@ -130,20 +148,25 @@ module.exports = {
                 searchTokens.forEach(token => {
                     let tokenMatched = false;
                     
-                    // Priority 1: Whole word match in Title/Category/Brand
-                    if (titleWords.includes(token)) { score += 500; tokenMatched = true; }
-                    if (catWords.includes(token)) { score += 600; tokenMatched = true; }
-                    if (brand.toLowerCase() === token) { score += 400; tokenMatched = true; }
+                    const titleWordsList = normTitle.split(/\s+/);
+                    const catWordsList = normCat.split(/\s+/);
+
+                    // Priority 1: Whole word match in Title/Category/Brand/Tags
+                    if (titleWordsList.includes(token)) { score += 500; tokenMatched = true; }
+                    if (catWordsList.includes(token)) { score += 600; tokenMatched = true; }
+                    if (normBrand === token) { score += 400; tokenMatched = true; }
+                    if (tags.includes(token)) { score += 700; tokenMatched = true; }
 
                     // Priority 2: Substring match
                     if (!tokenMatched) {
-                        if (title.includes(token)) score += 50;
-                        if (brand.includes(token)) score += 60;
-                        if (catName.includes(token)) score += 80;
+                        if (normTitle.includes(token)) score += 50;
+                        if (normBrand.includes(token)) score += 60;
+                        if (normCat.includes(token)) score += 80;
                         if (desc.includes(token)) score += 5;
+                        if (tags.some(t => t.includes(token))) score += 70;
                     }
 
-                    if (title.includes(token) || catName.includes(token) || brand.includes(token)) {
+                    if (normTitle.includes(token) || normCat.includes(token) || normBrand.includes(token) || tags.some(t => t.includes(token))) {
                         matchCount++;
                     }
                 });
@@ -153,11 +176,23 @@ module.exports = {
                 if (catName.includes(finalKeywordSearch)) score += 1200;
 
                 // --- STRICT "AND" LOGIC ---
-                // Every search token must match at least something. 
-                // This prevents "Smart TV" from appearing for "Smart Phone" because TV doesn't have "Phone".
-                const mustMatchAll = searchTokens.every(token => 
-                    title.includes(token) || catName.includes(token) || brand.includes(token)
-                );
+                // "smartphone" token must match normalized fields OR split tags ("smart"+"phone")
+                const mustMatchAll = searchTokens.every(token => {
+                    // Direct match on normalized fields
+                    if (normTitle.includes(token)) return true;
+                    if (normCat.includes(token)) return true;
+                    if (normBrand.includes(token)) return true;
+                    if (tags.some(t => t.includes(token))) return true;
+
+                    // Special case: "smartphone" can match if BOTH "smart" and "phone" are in tags
+                    if (token === 'smartphone') {
+                        const hasSmart = tags.some(t => t === 'smart') || normCat.includes('smart') || normTitle.includes('smart');
+                        const hasPhone = tags.some(t => t === 'phone') || normCat.includes('phone') || normTitle.includes('phone');
+                        if (hasSmart && hasPhone) return true;
+                    }
+
+                    return false;
+                });
 
                 // --- CATEGORY PENALTY (Future Prevention) ---
                 if (hasPhone && (catName.includes('tv') || catName.includes('earbud'))) score -= 5000;

@@ -31,6 +31,7 @@ module.exports = {
             .from('order_items')
             .select('product_id, quantity, price_at_purchase, orders!inner(id, created_at, status)')
             .in('product_id', products.map(p => p.id))
+            .eq('seller_status', 'accepted')
             .gte('orders.created_at', todayStart.toISOString())
             .neq('orders.status', 'cancelled');
 

@@ -176,8 +176,9 @@ export default function ProductForm({ initialData, isEdit = false }: ProductForm
             e.preventDefault();
             const val = formData.tagInput;
             if (val.trim()) {
-                const newTags = val.split(',')
-                    .map(t => t.trim())
+                // Split by comma OR space
+                const newTags = val.split(/[\s,]+/)
+                    .map(t => t.trim().toLowerCase())
                     .filter(t => t !== '');
 
                 setFormData(prev => {

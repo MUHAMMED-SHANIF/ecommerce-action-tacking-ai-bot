@@ -4,24 +4,21 @@ const searchTool = require('./tools/search_products');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 
-async function testSearch() {
-    console.log("Testing search: 'phone'");
+async function testSearchCategory() {
+    console.log("Testing search: category='mobile'");
     try {
         const result = await searchTool.execute({
-            params: { query: 'phone' },
+            params: { category: 'mobile' },
             user: { id: 'test_user' },
             supabase: supabase
         });
         console.log("Search Result Text:", result.text);
         if (result.products) {
             console.log("Found products:", result.products.length);
-            result.products.forEach(p => {
-                console.log(`- ${p.name} (Price: ${p.price}, Score: ${p._score}, Relevant: ${p._isRelevant})`);
-            });
         }
     } catch (e) {
         console.error("Error:", e);
     }
 }
 
-testSearch();
+testSearchCategory();

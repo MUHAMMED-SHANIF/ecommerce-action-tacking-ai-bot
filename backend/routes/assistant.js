@@ -222,6 +222,10 @@ router.post('/message', requireAuth, async (req, res) => {
             }
             replyText = allMessages.join('\n\n');
             responseData = combinedData;
+            // Set the primary tool for the frontend to the last tool called in the sequence
+            if (steps.length > 0) {
+                aiResult.tool = steps[steps.length - 1].tool;
+            }
 
         } else if (aiResult.type === 'confirmation_request') {
             replyText = aiResult.reply || aiResult.question || `Are you sure?`;
