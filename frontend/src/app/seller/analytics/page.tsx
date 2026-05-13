@@ -2,32 +2,120 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { TrendingUp, Tag, IndianRupee, Package, ShoppingBag, Clock, ChevronDown, ChevronUp, Search, X } from 'lucide-react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { TrendingUp, Tag, IndianRupee, Package, ShoppingBag, Clock, ChevronDown, ChevronUp, Search, X, Download } from 'lucide-react';
 
 export default function SellerAnalytics() {
+    const searchParams = useSearchParams();
+    const router = useRouter();
     const [data, setData] = useState<any>(null);
+    const [range, setRange] = useState('all');
     const [loading, setLoading] = useState(true);
     const [expanded, setExpanded] = useState<string | null>(null);
+    const [autoDownload, setAutoDownload] = useState(false);
 
     // Search state
     const [searchMode, setSearchMode] = useState<'products' | 'orders'>('products');
     const [searchQuery, setSearchQuery] = useState('');
 
+    const fetchStats = async () => {
+        const userStr = localStorage.getItem('user');
+        if (!userStr) return;
+        const user = JSON.parse(userStr);
+        try {
+            setLoading(true);
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/seller/stats?range=${range}`, {
+                headers: { 'Authorization': `Bearer ${user?.token}` }
+            });
+            if (res.ok) setData(await res.json());
+        } catch (e) { console.error(e); }
+        finally { setLoading(false); }
+    };
+
     useEffect(() => {
-        const fetchStats = async () => {
-            const userStr = localStorage.getItem('user');
-            if (!userStr) return;
-            const user = JSON.parse(userStr);
-            try {
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/seller/stats`, {
-                    headers: { 'Authorization': `Bearer ${user?.token}` }
-                });
-                if (res.ok) setData(await res.json());
-            } catch (e) { console.error(e); }
-            finally { setLoading(false); }
-        };
+        const dateFilter = searchParams.get('date_filter');
+        const shouldDownload = searchParams.get('download_csv') === 'true';
+
+        if (dateFilter) {
+            const map: any = {
+                'today': 'day',
+                'weekly': 'week',
+                'monthly': 'month',
+                '3months': '3month',
+                '6months': '6month',
+                '1year': 'year',
+                'all': 'all'
+            };
+            if (map[dateFilter]) setRange(map[dateFilter]);
+        }
+        if (shouldDownload) {
+            setAutoDownload(true);
+        }
+    }, [searchParams]);
+
+    useEffect(() => {
         fetchStats();
-    }, []);
+    }, [range]);
+
+    const handleDownloadCSV = () => {
+        if (!data) return;
+
+        const rows = [];
+        rows.push(["SELLER ANALYTICS REPORT"]);
+        rows.push(["Time Range:", range]);
+        rows.push(["Generated At:", new Date().toLocaleString()]);
+        rows.push([]);
+
+        // KPI Section
+        rows.push(["KEY METRICS"]);
+        rows.push(["Total Products", data.totalProducts]);
+        rows.push(["Total Orders", data.totalOrders]);
+        rows.push(["Pending Orders", data.pendingOrders]);
+        rows.push(["Total Revenue", `Rs ${data.totalRevenue}`]);
+        rows.push([]);
+
+        // Top Products Section
+        rows.push(["TOP PRODUCTS"]);
+        rows.push(["Rank", "Product Name", "Category", "Price", "Units Sold", "Revenue", "Stock Left"]);
+        (data.topProducts || []).forEach((p: any) => {
+            rows.push([
+                p.rank, p.name, p.category, p.price, p.totalQty, p.totalRevenue, p.stock
+            ]);
+        });
+        rows.push([]);
+
+        // Top Categories Section
+        rows.push(["TOP CATEGORIES"]);
+        rows.push(["Rank", "Category Name", "Units Sold", "Revenue"]);
+        (data.topCategories || []).forEach((c: any, i: number) => {
+            rows.push([
+                i + 1, c.name, c.totalQty, c.totalRevenue
+            ]);
+        });
+
+        const csvContent = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `analytics_report_${range}_${new Date().getTime()}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    useEffect(() => {
+        if (!loading && data && autoDownload) {
+            const timer = setTimeout(() => {
+                handleDownloadCSV();
+                setAutoDownload(false);
+                if (typeof window !== 'undefined') {
+                    window.history.replaceState({}, '', '/seller/analytics');
+                }
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [loading, autoDownload, data]);
 
     const medal = (rank: number) =>
         rank === 1 ? 'bg-[#F59E0B] text-white' :
@@ -76,9 +164,27 @@ export default function SellerAnalytics() {
                     <h1 className="text-2xl font-bold text-slate-800">My Sales Analytics</h1>
                     <p className="text-slate-500 text-sm mt-1">Your personal performance overview</p>
                 </div>
-                <Link href="/seller/orders" className="text-sm bg-violet-600 text-white px-4 py-2 rounded-lg hover:bg-violet-700 transition font-medium">
-                    View All Orders
-                </Link>
+                <div className="flex gap-4 items-center">
+                    <select
+                        value={range}
+                        onChange={(e) => setRange(e.target.value)}
+                        className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl focus:ring-2 focus:ring-violet-500 outline-none shadow-sm text-sm"
+                    >
+                        <option value="all">Full History</option>
+                        <option value="day">Today</option>
+                        <option value="week">Last 7 Days</option>
+                        <option value="month">Last 30 Days</option>
+                        <option value="3month">Last 3 Months</option>
+                        <option value="6month">Last 6 Months</option>
+                        <option value="year">Last 1 Year</option>
+                    </select>
+                    <button onClick={handleDownloadCSV} className="text-sm bg-slate-100 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-200 transition font-medium flex items-center gap-2 border border-slate-300">
+                        <Download className="w-4 h-4" /> Download Report
+                    </button>
+                    <Link href="/seller/orders" className="text-sm bg-violet-600 text-white px-4 py-2 rounded-lg hover:bg-violet-700 transition font-medium">
+                        View Orders
+                    </Link>
+                </div>
             </div>
 
             {/* KPI Cards */}

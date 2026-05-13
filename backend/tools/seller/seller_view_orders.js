@@ -30,7 +30,7 @@ module.exports = {
 
         let query = serviceSupabase
             .from('order_items')
-            .select('product_id, quantity, price_at_purchase, orders!inner(id, created_at, status, total_amount, user_id)')
+            .select('product_id, quantity, price_at_purchase, orders!inner(id, created_at, status, total_price, user_id)')
             .in('product_id', products.map(p => p.id))
             .order('orders(created_at)', { ascending: false })
             .limit(limit);

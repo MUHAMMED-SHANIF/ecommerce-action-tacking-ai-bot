@@ -24,10 +24,10 @@ module.exports = {
 
         if (report_type === 'orders') {
             const { data: orders } = await serviceSupabase
-                .from('orders').select('id, status, total_amount, payment_method, created_at')
+                .from('orders').select('id, status, total_price, payment_method, created_at')
                 .gte('created_at', `${from_date}T00:00:00`).lte('created_at', `${to_date}T23:59:59`);
-            csvRows = [['Order ID', 'Status', 'Total Amount', 'Payment Method', 'Date']];
-            (orders || []).forEach(o => csvRows.push([o.id?.split('-')[0], o.status, o.total_amount, o.payment_method, o.created_at?.split('T')[0]]));
+            csvRows = [['Order ID', 'Status', 'Total Price', 'Payment Method', 'Date']];
+            (orders || []).forEach(o => csvRows.push([o.id?.split('-')[0], o.status, o.total_price, o.payment_method, o.created_at?.split('T')[0]]));
             filename = `all_orders_${from_date}_to_${to_date}.csv`;
 
         } else if (report_type === 'sellers') {
@@ -53,11 +53,11 @@ module.exports = {
 
         } else if (report_type === 'revenue') {
             const { data: orders } = await serviceSupabase
-                .from('orders').select('id, total_amount, status, created_at')
+                .from('orders').select('id, total_price, status, created_at')
                 .gte('created_at', `${from_date}T00:00:00`).lte('created_at', `${to_date}T23:59:59`)
                 .neq('status', 'cancelled');
             csvRows = [['Order ID', 'Revenue', 'Date']];
-            (orders || []).forEach(o => csvRows.push([o.id?.split('-')[0], o.total_amount, o.created_at?.split('T')[0]]));
+            (orders || []).forEach(o => csvRows.push([o.id?.split('-')[0], o.total_price, o.created_at?.split('T')[0]]));
             filename = `revenue_report_${from_date}_to_${to_date}.csv`;
         }
 

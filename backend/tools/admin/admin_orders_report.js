@@ -21,7 +21,7 @@ module.exports = {
             .from('orders')
             .select(`
                 id, 
-                total_amount, 
+                total_price, 
                 status, 
                 created_at, 
                 user_id, 
@@ -46,7 +46,7 @@ module.exports = {
                 order_id: o.id.split('-')[0],
                 customer: o.profiles?.full_name || 'Guest',
                 seller: sellerName,
-                total: o.total_amount,
+                total: o.total_price,
                 status: o.status,
                 created_at: o.created_at?.split('T')[0]
             };

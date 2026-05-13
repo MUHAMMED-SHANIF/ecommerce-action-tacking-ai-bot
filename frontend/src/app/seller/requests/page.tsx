@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Filter, User, Package, Folder, FileText } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { Filter, Package, Folder, FileText } from 'lucide-react';
 
 interface RequestItem {
     id: string;
-    type: 'seller' | 'product' | 'category' | 'general_request';
+    type: 'seller' | 'product' | 'category';
     title: string;
     subtitle: string;
     date: string;
@@ -15,34 +16,42 @@ interface RequestItem {
 
 export default function SellerRequestsPage() {
     const { user } = useAuth();
+    const searchParams = useSearchParams();
     const [requests, setRequests] = useState<RequestItem[]>([]);
     const [filteredRequests, setFilteredRequests] = useState<RequestItem[]>([]);
     const [filterType, setFilterType] = useState<string>('all');
+    const [filterStatus, setFilterStatus] = useState<string>('pending');
     const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
-    const [dateRange, setDateRange] = useState<{ start: string, end: string }>({ start: '', end: '' });
     const [loading, setLoading] = useState(true);
-    const [showHistory, setShowHistory] = useState(false);
+
+    // Read URL params set by AI navigation
+    useEffect(() => {
+        const urlType = searchParams.get('filter_type');
+        const urlStatus = searchParams.get('filter_status');
+        if (urlType && ['all', 'product', 'category'].includes(urlType)) setFilterType(urlType);
+        if (urlStatus && ['all', 'pending', 'approved', 'rejected'].includes(urlStatus)) setFilterStatus(urlStatus);
+    }, [searchParams]);
 
     useEffect(() => {
-        if (user?.role === 'seller') {
-            fetchRequests();
-        }
-    }, [user, showHistory]);
+        if (user?.role === 'seller') fetchRequests();
+    }, [user]);
 
     useEffect(() => {
         filterAndSort();
-    }, [requests, filterType, sortOrder, dateRange]);
+    }, [requests, filterType, filterStatus, sortOrder]);
 
     const fetchRequests = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/seller/unified-requests?history=${showHistory}`, {
+            // Always fetch all, filter client-side for snappy UX
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/seller/unified-requests?history=true`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` },
                 cache: 'no-store'
             });
             const data = await res.json();
             if (Array.isArray(data)) {
-                setRequests(data);
+                // Filter out general_request type
+                setRequests(data.filter((r: any) => r.type !== 'general_request'));
             }
         } catch (error) {
             console.error("Failed to fetch requests", error);
@@ -54,17 +63,20 @@ export default function SellerRequestsPage() {
     const filterAndSort = () => {
         let res = [...requests];
 
+        // Filter by type
         if (filterType !== 'all') {
             res = res.filter(r => r.type === filterType);
         }
 
-        if (dateRange.start) {
-            res = res.filter(r => new Date(r.date) >= new Date(dateRange.start));
-        }
-        if (dateRange.end) {
-            const endDate = new Date(dateRange.end);
-            endDate.setHours(23, 59, 59, 999);
-            res = res.filter(r => new Date(r.date) <= endDate);
+        // Filter by status
+        if (filterStatus !== 'all') {
+            res = res.filter(r => {
+                const status = (r as any).status || r.data?.metadata?.status || r.data?.status || 'pending';
+                if (filterStatus === 'pending') return status === 'pending';
+                if (filterStatus === 'approved') return status === 'approved' || r.data?.isTrusted === true;
+                if (filterStatus === 'rejected') return status === 'rejected' || r.data?.isTrusted === false;
+                return true;
+            });
         }
 
         res.sort((a, b) => {
@@ -78,55 +90,58 @@ export default function SellerRequestsPage() {
 
     const getTypeIcon = (type: string) => {
         switch (type) {
-            case 'seller': return <User className="text-blue-500" />;
-            case 'product': return <Package className="text-green-500" />;
-            case 'category': return <Folder className="text-orange-500" />;
-            default: return <FileText className="text-gray-500" />;
+            case 'product': return <Package className="text-green-500 w-5 h-5" />;
+            case 'category': return <Folder className="text-orange-500 w-5 h-5" />;
+            default: return <FileText className="text-gray-500 w-5 h-5" />;
         }
     };
+
+    const typeOptions = ['all', 'product', 'category'];
+    const statusOptions = ['all', 'pending', 'approved', 'rejected'];
 
     return (
         <div className="p-6 max-w-7xl mx-auto">
             <h1 className="text-2xl font-bold mb-6 text-slate-800">My Requests</h1>
 
-            <div className="bg-white p-4 rounded shadow-sm border border-slate-200 mb-6 flex flex-wrap gap-4 items-end">
+            {/* Filters */}
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-wrap gap-4 items-end">
+                {/* Type Filter */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">View</label>
-                    <div className="flex bg-slate-100 rounded p-1">
-                        <button
-                            onClick={() => setShowHistory(false)}
-                            className={`px-4 py-2 rounded text-sm transition-all ${!showHistory ? 'bg-white shadow text-violet-700 font-medium' : 'text-slate-600 hover:text-slate-900'}`}
-                        >
-                            Pending
-                        </button>
-                        <button
-                            onClick={() => setShowHistory(true)}
-                            className={`px-4 py-2 rounded text-sm transition-all ${showHistory ? 'bg-white shadow text-violet-700 font-medium' : 'text-slate-600 hover:text-slate-900'}`}
-                        >
-                            History
-                        </button>
-                    </div>
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Type</label>
-                    <div className="flex bg-slate-100 rounded p-1">
-                        {['all', 'product', 'category', 'general_request'].map(t => (
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Type</label>
+                    <div className="flex bg-slate-100 rounded-lg p-1 gap-1">
+                        {typeOptions.map(t => (
                             <button
                                 key={t}
                                 onClick={() => setFilterType(t)}
-                                className={`px-4 py-2 rounded text-sm capitalize transition-all ${filterType === t ? 'bg-white shadow text-violet-700 font-medium' : 'text-slate-600 hover:text-slate-900'}`}
+                                className={`px-4 py-1.5 rounded-md text-sm capitalize transition-all ${filterType === t ? 'bg-white shadow text-violet-700 font-semibold' : 'text-slate-500 hover:text-slate-800'}`}
                             >
-                                {t.replace('_', ' ')}
+                                {t}
                             </button>
                         ))}
                     </div>
                 </div>
 
+                {/* Status Filter */}
+                <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Status</label>
+                    <div className="flex bg-slate-100 rounded-lg p-1 gap-1">
+                        {statusOptions.map(s => (
+                            <button
+                                key={s}
+                                onClick={() => setFilterStatus(s)}
+                                className={`px-4 py-1.5 rounded-md text-sm capitalize transition-all ${filterStatus === s ? 'bg-white shadow font-semibold ' + (s === 'pending' ? 'text-amber-600' : s === 'approved' ? 'text-emerald-600' : s === 'rejected' ? 'text-red-600' : 'text-violet-700') : 'text-slate-500 hover:text-slate-800'}`}
+                            >
+                                {s}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Sort */}
                 <div className="ml-auto">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Sort Order</label>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Sort</label>
                     <select
-                        className="border-slate-200 rounded px-3 py-2 text-sm text-slate-700 focus:ring-violet-500 focus:border-violet-500"
+                        className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:ring-violet-500 focus:border-violet-500 outline-none"
                         value={sortOrder}
                         onChange={(e: any) => setSortOrder(e.target.value)}
                     >
@@ -136,22 +151,32 @@ export default function SellerRequestsPage() {
                 </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+            {/* Count badge */}
+            {!loading && (
+                <p className="text-sm text-slate-500 mb-3">
+                    Showing <span className="font-semibold text-slate-700">{filteredRequests.length}</span> request{filteredRequests.length !== 1 ? 's' : ''}
+                    {filterType !== 'all' && ` · ${filterType}`}
+                    {filterStatus !== 'all' && ` · ${filterStatus}`}
+                </p>
+            )}
+
+            {/* Table */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 {loading ? (
-                    <div className="p-8 text-center text-slate-500">Loading requests...</div>
+                    <div className="p-8 text-center text-slate-400 animate-pulse">Loading requests...</div>
                 ) : filteredRequests.length === 0 ? (
                     <div className="p-12 text-center text-slate-500 flex flex-col items-center">
                         <FileText className="w-12 h-12 text-slate-300 mb-3" />
-                        <p className="text-lg font-medium text-slate-600">{showHistory ? "No history found." : "No pending requests found."}</p>
-                        <p className="text-sm text-slate-400 mt-1">Your requests will appear here once submitted.</p>
+                        <p className="text-lg font-medium text-slate-600">No {filterStatus !== 'all' ? filterStatus : ''} {filterType !== 'all' ? filterType : ''} requests found.</p>
+                        <p className="text-sm text-slate-400 mt-1">Try changing the filters above.</p>
                     </div>
                 ) : (
                     <table className="w-full text-slate-800">
-                        <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 text-sm">
+                        <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wide">
                             <tr>
-                                <th className="text-left py-4 px-6 font-medium w-16">Type</th>
-                                <th className="text-left py-4 px-6 font-medium">Details</th>
-                                <th className="text-left py-4 px-6 font-medium">Status & Date</th>
+                                <th className="text-left py-3 px-6 font-semibold w-16">Type</th>
+                                <th className="text-left py-3 px-6 font-semibold">Details</th>
+                                <th className="text-left py-3 px-6 font-semibold">Status & Date</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -184,11 +209,11 @@ export default function SellerRequestsPage() {
                                                 {displayStatus}
                                             </div>
                                             <div className="text-sm text-slate-500 block">
-                                                Submitted on {new Date(item.date).toLocaleDateString()}
+                                                Submitted on {new Date(item.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                                             </div>
                                         </td>
                                     </tr>
-                                )
+                                );
                             })}
                         </tbody>
                     </table>

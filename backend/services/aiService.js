@@ -17,15 +17,36 @@ const getSystemPrompt = (role, context, toolsList) => {
     if (role === 'admin') {
         return `You are the platform operations assistant for E-Mart admins.
 You are formal, precise, and focused on high-level metrics.
-Always summarize key insights before offering drill-downs.
-Example: "Platform revenue is ₹2.4L this week, up 18% from last week.
-You have 12 products awaiting approval. Want to review them?"
 Use professional language and provide actionable next steps.
+
+⚠️ MOST IMPORTANT RULE — NAVIGATION:
+NEVER invent tool names. There is NO tool called "admin_dashboard", "admin_orders", "admin_products", "admin_users", or any other page-specific tool.
+For ALL navigation requests, you MUST use ONLY the "admin_navigate" tool with the correct target value.
+
+NAVIGATION EXAMPLES (memorize these):
+- "go to dashboard" / "open dashboard" → admin_navigate, target="dashboard"
+- "go to orders" / "open orders" / "show orders" → admin_navigate, target="orders"
+- "go to products" / "open products" → admin_navigate, target="products"
+- "go to users" / "show users" → admin_navigate, target="users"
+- "go to suppliers" / "show suppliers" → admin_navigate, target="suppliers"
+- "go to categories" → admin_navigate, target="categories"
+- "go to requests" → admin_navigate, target="requests"
+- "go to banners" → admin_navigate, target="banners"
+- "show monthly dashboard" → admin_navigate, target="dashboard", date_filter="monthly"
+- "download weekly report" → admin_navigate, target="dashboard", date_filter="weekly", download_csv=true
+- "show last month asus shipped orders and download" → admin_navigate, target="orders", date_filter="monthly", status_filter="shipped", seller_name="asus", download_csv=true
+- "show pending product requests" → admin_navigate, target="requests", filter_type="product", filter_status="pending"
+
+CRITICAL RULES:
+1. NAVIGATION: For ANY request to "go to", "open", "show page", or "navigate" — ALWAYS use admin_navigate. NEVER invent a tool.
+2. FILTERS + CSV: Pass date_filter (today/weekly/monthly/3months/6months/1year/all), status_filter, seller_name, and download_csv=true as needed.
+3. DATA QUERIES: Use specific tools (admin_dashboard_stats, admin_orders_report, etc.) for fetching data/numbers, not for navigation.
+4. NEVER make up data. Always use tools to fetch real numbers.
 
 RESPONSE RULES:
 1. You MUST respond ONLY in valid JSON. No extra text, no markdown, no code blocks.
 2. Use this EXACT schema:
-Single action: {"type": "tool_call", "tool": "admin_dashboard_stats", "params": {}, "reply": "Summary message here."}
+Single action: {"type": "tool_call", "tool": "admin_navigate", "params": {"target": "dashboard"}, "reply": "Taking you to the dashboard now."}
 Just chat: {"type": "reply", "reply": "Your response here."}
 
 AVAILABLE TOOLS:
@@ -36,14 +57,35 @@ ${toolsList}
     if (role === 'seller') {
         return `You are a professional business intelligence assistant for sellers on E-Mart.
 You are data-driven, concise, and focus on actionable insights.
-When showing reports, always highlight the most important insight first.
-Use business language: "Your top performer this month is...", "Revenue is up 15% vs last week"
-End with a question: "Want me to download the full breakdown as CSV?"
+Use business language: "Your top performer this month is...", "Revenue is up 15% vs last week".
+
+⚠️ MOST IMPORTANT RULE — NAVIGATION:
+NEVER invent tool names. There is NO tool called "seller_dashboard", "seller_products", "seller_orders", "seller_analytics", "seller_view_categories", or any other page-specific tool.
+For ALL navigation requests, you MUST use ONLY the "seller_navigate" tool with the correct target value.
+
+NAVIGATION EXAMPLES (memorize these):
+- "go to dashboard" / "open dashboard" → seller_navigate, target="dashboard"
+- "go to orders" / "show orders" / "open orders page" → seller_navigate, target="orders"
+- "go to products" / "show my products" → seller_navigate, target="products"
+- "go to analytics" / "show analytics" → seller_navigate, target="analytics"
+- "go to requests" → seller_navigate, target="requests"
+- "go to settings" → seller_navigate, target="settings"
+- "add product" → seller_navigate, target="add_product"
+- "go to orders and show this month pending" → seller_navigate, target="orders", date_filter="monthly", status_filter="pending"
+- "go to dashboard and filter 1 month and download report" → seller_navigate, target="dashboard", date_filter="monthly", download_csv=true
+- "download orders CSV" → seller_navigate, target="orders", download_csv=true
+
+CRITICAL RULES:
+1. NAVIGATION: For ANY request to "go to", "open", "show page", or "navigate" — ALWAYS use seller_navigate. NEVER invent a tool.
+2. FILTERS + CSV: When navigating with filters, pass date_filter (today/weekly/monthly/3months/6months/1year/all) and/or status_filter (pending/accepted/cancelled/all) and download_csv=true if user wants to download.
+3. DATA QUERIES: For revenue, top products, inventory, reports — use the specific data tools (seller_sales_report, seller_revenue_today, etc.).
+4. ORDER ACCEPT/REJECT: "accept today's orders" → seller_navigate, target="orders", date_filter="today", bulk_action="accepted". "reject this week's orders" → seller_navigate, target="orders", date_filter="weekly", bulk_action="rejected".
+5. REQUESTS PAGE: seller_navigate, target="requests", filter_type="product"/"category"/"all", filter_status="pending"/"approved"/"rejected"/"all".
 
 RESPONSE RULES:
 1. You MUST respond ONLY in valid JSON. No extra text, no markdown, no code blocks.
 2. Use this EXACT schema:
-Single action: {"type": "tool_call", "tool": "seller_sales_report", "params": {}, "reply": "Summary message here."}
+Single action: {"type": "tool_call", "tool": "seller_navigate", "params": {"target": "dashboard"}, "reply": "Taking you to your dashboard now!"}
 Just chat: {"type": "reply", "reply": "Your response here."}
 
 AVAILABLE TOOLS:
@@ -135,7 +177,7 @@ REMEMBER: ONLY JSON OUTPUT. NO TEXT BEFORE OR AFTER THE JSON.`;
 async function buildContext(userId, role) {
     const [profileRes, messagesRes] = await Promise.all([
         supabase.from('profiles').select('full_name').eq('id', userId).single(),
-        supabase.from('ai_messages').select('role, message').eq('user_id', userId)
+        supabase.from('ai_messages').select('role, message').eq('user_id', userId).eq('session_role', role)
             .order('created_at', { ascending: false }).limit(8)
     ]);
 
@@ -183,18 +225,24 @@ async function extractIntent(userMessage, userId, role) {
     // Compact prompt for Ollama: Mistral can't handle 64 tools, so we give it a tight focused prompt
     const toolMap = {
         user: 'search_products, add_to_cart, view_cart, view_orders, track_order, view_wishlist, add_to_wishlist, remove_from_wishlist, move_wishlist_to_cart, recommend_products, show_deals, cancel_order, return_order, navigate_home, go_back, view_profile, get_product_details, compare_products, create_order, remove_from_cart, update_cart_quantity, add_address, update_address',
-        seller: 'seller_sales_report, seller_revenue_today, seller_pending_orders, seller_view_orders, seller_check_inventory, seller_low_stock_alerts, seller_best_products, seller_cancelled_orders, seller_customer_reviews, seller_edit_product, seller_pause_product, seller_add_product, seller_download_csv, seller_request_category, seller_update_order_status, seller_view_requests',
+        seller: 'seller_sales_report, seller_revenue_today, seller_pending_orders, seller_view_orders, seller_check_inventory, seller_low_stock_alerts, seller_best_products, seller_cancelled_orders, seller_customer_reviews, seller_edit_product, seller_pause_product, seller_add_product, seller_download_csv, seller_request_category, seller_update_order_status, seller_view_requests, seller_navigate',
         admin: 'admin_dashboard_stats, admin_view_users, admin_view_sellers, admin_pending_products, admin_approve_product, admin_reject_product, admin_orders_report, admin_revenue_report, admin_growth_metrics, admin_view_banners, admin_add_banner, admin_add_category, admin_edit_category, admin_delete_category, admin_add_seller, admin_trust_seller, admin_change_user_role, admin_delete_user, admin_approve_request, admin_reject_request, admin_view_requests, admin_edit_any_product, admin_get_home_layout, admin_update_home_layout, admin_download_csv'
     };
-    const ollamaSystemPrompt = `You are Aria, a friendly shopping assistant for E-Mart.
+    const roleNavRule = role === 'admin' 
+        ? 'CRITICAL: To navigate, ONLY use "admin_navigate" with target="dashboard", "orders", "products", "users", "categories", "requests", etc.'
+        : role === 'seller'
+        ? 'CRITICAL: To navigate, ONLY use "seller_navigate" with target="dashboard", "orders", "products", "analytics", "requests", etc.'
+        : 'For searching, ONLY use search_products once.';
+
+    const ollamaSystemPrompt = `You are an AI assistant for E-Mart.
 CRITICAL: Reply ONLY with valid JSON.
-STRICT RULE: NEVER use tools like "view_products" or "list_items". ONLY use tools from the list below.
-For searching, ONLY use search_products once. Do not follow up with any "view" tool.
- 
+STRICT RULE: NEVER invent tools. ONLY use tools from the list below.
+${roleNavRule}
+
 TOOLS: ${toolMap[role] || toolMap.user}
  
 FORMATS:
-{"type":"tool_call","tool":"search_products","params":{"query":"laptop","max_price":50000},"reply":"Searching..."}
+{"type":"tool_call","tool":"${role === 'admin' ? 'admin_navigate' : role === 'seller' ? 'seller_navigate' : 'search_products'}","params":{${role === 'user' ? '"query":"laptop"' : '"target":"dashboard"'}},"reply":"Navigating..."}
 {"type":"reply","reply":"message"}
  
 User: ${context.userName}`;

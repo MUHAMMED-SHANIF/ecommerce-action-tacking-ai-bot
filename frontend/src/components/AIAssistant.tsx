@@ -317,15 +317,90 @@ export default function AIAssistant() {
             case "seller_cancelled_orders": case "seller_revenue_today":
             case "seller_pending_orders":
               router.push('/seller/analytics'); break;
+            case "seller_navigate": {
+              const target = data.data?.target;
+              const buildQS = () => {
+                const qp = new URLSearchParams();
+                if (data.data?.date_filter) qp.set("date_filter", data.data.date_filter);
+                if (data.data?.status_filter) qp.set("status_filter", data.data.status_filter);
+                if (data.data?.download_csv) qp.set("download_csv", "true");
+                if (data.data?.filter_type) qp.set("filter_type", data.data.filter_type);
+                if (data.data?.filter_status) qp.set("filter_status", data.data.filter_status);
+                if (data.data?.bulk_action) qp.set("bulk_action", data.data.bulk_action);
+                return qp.toString();
+              };
+              if (target === 'orders') {
+                const qs = buildQS();
+                router.push(`/seller/orders${qs ? `?${qs}` : ''}`);
+              } else if (target === 'analytics') {
+                const qs = buildQS();
+                router.push(`/seller/analytics${qs ? `?${qs}` : ''}`);
+              } else if (target === 'dashboard') {
+                const qs = buildQS();
+                router.push(`/seller/dashboard${qs ? `?${qs}` : ''}`);
+              } else if (target === 'requests') {
+                const qs = buildQS();
+                router.push(`/seller/requests${qs ? `?${qs}` : ''}`);
+              } else if (target === 'products') router.push('/seller/products');
+              else if (target === 'settings') router.push('/seller/settings');
+              else if (target === 'add_product') router.push('/seller/products/add');
+              else if (target === 'category_request') router.push('/seller/category-request');
+              break;
+            }
             // ── ADMIN ROUTES ─────────────────────────────────────────
+            case "admin_navigate": {
+              const adminTarget = data.data?.target;
+              const adminRoutes: Record<string, string> = {
+                dashboard: '/admin/dashboard',
+                products: '/admin/products',
+                orders: '/admin/orders',
+                users: '/admin/users',
+                suppliers: '/admin/suppliers',
+                categories: '/admin/categories',
+                requests: '/admin/requests',
+                banners: '/admin/banners',
+                'adjust-home': '/admin/adjust-home',
+              };
+              const adminBase = adminRoutes[adminTarget];
+              if (adminBase) {
+                const qp = new URLSearchParams();
+                if (data.data?.date_filter) qp.set('date_filter', data.data.date_filter);
+                if (data.data?.status_filter) qp.set('status_filter', data.data.status_filter);
+                if (data.data?.seller_name) qp.set('seller_name', data.data.seller_name);
+                if (data.data?.download_csv) qp.set('download_csv', 'true');
+                if (data.data?.filter_type) qp.set('filter_type', data.data.filter_type);
+                if (data.data?.filter_status) qp.set('filter_status', data.data.filter_status);
+                if (data.data?.action) qp.set('action', data.data.action);
+                const qs = qp.toString();
+                router.push(`${adminBase}${qs ? `?${qs}` : ''}`);
+              }
+              break;
+            }
             case "admin_platform_stats": case "admin_platform_revenue":
+            case "admin_dashboard_stats": case "admin_growth_metrics":
               router.push('/admin/dashboard'); break;
             case "admin_pending_products": case "admin_approve_product":
+            case "admin_reject_product": case "admin_edit_any_product":
               router.push('/admin/products'); break;
-            case "admin_all_orders":
+            case "admin_all_orders": case "admin_orders_report":
+            case "admin_revenue_report":
               router.push('/admin/orders'); break;
-            case "admin_all_sellers":
+            case "admin_all_sellers": case "admin_view_sellers":
+            case "admin_trust_seller": case "admin_add_seller":
               router.push('/admin/suppliers'); break;
+            case "admin_view_users": case "admin_delete_user":
+            case "admin_change_user_role":
+              router.push('/admin/users'); break;
+            case "admin_add_category": case "admin_edit_category":
+            case "admin_delete_category":
+              router.push('/admin/categories'); break;
+            case "admin_view_requests": case "admin_approve_request":
+            case "admin_reject_request":
+              router.push('/admin/requests'); break;
+            case "admin_add_banner": case "admin_view_banners":
+              router.push('/admin/banners'); break;
+            case "admin_get_home_layout": case "admin_update_home_layout":
+              router.push('/admin/adjust-home'); break;
             default:
               console.log("[AIAssistant] Unhandled tool:", data.tool); break;
           }

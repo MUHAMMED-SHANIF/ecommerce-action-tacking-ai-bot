@@ -30,7 +30,7 @@ module.exports = {
 
         // Get product counts and revenue per seller
         const { data: products } = await serviceSupabase.from('products').select('id, metadata');
-        const { data: orders } = await serviceSupabase.from('orders').select('total_amount, status, order_items(product_id)');
+        const { data: orders } = await serviceSupabase.from('orders').select('total_price, status, order_items(product_id)');
 
         const stats = sellers.map(s => {
             const sellerProducts = (products || []).filter(p => p.metadata?.sellerId === s.id);

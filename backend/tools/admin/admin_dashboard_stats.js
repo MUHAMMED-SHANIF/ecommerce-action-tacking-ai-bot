@@ -14,7 +14,7 @@ module.exports = {
 
         const [productsRes, ordersRes, authData] = await Promise.all([
             serviceSupabase.from('products').select('id, metadata', { count: 'exact' }),
-            serviceSupabase.from('orders').select('id, total_amount, status', { count: 'exact' }),
+            serviceSupabase.from('orders').select('id, total_price, status', { count: 'exact' }),
             serviceSupabase.auth.admin.listUsers()
         ]);
 
@@ -23,7 +23,7 @@ module.exports = {
         const totalSellers = users.filter(u => u.user_metadata?.role === 'seller').length;
         
         const allOrders = ordersRes.data || [];
-        const totalRevenue = allOrders.filter(o => o.status !== 'cancelled').reduce((s, o) => s + Number(o.total_amount || 0), 0);
+        const totalRevenue = allOrders.filter(o => o.status !== 'cancelled').reduce((s, o) => s + Number(o.total_price || 0), 0);
 
         const allProducts = productsRes.data || [];
         const pendingApprovals = allProducts.filter(p => p.metadata?.status === 'pending').length;

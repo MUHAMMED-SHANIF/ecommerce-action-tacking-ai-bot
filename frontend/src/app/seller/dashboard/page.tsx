@@ -1,40 +1,127 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Package, ShoppingBag, Clock, TrendingUp, AlertCircle, CheckCircle, PlusCircle, Globe, IndianRupee, Tag, BarChart2 } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Package, ShoppingBag, Clock, TrendingUp, AlertCircle, CheckCircle, PlusCircle, Globe, IndianRupee, Tag, BarChart2, Download } from 'lucide-react';
 import Link from 'next/link';
 
 export default function SellerDashboard() {
     const [stats, setStats] = useState<any>({ totalProducts: 0, totalOrders: 0, pendingOrders: 0, totalRevenue: 0, topProducts: [], topCategories: [] });
+    const [range, setRange] = useState('all');
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [loading, setLoading] = useState(true);
+    const [autoDownload, setAutoDownload] = useState(false);
+
+    const fetchStats = async () => {
+        const userStr = localStorage.getItem('user');
+        if (!userStr) return;
+        const user = JSON.parse(userStr);
+        const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${user?.token}` };
+
+        try {
+            setLoading(true);
+            const [statsRes, reqRes] = await Promise.all([
+                fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/seller/stats?range=${range}`, { headers }),
+                fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/requests`, { headers })
+            ]);
+            if (statsRes.ok) {
+                const statsData = await statsRes.json();
+                const reqData = reqRes.ok ? await reqRes.json() : [];
+                setStats({ ...statsData, requests: Array.isArray(reqData) ? reqData.length : 0 });
+            }
+        } catch (err) {
+            console.error("Failed to fetch dashboard stats", err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchStats = async () => {
-            const userStr = localStorage.getItem('user');
-            if (!userStr) return;
-            const user = JSON.parse(userStr);
-            const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${user?.token}` };
+        const dateFilter = searchParams.get('date_filter');
+        const shouldDownload = searchParams.get('download_csv') === 'true';
 
-            try {
-                const [statsRes, reqRes] = await Promise.all([
-                    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/seller/stats`, { headers }),
-                    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/requests`, { headers })
-                ]);
-                if (statsRes.ok) {
-                    const statsData = await statsRes.json();
-                    const reqData = reqRes.ok ? await reqRes.json() : [];
-                    setStats({ ...statsData, requests: Array.isArray(reqData) ? reqData.length : 0 });
-                }
-            } catch (err) {
-                console.error("Failed to fetch dashboard stats", err);
-            } finally {
-                setLoading(false);
-            }
-        };
+        if (dateFilter) {
+            const map: any = {
+                'today': 'day',
+                'weekly': 'week',
+                'monthly': 'month',
+                '3months': '3month',
+                '6months': '6month',
+                '1year': 'year',
+                'all': 'all'
+            };
+            if (map[dateFilter]) setRange(map[dateFilter]);
+        }
+        if (shouldDownload) {
+            setAutoDownload(true);
+        }
+    }, [searchParams]);
+
+    useEffect(() => {
         fetchStats();
-    }, []);
+    }, [range]);
+
+    const handleDownloadCSV = () => {
+        if (!stats) return;
+
+        const rows = [];
+        rows.push(["SELLER DASHBOARD REPORT"]);
+        rows.push(["Time Range:", range]);
+        rows.push(["Generated At:", new Date().toLocaleString()]);
+        rows.push([]);
+
+        // KPI Section
+        rows.push(["KEY METRICS"]);
+        rows.push(["Total Products", stats.totalProducts]);
+        rows.push(["Total Orders", stats.totalOrders]);
+        rows.push(["Pending Orders", stats.pendingOrders]);
+        rows.push(["Total Revenue", `Rs ${stats.totalRevenue}`]);
+        rows.push(["My Requests", stats.requests || 0]);
+        rows.push([]);
+
+        // Top Products Section
+        rows.push(["TOP PRODUCTS"]);
+        rows.push(["Rank", "Product Name", "Category", "Price", "Units Sold", "Revenue", "Stock Left"]);
+        (stats.topProducts || []).slice(0, 10).forEach((p: any) => {
+            rows.push([
+                p.rank, p.name, p.category, p.price, p.totalQty, p.totalRevenue, p.stock
+            ]);
+        });
+        rows.push([]);
+
+        // Top Categories Section
+        rows.push(["TOP CATEGORIES"]);
+        rows.push(["Rank", "Category Name", "Units Sold", "Revenue"]);
+        (stats.topCategories || []).slice(0, 10).forEach((c: any, i: number) => {
+            rows.push([
+                i + 1, c.name, c.totalQty, c.totalRevenue
+            ]);
+        });
+
+        const csvContent = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `dashboard_report_${range}_${new Date().getTime()}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    useEffect(() => {
+        if (!loading && stats && autoDownload) {
+            const timer = setTimeout(() => {
+                handleDownloadCSV();
+                setAutoDownload(false);
+                if (typeof window !== 'undefined') {
+                    window.history.replaceState({}, '', '/seller/dashboard');
+                }
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [loading, autoDownload, stats]);
 
     const medal = (rank: number) =>
         rank === 1 ? 'bg-[#F59E0B] text-white' :
@@ -51,9 +138,29 @@ export default function SellerDashboard() {
 
     return (
         <div className="space-y-8">
-            <div className="mb-2">
-                <h1 className="text-2xl font-bold text-slate-800">Dashboard Overview</h1>
-                <p className="text-slate-500">Welcome back to your seller command center</p>
+            <div className="flex justify-between items-center mb-2">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-800">Dashboard Overview</h1>
+                    <p className="text-slate-500">Welcome back to your seller command center</p>
+                </div>
+                <div className="flex gap-4 items-center">
+                    <select 
+                        value={range} 
+                        onChange={(e) => setRange(e.target.value)}
+                        className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl focus:ring-2 focus:ring-violet-500 outline-none shadow-sm text-sm"
+                    >
+                        <option value="all">Full History</option>
+                        <option value="day">Today</option>
+                        <option value="week">Last 7 Days</option>
+                        <option value="month">Last 30 Days</option>
+                        <option value="3month">Last 3 Months</option>
+                        <option value="6month">Last 6 Months</option>
+                        <option value="year">Last 1 Year</option>
+                    </select>
+                    <button onClick={handleDownloadCSV} className="text-sm bg-slate-100 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-200 transition font-medium flex items-center gap-2 border border-slate-300">
+                        <Download className="w-4 h-4" /> Download Report
+                    </button>
+                </div>
             </div>
 
             {/* Stat Cards */}

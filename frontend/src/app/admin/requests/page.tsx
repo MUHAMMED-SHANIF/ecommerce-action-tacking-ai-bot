@@ -1,6 +1,8 @@
 'use client';
+import React, { Suspense } from 'react';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Check, X, Filter, User, Package, Folder, FileText } from 'lucide-react';
 
@@ -14,14 +16,29 @@ interface RequestItem {
 }
 
 export default function AdminRequests() {
+    return (
+        <Suspense fallback={<div className="p-8 text-center text-gray-400">Loading requests...</div>}>
+            <AdminRequestsInner />
+        </Suspense>
+    );
+}
+
+function AdminRequestsInner() {
     const { user } = useAuth();
+    const searchParams = useSearchParams();
+
+    // Read URL params ONCE at init — avoids double-fetch race condition
+    const initFilterType = searchParams.get('filter_type') || 'all';
+    const initFilterStatus = searchParams.get('filter_status') || '';
+    const initShowHistory = initFilterStatus === 'history' || initFilterStatus === 'approved' || initFilterStatus === 'rejected';
+
     const [requests, setRequests] = useState<RequestItem[]>([]);
     const [filteredRequests, setFilteredRequests] = useState<RequestItem[]>([]);
-    const [filterType, setFilterType] = useState<string>('all');
+    const [filterType, setFilterType] = useState<string>(initFilterType);
     const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
     const [dateRange, setDateRange] = useState<{ start: string, end: string }>({ start: '', end: '' });
     const [loading, setLoading] = useState(true);
-    const [showHistory, setShowHistory] = useState(false);
+    const [showHistory, setShowHistory] = useState(initShowHistory);
 
     // Toast state
     const [toastMsg, setToastMsg] = useState<string>('');
@@ -35,6 +52,7 @@ export default function AdminRequests() {
 
     const closeViewModal = () => setSelectedRequest(null);
 
+    // Single fetch — triggered only when user or showHistory actually changes
     useEffect(() => {
         if (user?.role === 'admin') {
             fetchRequests();
@@ -251,14 +269,14 @@ export default function AdminRequests() {
 
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Type</label>
-                    <div className="flex bg-gray-100 rounded p-1">
-                        {['all', 'seller', 'product', 'category', 'general_request'].map(t => (
+                    <div className="flex bg-gray-100 rounded p-1 flex-wrap gap-1">
+                        {['all', 'seller', 'product', 'category'].map(t => (
                             <button
                                 key={t}
                                 onClick={() => setFilterType(t)}
                                 className={`px-4 py-2 rounded text-sm capitalize ${filterType === t ? 'bg-white shadow text-blue-600 font-medium' : 'text-gray-600 hover:text-gray-900'}`}
                             >
-                                {t.replace('_', ' ')}
+                                {t === 'all' ? 'All' : t.charAt(0).toUpperCase() + t.slice(1)}
                             </button>
                         ))}
                     </div>

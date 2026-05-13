@@ -44,15 +44,25 @@ export default function AdminProducts() {
         if (supplierParam) {
             setSearchTerm(supplierParam);
         }
+
+        // AI can trigger add product navigation
+        if (searchParams.get('action') === 'add_product') {
+            router.push('/admin/products/add');
+        }
     }, [user, searchParams]);
 
     useEffect(() => {
         const lower = searchTerm.toLowerCase();
         const sellerIdParam = searchParams.get('sellerId');
+        const sellerNameParam = searchParams.get('sellerName');
         
         setFilteredProducts(products.filter(p => {
-            // If sellerId param is present, strictly filter by it first
-            if (sellerIdParam && p.sellerId !== sellerIdParam) return false;
+            // If sellerId param is present, strictly filter by it or seller name
+            if (sellerIdParam) {
+                const matchId = p.sellerId === sellerIdParam || p.supplierId === sellerIdParam;
+                const matchName = sellerNameParam && p.supplier && p.supplier.toLowerCase() === sellerNameParam.toLowerCase();
+                if (!matchId && !matchName) return false;
+            }
 
             // Otherwise apply standard search
             return p.title.toLowerCase().includes(lower) ||

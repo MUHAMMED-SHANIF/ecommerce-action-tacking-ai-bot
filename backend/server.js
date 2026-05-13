@@ -626,7 +626,8 @@ app.get('/api/admin/products/all', isAdmin, async (req, res) => {
             isApproved: p.metadata?.isApproved !== false,
             status: p.metadata?.status || 'approved',
             supplier: p.metadata?.supplier,
-            sellerId: p.metadata?.sellerId,
+            sellerId: p.metadata?.sellerId || p.metadata?.supplierId,
+            supplierId: p.metadata?.supplierId,
             isPaused: p.metadata?.isPaused === true,
             tags: p.tags || p.metadata?.tags || []
         }));
@@ -1537,6 +1538,18 @@ app.get('/api/seller/stats', async (req, res) => {
         if (authErr || !user) return res.status(401).json({ error: "Unauthorized" });
 
         const userId = user.id;
+        const range = req.query.range || 'all'; // day, week, month, 3month, 6month, year, all
+
+        // Calculate date filter
+        let sinceDate = null;
+        const now = new Date();
+        const now2 = new Date(); // copy to avoid mutation issues
+        if (range === 'day') sinceDate = new Date(now2.setHours(0,0,0,0));
+        else if (range === 'week') sinceDate = new Date(now2.setDate(now.getDate() - 7));
+        else if (range === 'month') sinceDate = new Date(now2.setMonth(now.getMonth() - 1));
+        else if (range === '3month') sinceDate = new Date(now2.setMonth(now.getMonth() - 3));
+        else if (range === '6month') sinceDate = new Date(now2.setMonth(now.getMonth() - 6));
+        else if (range === 'year') sinceDate = new Date(now2.setFullYear(now.getFullYear() - 1));
 
         // Fetch ALL products then filter by sellerId/supplierId in metadata (JS side)
         // This matches the pattern used in /api/seller/orders and /api/seller/unified-requests
@@ -1559,37 +1572,37 @@ app.get('/api/seller/stats', async (req, res) => {
         let orderItems = [];
         let acceptedOrders = [];
         if (productIds.length > 0) {
-            const { data: orders } = await supabase
+            let orderQuery = supabase
                 .from('orders')
                 .select('id, status, total_price, created_at, order_items(id, product_id, quantity, price, seller_status)');
+            
+            if (sinceDate) {
+                orderQuery = orderQuery.gte('created_at', sinceDate.toISOString());
+            }
+
+            const { data: orders } = await orderQuery;
             if (orders) {
                 // Only include non-cancelled orders
                 const nonCancelledOrders = orders.filter(o => o.status !== 'cancelled');
                 sellerOrders = nonCancelledOrders.filter(order =>
                     order.order_items.some(item => productIds.includes(item.product_id))
                 );
-                // Only count items the seller has ACCEPTED for revenue
+                // Include all items not explicitly rejected
                 orderItems = sellerOrders.flatMap(o =>
-                    o.order_items.filter(i => productIds.includes(i.product_id) && i.seller_status === 'accepted')
-                );
-                // Populate acceptedOrders for the response
-                acceptedOrders = sellerOrders.filter(o =>
-                    o.order_items.some(i => productIds.includes(i.product_id) && i.seller_status === 'accepted')
+                    o.order_items.filter(i => productIds.includes(i.product_id) && i.seller_status !== 'rejected')
                 );
             }
         }
 
-        // Revenue: only from accepted items
+        // Revenue: from all valid (non-rejected) items
         const totalRevenue = orderItems.reduce((sum, i) => sum + ((i.price || 0) * (i.quantity || 0)), 0);
 
-        // Total orders: only orders that have at least one accepted item from this seller
-        acceptedOrders = sellerOrders.filter(o =>
-            o.order_items.some(i => productIds.includes(i.product_id) && i.seller_status === 'accepted')
-        );
+        // Total orders: all non-cancelled orders that have at least one item from this seller
+        const totalValidOrders = sellerOrders.length;
 
-        // Pending: orders with items still waiting for seller to accept
+        // Pending: orders with items still waiting for seller to accept or mark
         const pendingOrders = sellerOrders.filter(o =>
-            o.order_items.some(i => productIds.includes(i.product_id) && i.seller_status === 'pending')
+            o.order_items.some(i => productIds.includes(i.product_id) && (!i.seller_status || i.seller_status === 'pending'))
         ).length;
 
         // Top products by units sold
@@ -1641,7 +1654,7 @@ app.get('/api/seller/stats', async (req, res) => {
 
         res.json({
             totalProducts: productIds.length,
-            totalOrders: acceptedOrders.length,
+            totalOrders: totalValidOrders,
             pendingOrders,
             totalRevenue,
             topProducts: topProducts.slice(0, 5),
@@ -2220,6 +2233,16 @@ app.get('/api/admin/orders', isAdmin, async (req, res) => {
             .sort((a, b) => b.totalRevenue - a.totalRevenue)
             .map((c, i) => ({ ...c, rank: i + 1, products: c.products.slice(0, 5) }));
 
+        // Build productId -> sellerId + sellerName lookup map
+        const productSellerMap = {};
+        (products || []).forEach(p => {
+            const sid = p.metadata?.sellerId || p.metadata?.supplierId;
+            if (sid) {
+                const sdata = sellerSales[sid];
+                productSellerMap[p.id] = { sellerId: sid, sellerName: sdata?.name || 'Unknown Seller' };
+            }
+        });
+
         // Format orders list for the table
         const ordersList = orders.map(o => {
             const items = (orderItems || []).filter(i => i.order_id === o.id);
@@ -2235,7 +2258,9 @@ app.get('/api/admin/orders', isAdmin, async (req, res) => {
                     name: i.products?.name,
                     qty: i.quantity,
                     price: i.price,
-                    sellerStatus: i.seller_status
+                    sellerStatus: i.seller_status,
+                    sellerId: productSellerMap[i.product_id]?.sellerId || null,
+                    sellerName: productSellerMap[i.product_id]?.sellerName || null,
                 }))
             };
         });

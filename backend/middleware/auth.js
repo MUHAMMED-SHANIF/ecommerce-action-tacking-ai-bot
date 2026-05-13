@@ -4,7 +4,9 @@ const { createClient } = require('@supabase/supabase-js');
 // But mostly we just need Anon Key because we pass user token to supabase auth.
 const supabaseUrl = process.env.SUPABASE_URL || 'http://localhost:8000';
 const supabaseKey = process.env.SUPABASE_ANON_KEY || 'dummy';
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient(supabaseUrl, supabaseKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+});
 
 const requireAuth = async (req, res, next) => {
     try {

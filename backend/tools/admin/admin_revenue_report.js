@@ -21,14 +21,14 @@ module.exports = {
 
         const { data: orders, error } = await serviceSupabase
             .from('orders')
-            .select('id, total_amount, status, created_at, order_items(product_id, products(metadata, category_id, categories(name)))')
+            .select('id, total_price, status, created_at, order_items(product_id, products(metadata, category_id, categories(name)))')
             .gte('created_at', `${from_date}T00:00:00`)
             .lte('created_at', `${to_date}T23:59:59`)
             .neq('status', 'cancelled');
 
         if (error) throw error;
 
-        const total_revenue = (orders || []).reduce((s, o) => s + Number(o.total_amount || 0), 0);
+        const total_revenue = (orders || []).reduce((s, o) => s + Number(o.total_price || 0), 0);
         
         const breakdown = {};
         const sellerStats = {};
@@ -49,14 +49,14 @@ module.exports = {
             }
             
             if (!breakdown[key]) breakdown[key] = 0;
-            breakdown[key] += Number(o.total_amount || 0);
+            breakdown[key] += Number(o.total_price || 0);
             
             // Track for top seller/category
             const seller = o.order_items?.[0]?.products?.metadata?.sellerName || 'Unknown Seller';
             const category = o.order_items?.[0]?.products?.categories?.name || 'Uncategorized';
             
-            sellerStats[seller] = (sellerStats[seller] || 0) + Number(o.total_amount || 0);
-            categoryStats[category] = (categoryStats[category] || 0) + Number(o.total_amount || 0);
+            sellerStats[seller] = (sellerStats[seller] || 0) + Number(o.total_price || 0);
+            categoryStats[category] = (categoryStats[category] || 0) + Number(o.total_price || 0);
         });
 
         const top_category = Object.entries(categoryStats).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';

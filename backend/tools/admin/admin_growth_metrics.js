@@ -21,13 +21,13 @@ module.exports = {
         const prevPeriodStart = new Date(now - 2 * days * 24 * 60 * 60 * 1000);
 
         const [currentOrders, prevOrders, authData] = await Promise.all([
-            serviceSupabase.from('orders').select('total_amount').gte('created_at', currentPeriodStart.toISOString()),
-            serviceSupabase.from('orders').select('total_amount').gte('created_at', prevPeriodStart.toISOString()).lt('created_at', currentPeriodStart.toISOString()),
+            serviceSupabase.from('orders').select('total_price').gte('created_at', currentPeriodStart.toISOString()),
+            serviceSupabase.from('orders').select('total_price').gte('created_at', prevPeriodStart.toISOString()).lt('created_at', currentPeriodStart.toISOString()),
             serviceSupabase.auth.admin.listUsers()
         ]);
 
-        const currentRev = (currentOrders.data || []).reduce((s, o) => s + Number(o.total_amount || 0), 0);
-        const prevRev = (prevOrders.data || []).reduce((s, o) => s + Number(o.total_amount || 0), 0);
+        const currentRev = (currentOrders.data || []).reduce((s, o) => s + Number(o.total_price || 0), 0);
+        const prevRev = (prevOrders.data || []).reduce((s, o) => s + Number(o.total_price || 0), 0);
         
         const revGrowth = prevRev === 0 ? 100 : ((currentRev - prevRev) / prevRev) * 100;
         

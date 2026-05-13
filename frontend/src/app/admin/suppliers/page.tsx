@@ -47,13 +47,18 @@ export default function AdminSuppliers() {
             return;
         }
         fetchData();
+        // Poll every 10s — catches newly added/approved products automatically and quickly
+        const interval = setInterval(fetchData, 10000);
+        return () => clearInterval(interval);
     }, [user]);
 
     const fetchData = async () => {
         try {
+            const headers = { 'Authorization': `Bearer ${user?.token}` };
             const [sRes, pRes] = await Promise.all([
-                fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/sellers`, { headers: { 'Authorization': `Bearer ${user?.token}` } }),
-                fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/products`)
+                fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/sellers`, { headers }),
+                // Use admin endpoint — includes sellerId from product metadata
+                fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/admin/products/all`, { headers, cache: 'no-store' })
             ]);
 
             const sData = await sRes.json();
@@ -133,8 +138,18 @@ export default function AdminSuppliers() {
         (s.email || "").toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const getProductCount = (supplierId: string) => {
-        return products.filter(p => p.sellerId === supplierId).length;
+    const getApprovedProductCount = (s: any) => {
+        return products.filter((p: any) => 
+            (p.sellerId === s.id || p.supplierId === s.id || (p.supplier && s.name && p.supplier.toLowerCase() === s.name.toLowerCase())) &&
+            p.isApproved !== false && p.status !== 'rejected' && p.status !== 'pending'
+        ).length;
+    };
+
+    const getPendingProductCount = (s: any) => {
+        return products.filter((p: any) => 
+            (p.sellerId === s.id || p.supplierId === s.id || (p.supplier && s.name && p.supplier.toLowerCase() === s.name.toLowerCase())) &&
+            (p.isApproved === false || p.status === 'pending')
+        ).length;
     };
 
     const formatDate = (dateString?: string) => {
@@ -209,13 +224,20 @@ export default function AdminSuppliers() {
                                         {s.isTrusted ? <CheckCircle className="inline w-5 h-5 text-green-500" /> : <XCircle className="inline w-5 h-5 text-gray-300" />}
                                     </td>
                                     <td className="p-4 text-center">
-                                        <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">
-                                            {getProductCount(s.id)}
-                                        </span>
+                                        <div className="flex flex-col items-center gap-1">
+                                            <span className="bg-blue-100 text-blue-800 text-[10px] uppercase font-bold px-2 py-0.5 rounded">
+                                                {getApprovedProductCount(s)} Approved
+                                            </span>
+                                            {getPendingProductCount(s) > 0 && (
+                                                <span className="bg-yellow-100 text-yellow-800 text-[10px] uppercase font-bold px-2 py-0.5 rounded">
+                                                    {getPendingProductCount(s)} Pending
+                                                </span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="p-4 text-right">
                                         <button
-                                            onClick={() => router.push(`/admin/products?sellerId=${s.id}`)}
+                                            onClick={() => router.push(`/admin/products?sellerId=${s.id}&sellerName=${encodeURIComponent(s.name || '')}`)}
                                             className="text-gray-600 hover:text-black mr-3"
                                             title="View Products"
                                         >
